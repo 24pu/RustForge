@@ -43,8 +43,11 @@ cargo run
 
 访问 http://localhost:3000，首次访问会进入安装向导。
 
-Docker 部署
-bash
+
+
+# Docker 部署
+
+
 # 构建镜像
 docker build -t rustforge .
 
@@ -52,6 +55,11 @@ docker build -t rustforge .
 docker run -d --name rustforge -p 3000:3000 \
   -e DATABASE_URL="postgresql://user:pass@host:5432/rustforge" \
   rustforge
+
+```
+
+
+
 📁 项目结构
 text
 rustforge/
@@ -64,12 +72,15 @@ rustforge/
 ├── locales/                # 多语言翻译文件
 ├── migrations/             # 数据库迁移
 └── frontend/dist/          # 管理后台静态文件
+
+
 📚 文档
 插件开发指南 http://rustforge.24pu.com/plugins/docs/static/plugin-dev-guide.html
 
 主题开发指南 http://rustforge.24pu.com/plugins/docs/static/theme-dev-guide.html
 
 主程序开发文档 http://rustforge.24pu.com/plugins/docs/static/main-program-dev-guide.html
+
 
 🛠️ 技术栈
 技术	用途
@@ -79,6 +90,8 @@ SQLx + PostgreSQL	数据库
 Tera	模板引擎
 Wasmtime	插件运行时
 Tailwind CSS	前端样式
+
+
 📄 许可证
 本项目采用 MIT License。
 
