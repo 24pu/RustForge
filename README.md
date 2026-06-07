@@ -61,7 +61,7 @@ docker run -d --name rustforge -p 3000:3000 \
 
 
 📁 项目结构
-text
+```text
 rustforge/
 ├── src/                    # 源代码
 │   ├── presentation/       # 表现层（路由、处理器、中间件）
@@ -73,7 +73,7 @@ rustforge/
 ├── migrations/             # 数据库迁移
 └── frontend/dist/          # 管理后台静态文件
 
-
+```
 📚 文档
 插件开发指南 http://rustforge.24pu.com/plugins/docs/static/plugin-dev-guide.html
 
