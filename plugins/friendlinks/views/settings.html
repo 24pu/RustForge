@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>友情链接设置</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6">
+    <h3 class="text-lg font-semibold mb-2">友情链接管理</h3>
+    <p class="text-sm text-gray-500 mb-4">每行一条，格式：名称|URL</p>
+    <textarea id="links-text" rows="10" class="w-full border rounded p-2 font-mono"></textarea>
+    <div class="mt-4 flex justify-end">
+        <button id="save-btn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">保存</button>
+    </div>
+    <div id="message" class="mt-2 text-sm"></div>
+
+    <script>
+        const pluginName = 'friendlinks'; // 当前插件名称，可固化
+
+        // 加载现有设置
+        async function loadSettings() {
+            const resp = await fetch(`/api/admin/plugins/${pluginName}/settings`);
+            const data = await resp.json();
+            const links = data.links || [];
+            document.getElementById('links-text').value = links.map(l => `${l.name}|${l.url}`).join('\n');
+        }
+
+        // 保存设置
+        document.getElementById('save-btn').addEventListener('click', async () => {
+            const text = document.getElementById('links-text').value;
+            const links = text.split('\n').filter(Boolean).map(line => {
+                const [name, url] = line.split('|').map(s => s.trim());
+                return { name, url: url || '' };
+            });
+            await fetch(`/api/admin/plugins/${pluginName}/settings`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ links })
+            });
+            document.getElementById('message').innerText = '保存成功';
+            setTimeout(() => document.getElementById('message').innerText = '', 2000);
+        });
+
+        loadSettings();
+    </script>
+</body>
+</html>

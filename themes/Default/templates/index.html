@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title_prefix %}{{ site_config.seo_title | default(value='RustForge') }}{% endblock %}
+{% block title_suffix %} - {{ t(key="home", lang=lang) }}{% endblock %}
+
+{% block content %}
+<!-- Hero Banner 区域 -->
+<section class="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-20">
+    <div class="container mx-auto px-4 text-center">
+        <h1 class="text-4xl md:text-6xl font-bold mb-4">{{ t(key="hero_title", lang=lang) }}</h1>
+        <p class="text-xl md:text-2xl mb-8">{{ t(key="hero_subtitle", lang=lang) }}</p>
+        <a href="/category/products" class="bg-white text-purple-600 px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition">{{ t(key="learn_more", lang=lang) }}</a>
+    </div>
+</section>
+
+<!-- 特色服务 / 核心优势 -->
+<section class="py-16 bg-white">
+    <div class="container mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center text-gray-800 mb-12">{{ t(key="why_choose_us", lang=lang) }}</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="text-center p-6">
+                <div class="text-5xl mb-4">🚀</div>
+                <h3 class="text-xl font-semibold mb-2">{{ t(key="efficient_execution", lang=lang) }}</h3>
+                <p class="text-gray-600">{{ t(key="efficient_execution_desc", lang=lang) }}</p>
+            </div>
+            <div class="text-center p-6">
+                <div class="text-5xl mb-4">🔒</div>
+                <h3 class="text-xl font-semibold mb-2">{{ t(key="secure_reliable", lang=lang) }}</h3>
+                <p class="text-gray-600">{{ t(key="secure_reliable_desc", lang=lang) }}</p>
+            </div>
+            <div class="text-center p-6">
+                <div class="text-5xl mb-4">💡</div>
+                <h3 class="text-xl font-semibold mb-2">{{ t(key="innovative_tech", lang=lang) }}</h3>
+                <p class="text-gray-600">{{ t(key="innovative_tech_desc", lang=lang) }}</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 最新内容/动态 -->
+<section class="py-16 bg-gray-50">
+    <div class="container mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center text-gray-800 mb-12">{{ t(key="latest_news", lang=lang) }}</h2>
+        {% if latest_contents %}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {% for content in latest_contents %}
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300">
+                        {% if content.cover_image %}
+                            <img src="{{ content.cover_image }}" alt="{{ content.title }}" class="w-full h-48 object-cover">
+                        {% else %}
+                            <div class="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-500">{{ t(key="no_image", lang=lang) }}</div>
+                        {% endif %}
+                        <div class="p-6">
+                            <h3 class="text-xl font-semibold mb-2">{{ content.title }}</h3>
+                            <p class="text-gray-600 mb-4">{{ content.body|striptags|truncate(length=80) }}</p>
+                            <a href="/content/{{ content.slug }}" class="text-purple-600 hover:underline">{{ t(key="read_more", lang=lang) }}</a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-center text-gray-500">{{ t(key="no_content", lang=lang) }}</p>
+        {% endif %}
+    </div>
+</section>
+
+<!-- 数据统计 -->
+<section class="py-16 bg-purple-700 text-white">
+    <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
+            <div>
+                <div class="text-4xl font-bold">500+</div>
+                <div class="mt-2">{{ t(key="success_projects", lang=lang) }}</div>
+            </div>
+            <div>
+                <div class="text-4xl font-bold">200+</div>
+                <div class="mt-2">{{ t(key="happy_clients", lang=lang) }}</div>
+            </div>
+            <div>
+                <div class="text-4xl font-bold">10+</div>
+                <div class="mt-2">{{ t(key="industry_experience", lang=lang) }}</div>
+            </div>
+            <div>
+                <div class="text-4xl font-bold">24/7</div>
+                <div class="mt-2">{{ t(key="tech_support", lang=lang) }}</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 联系我们 -->
+<section class="py-16 bg-white">
+    <div class="container mx-auto px-4 text-center">
+        <h2 class="text-3xl font-bold text-gray-800 mb-4">{{ t(key="ready_to_start", lang=lang) }}</h2>
+        <p class="text-gray-600 mb-8">{{ t(key="contact_us_desc", lang=lang) }}</p>
+        <a href="/contact" class="bg-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-purple-700 transition">{{ t(key="contact_us", lang=lang) }}</a>
+    </div>
+</section>
+{% endblock %}

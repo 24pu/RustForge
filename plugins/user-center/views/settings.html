@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户中心设置</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6">
+    <h3 class="text-lg font-semibold mb-3">用户中心插件说明</h3>
+    <div class="text-sm text-gray-700 space-y-3">
+        <p>用户中心为网站提供基础的用户相关功能，包括个人资料管理、密码修改、订单查看、登录/注册等。</p>
+        
+        <div>
+            <strong class="text-gray-800">主要页面：</strong>
+            <ul class="list-disc list-inside ml-4 mt-1 space-y-1">
+                <li><span class="font-medium">个人资料</span>：<code class="bg-gray-200 px-1 rounded text-xs">/plugins/user-center/profile</code></li>
+                <li><span class="font-medium">我的订单</span>：<code class="bg-gray-200 px-1 rounded text-xs">/plugins/user-center/orders</code></li>
+                <li><span class="font-medium">修改密码</span>：<code class="bg-gray-200 px-1 rounded text-xs">/plugins/user-center/password</code></li>
+                <li><span class="font-medium">登录</span>：<code class="bg-gray-200 px-1 rounded text-xs">/plugins/user-center/login</code></li>
+                <li><span class="font-medium">注册</span>：<code class="bg-gray-200 px-1 rounded text-xs">/plugins/user-center/register</code></li>
+            </ul>
+        </div>
+
+        <div>
+            <strong class="text-gray-800">退出登录：</strong>
+            <p>前端调用 <code class="bg-gray-200 px-1 rounded text-xs">POST /api/logout</code> 即可清除认证 Cookie，随后可跳转至首页或登录页。</p>
+        </div>
+
+        <p class="text-gray-500">本插件无需额外设置，安装并启用后即可使用。页面受登录保护（profile、orders、password），未登录用户会自动重定向至登录页。</p>
+    </div>
+</body>
+</html>

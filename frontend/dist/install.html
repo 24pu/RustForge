@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>RustForge 安装</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded shadow-md w-96">
+        <h1 class="text-2xl font-bold mb-6 text-center">RustForge 安装</h1>
+        <form id="install-form">
+           
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">管理员邮箱</label>
+                <input type="email" id="email" required class="w-full border rounded p-2">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">管理员密码</label>
+                <input type="password" id="password" required class="w-full border rounded p-2">
+            </div>
+            <button type="submit" class="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700">开始安装</button>
+            <p id="error" class="text-red-500 text-sm mt-2"></p>
+        </form>
+    </div>
+    <script>
+        document.getElementById('install-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+            };
+            try {
+                const res = await fetch('/api/install', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    alert('安装成功！即将跳转到首页');
+                    window.location.href = '/';
+                } else {
+                    const data = await res.json();
+                    document.getElementById('error').innerText = data.error || '安装失败';
+                }
+            } catch (err) {
+                document.getElementById('error').innerText = '网络错误';
+            }
+        });
+    </script>
+</body>
+</html>

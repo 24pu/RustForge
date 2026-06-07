@@ -1,0 +1,58 @@
+<div class="flex flex-col md:flex-row gap-6">
+    <div id="user-center-nav"></div>
+    <div class="flex-1 bg-white rounded shadow p-6">
+        <h2 class="text-2xl font-bold mb-4">{{ profile }}</h2>
+        <form id="profile-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium">{{ nickname }}</label>
+                <input type="text" id="nickname" class="border rounded w-full p-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium">{{ email }}</label>
+                <input type="email" id="email" class="border rounded w-full p-2" readonly>
+            </div>
+            <div>
+                <label class="block text-sm font-medium">{{ phone }}</label>
+                <input type="tel" id="phone" class="border rounded w-full p-2">
+            </div>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">{{ save_changes }}</button>
+        </form>
+        <div id="profile-message" class="mt-2 text-sm"></div>
+    </div>
+</div>
+<script src="/plugins/user-center/static/nav-loader.js"></script>
+<script>
+    loadNav('profile');
+</script>
+
+<script>
+    const __t = (key, fallback) => (window.__plugin_locales__ && window.__plugin_locales__[key]) || fallback || key;
+
+    (async function() {
+        try {
+            const data = await apiCall('POST', '/api/plugin/user-center', { action: 'get_profile' });
+            if (data.nickname) document.getElementById('nickname').value = data.nickname;
+            document.getElementById('email').value = data.email || '';
+            if (data.phone) document.getElementById('phone').value = data.phone;
+        } catch(err) { console.error(err); }
+
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nickname = document.getElementById('nickname').value;
+            const phone = document.getElementById('phone').value;
+            try {
+                const result = await apiCall('POST', '/api/plugin/user-center', { action: 'update_profile', nickname, phone });
+                const msgDiv = document.getElementById('profile-message');
+                if (result.success) {
+                    msgDiv.className = 'text-green-600';
+                    msgDiv.innerText = __t('profile_success', '保存成功');
+                } else {
+                    msgDiv.className = 'text-red-600';
+                    msgDiv.innerText = result.error || __t('save_failed', '保存失败');
+                }
+            } catch(err) {
+                document.getElementById('profile-message').innerText = __t('network_error', '网络错误');
+            }
+        });
+    })();
+</script>

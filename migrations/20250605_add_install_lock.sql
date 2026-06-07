@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS install_lock (
+    id BOOLEAN PRIMARY KEY DEFAULT TRUE,
+    installed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (id)
+);

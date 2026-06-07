@@ -1,0 +1,32 @@
+{
+    "profile": "个人资料",
+    "orders": "我的订单",
+    "password": "修改密码",
+    "logout": "退出登录",
+    "save_changes": "保存修改",
+    "nickname": "昵称",
+    "email": "邮箱",
+    "phone": "手机号",
+    "old_password": "当前密码",
+    "new_password": "新密码",
+    "confirm_password": "确认新密码",
+    "password_mismatch": "两次输入的新密码不一致",
+    "password_success": "密码修改成功，请重新登录",
+    "profile_success": "资料更新成功",
+    "network_error": "网络错误",
+    "not_authenticated": "未登录",
+    "new_user": "新用户",
+    "register": "注册",
+    "already_have_account": "已有账号？",
+    "go_to_login": "去登录",
+    "register_success": "注册成功，请登录",
+    "register_failed": "注册失败",
+    "login": "登录",
+    "no_account": "还没有账号？",
+    "go_to_register": "立即注册",
+    "login_failed": "登录失败",
+    "change_password": "修改密码",
+    "change_failed": "修改失败"
+   
+
+}

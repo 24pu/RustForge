@@ -1,0 +1,1 @@
+/Users/ljh/Documents/webpro/rustpro/enterprise-web/plugins/user-center/target/wasm32-unknown-unknown/release/user_center.wasm: /Users/ljh/Documents/webpro/rustpro/enterprise-web/plugins/user-center/src/lib.rs

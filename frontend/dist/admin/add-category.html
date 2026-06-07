@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>添加/编辑分类 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="common.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto p-6">
+        <div class="bg-white p-6 rounded shadow max-w-2xl mx-auto">
+            <h1 id="page-title" class="text-2xl font-bold mb-4">添加分类</h1>
+            <form id="category-form">
+                <input type="hidden" id="category-id">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">上级分类</label>
+                    <select id="parent_id" class="shadow border rounded w-full py-2 px-3">
+                        <option value="">无（作为顶级分类）</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">名称</label>
+                    <input type="text" id="name" required class="shadow border rounded w-full py-2 px-3">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Slug</label>
+                    <input type="text" id="slug" required class="shadow border rounded w-full py-2 px-3">
+                    <p class="text-gray-500 text-xs mt-1">唯一标识，例如：products, news</p>
+                </div>
+                <div class="mb-4">
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" id="show_in_nav" class="form-checkbox h-5 w-5 text-blue-600" checked>
+                        <span class="ml-2 text-gray-700">在导航菜单中显示</span>
+                    </label>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">描述</label>
+                    <textarea id="description" rows="3" class="shadow border rounded w-full py-2 px-3"></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">页面展示形式</label>
+                    <select id="display_type" class="shadow border rounded w-full py-2 px-3">
+                        <option value="list">列表（默认）</option>
+                        <option value="gallery">图片网格</option>
+                        <option value="page">单页面</option>
+                    </select>
+                    <p class="text-gray-500 text-xs mt-1">列表：显示标题和摘要；图片网格：显示封面图；单页面：直接显示内容正文</p>
+                </div>
+                <div class="flex items-center justify-between">
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">保存</button>
+                    <a href="categories.html" class="text-gray-600 hover:text-gray-800">取消</a>
+                </div>
+            </form>
+            <div id="error-msg" class="text-red-500 mt-4 hidden"></div>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script>
+        let editingId = null;
+
+        (async () => {
+            if (!await requireAuth()) return;
+            await loadTopbar();
+            await loadFooter();
+
+            const perms = await fetchUserPermissions();
+            const isCreate = perms.includes('category:create');
+            const isEdit = perms.includes('category:edit');
+            if (!isCreate && !isEdit) {
+                document.getElementById('error-msg').innerText = '您没有权限管理分类。';
+                document.getElementById('error-msg').classList.remove('hidden');
+                document.querySelector('form').style.display = 'none';
+                return;
+            }
+
+            await loadParentOptions();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get('id');
+            const parentId = urlParams.get('parent_id');
+            if (id) {
+                editingId = parseInt(id);
+                document.getElementById('page-title').innerText = '编辑分类';
+                await loadCategoryData(editingId);
+            } else if (parentId) {
+                document.getElementById('parent_id').value = parentId;
+                document.getElementById('page-title').innerText = '添加子分类';
+            }
+
+            document.getElementById('category-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('name').value.trim();
+                const slug = document.getElementById('slug').value.trim();
+                const description = document.getElementById('description').value.trim() || null;
+                const parent_id = document.getElementById('parent_id').value ? parseInt(document.getElementById('parent_id').value) : null;
+                const display_type = document.getElementById('display_type').value;
+                const show_in_nav = document.getElementById('show_in_nav').checked;
+                if (!name || !slug) {
+                    alert('请填写名称和Slug');
+                    return;
+                }
+                try {
+                    if (editingId) {
+                        await apiCall('PUT', `/api/admin/categories/${editingId}`, { name, slug, description, parent_id, display_type, show_in_nav });
+                        alert('分类更新成功');
+                    } else {
+                        await apiCall('POST', '/api/admin/categories', { name, slug, description, parent_id, display_type, show_in_nav });
+                        alert('分类创建成功');
+                    }
+                    window.location.href = '/admin/categories.html';
+                } catch (err) {
+                    alert('操作失败: ' + err.message);
+                }
+            });
+        })();
+
+        async function loadParentOptions() {
+            try {
+                const tree = await apiCall('GET', '/api/admin/categories/tree');
+                const select = document.getElementById('parent_id');
+                const currentVal = select.value;
+                select.innerHTML = '<option value="">无（作为顶级分类）</option>';
+                function addOptions(categories, level = 0) {
+                    for (const cat of categories) {
+                        const indent = '&nbsp;'.repeat(level * 4);
+                        const option = document.createElement('option');
+                        option.value = cat.id;
+                        option.innerHTML = `${indent}${escapeHtml(cat.name)}`;
+                        select.appendChild(option);
+                        if (cat.children && cat.children.length) {
+                            addOptions(cat.children, level + 1);
+                        }
+                    }
+                }
+                addOptions(tree);
+                if (currentVal) select.value = currentVal;
+            } catch (err) {
+                console.error('加载分类选项失败', err);
+            }
+        }
+
+        async function loadCategoryData(id) {
+            try {
+                const cat = await apiCall('GET', `/api/admin/categories/${id}`);
+                if (!cat) throw new Error('分类不存在');
+                document.getElementById('name').value = cat.name;
+                document.getElementById('slug').value = cat.slug;
+                document.getElementById('show_in_nav').checked = cat.show_in_nav;
+                document.getElementById('description').value = cat.description || '';
+                document.getElementById('display_type').value = cat.display_type || 'list';
+                if (cat.parent_id) {
+                    document.getElementById('parent_id').value = cat.parent_id;
+                } else {
+                    document.getElementById('parent_id').value = '';
+                }
+            } catch (err) {
+                alert('加载分类数据失败: ' + err.message);
+                window.location.href = '/admin/categories.html';
+            }
+        }
+    </script>
+</body>
+</html>

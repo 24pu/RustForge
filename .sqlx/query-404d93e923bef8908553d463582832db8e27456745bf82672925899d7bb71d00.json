@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) as count\n            FROM contents c\n            JOIN content_categories cc ON c.id = cc.content_id\n            JOIN categories cat ON cc.category_id = cat.id\n            WHERE cat.slug = $1 AND c.published = true AND c.lang = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "404d93e923bef8908553d463582832db8e27456745bf82672925899d7bb71d00"
+}

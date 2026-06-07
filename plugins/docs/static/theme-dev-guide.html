@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主题开发指南 | RustForge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.875rem;
+        }
+        code {
+            font-family: monospace;
+            background: #f3f4f6;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            color: #d63384;
+        }
+        pre code { background: transparent; padding: 0; color: inherit; }
+        .anchor { scroll-margin-top: 5rem; }
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; text-align: left; }
+        th { background: #f9fafb; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <nav class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="text-xl font-bold text-purple-700">RustForge 主题开发指南</div>
+            <div class="space-x-4 text-sm">
+                <a href="#intro" class="hover:text-purple-600">介绍</a>
+                <a href="#structure" class="hover:text-purple-600">结构</a>
+                <a href="#variables" class="hover:text-purple-600">模板变量</a>
+                <a href="#templates" class="hover:text-purple-600">核心模板</a>
+                <a href="#i18n" class="hover:text-purple-600">多语言</a>
+                <a href="#customize" class="hover:text-purple-600">开发与定制</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8 max-w-4xl">
+
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">RustForge 主题开发文档</h1>
+            <p class="text-xl text-gray-600">基于 Tera 模板引擎，打造专属企业网站界面</p>
+            <div class="mt-4 flex justify-center space-x-2">
+                <span class="bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full">Tera</span>
+                <span class="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">Tailwind CSS</span>
+                <span class="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">模板继承</span>
+            </div>
+        </div>
+
+        <!-- 介绍 -->
+        <section id="intro" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">📖 主题系统介绍</h2>
+            <p class="mb-2">RustForge 使用 <a href="https://tera.netlify.app/" class="text-blue-600 underline" target="_blank">Tera</a> 模板引擎渲染前端页面。一个主题就是一组模板文件，通过系统注入的变量展示网站内容。</p>
+            <p>主题支持模板继承、变量过滤器、动态加载和多语言翻译函数。</p>
+        </section>
+
+        <!-- 主题结构 -->
+        <section id="structure" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">📁 主题文件结构</h2>
+            <pre><code>themes/
+└── 你的主题名/
+    ├── theme.toml            # 主题元信息
+    └── templates/            # 模板目录
+        ├── base.html         # 基础布局（必须）
+        ├── index.html        # 首页（必须）
+        ├── category.html     # 分类列表页（必须）
+        ├── content.html      # 内容详情页（必须）
+        └── ...               # 可自定义更多模板</code></pre>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2"><code>theme.toml</code> 示例</h3>
+            <pre><code>name = "默认主题"
+version = "1.0.0"
+author = "你的名字"
+description = "适合企业官网的简洁主题"</code></pre>
+        </section>
+
+        <!-- 模板变量 -->
+        <section id="variables" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">📊 可用模板变量</h2>
+            <table class="w-full bg-white rounded shadow mt-4">
+                <thead><tr><th>变量名</th><th>类型</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td><code>nav_categories</code></td><td>Array</td><td>导航分类列表（含子分类）</td></tr>
+                    <tr><td><code>site_config</code></td><td>Object</td><td>网站设置（名称、SEO、Logo等）</td></tr>
+                    <tr><td><code>user_info</code></td><td>Object</td><td>当前登录用户信息</td></tr>
+                    <tr><td><code>lang</code></td><td>String</td><td>当前语言代码（zh/en）</td></tr>
+                    <tr><td><code>lang_options</code></td><td>Array</td><td>可用语言列表</td></tr>
+                    <tr><td><code>category</code></td><td>Object</td><td>当前分类对象（category.html）</td></tr>
+                    <tr><td><code>contents</code></td><td>Array</td><td>当前分类内容列表（category.html）</td></tr>
+                    <tr><td><code>post</code></td><td>Object</td><td>当前内容详情（content.html）</td></tr>
+                    <tr><td><code>body_html</code></td><td>String</td><td>Markdown 渲染后的 HTML</td></tr>
+                    <tr><td><code>latest_contents</code></td><td>Array</td><td>最新发布内容（index.html）</td></tr>
+                    <tr><td><code>current_page</code> / <code>total_pages</code> / <code>pages</code></td><td>Number / Array</td><td>分页数据</td></tr>
+                    <tr><td><code>content</code> (特殊)</td><td>String</td><td>插件页面渲染片段</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- 核心模板详解 -->
+        <section id="templates" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🧱 核心模板详解</h2>
+
+            <h3 class="text-xl font-semibold mt-4 mb-2">1. <code>base.html</code></h3>
+            <p>所有页面的骨架，定义 HTML 头部、导航栏、页脚。必须包含 <code>{% block title %}</code> 和 <code>{% block content %}</code>。</p>
+            <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;{% block title %}{{ site_config.seo_title | default(value='RustForge') }}{% endblock %}&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;nav&gt;
+        {% if user_info and user_info.is_logged_in %}
+            &lt;a href="/admin/"&gt;后台管理&lt;/a&gt;
+        {% else %}
+            &lt;a href="/plugins/user-center/login"&gt;登录&lt;/a&gt;
+        {% endif %}
+        &lt;!-- 语言切换 --&gt;
+        {% for opt in lang_options %}
+            &lt;a href="#" onclick="switchLang('{{ opt.code }}')"&gt;{{ opt.name }}&lt;/a&gt;
+        {% endfor %}
+    &lt;/nav&gt;
+    &lt;main&gt;{% block content %}{% endblock %}&lt;/main&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">2. <code>index.html</code></h3>
+            <p>变量：<code>latest_contents</code>、<code>nav_categories</code>、<code>site_config</code>、<code>user_info</code>。</p>
+            <pre><code>{% extends "base.html" %}
+{% block title %}{{ t(key="home", lang=lang) }} - {{ site_config.site_name }}{% endblock %}
+{% block content %}
+    &lt;section&gt;...&lt;/section&gt;
+    {% for item in latest_contents %}&lt;article&gt;{{ item.title }}&lt;/article&gt;{% endfor %}
+{% endblock %}</code></pre>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">3. <code>category.html</code></h3>
+            <p>根据 <code>category.display_type</code> 切换 list/gallery/page 模式，支持分页。</p>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">4. <code>content.html</code></h3>
+            <p>变量：<code>post</code>（文章对象）、<code>body_html</code>。</p>
+            <pre><code>{% extends "base.html" %}
+{% block title %}{{ post.title }}{% endblock %}
+{% block content %}
+    &lt;article&gt;&lt;h1&gt;{{ post.title }}&lt;/h1&gt;&lt;div&gt;{{ body_html|safe }}&lt;/div&gt;&lt;/article&gt;
+{% endblock %}</code></pre>
+        </section>
+
+        <!-- 多语言 -->
+        <section id="i18n" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🌐 多语言支持</h2>
+            <p>主题模板可以直接使用 <code>t()</code> 翻译函数，该函数从主程序语言包和已启用插件语言包中查找翻译。</p>
+            <pre><code>{{ t(key="home", lang=lang) }}
+{{ t(key="read_more", lang=lang) }}</code></pre>
+            <p>导航栏语言切换示例：</p>
+            <pre><code>&lt;div&gt;
+    {% for opt in lang_options %}
+        &lt;a href="#" onclick="switchLang('{{ opt.code }}'); return false;"&gt;{{ opt.name }}&lt;/a&gt;
+    {% endfor %}
+&lt;/div&gt;
+&lt;script&gt;
+function switchLang(lang) {
+    document.cookie = 'lang=' + lang + ';path=/;max-age=31536000';
+    location.reload();
+}
+&lt;/script&gt;</code></pre>
+            <p>语言包文件位于 <code>locales/</code> 目录，系统自动加载主程序和已启用插件的翻译。</p>
+        </section>
+
+        <!-- 开发与定制 -->
+        <section id="customize" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🛠️ 开发与定制主题</h2>
+            <ol class="list-decimal list-inside space-y-2">
+                <li>在 <code>themes/</code> 下新建目录，创建 <code>theme.toml</code> 和 <code>templates/</code></li>
+                <li>至少包含 <code>base.html</code>、<code>index.html</code>、<code>category.html</code>、<code>content.html</code></li>
+                <li>在后台主题管理页面激活新主题</li>
+            </ol>
+            <h3 class="text-xl font-semibold mt-6 mb-2">注意事项</h3>
+            <ul class="list-disc list-inside">
+                <li>必须保留 <code>{% block content %}</code> 和 <code>{% block title %}</code></li>
+                <li>使用 <code>|safe</code> 过滤器输出 HTML</li>
+                <li>日期格式化：<code>|date(format="%Y-%m-%d")</code></li>
+                <li>翻译函数：<code>{{ t(key="xxx", lang=lang) }}</code></li>
+            </ul>
+        </section>
+
+        <footer class="border-t pt-6 text-center text-gray-500 text-sm">
+            <p>现在，你可以开始创建自己的企业级主题了！</p>
+            <p class="mt-2">© 2025 RustForge Team</p>
+        </footer>
+    </main>
+</body>
+</html>

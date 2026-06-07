@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>媒体库 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="common.js"></script>
+    <style>
+        .folder-tree ul {
+            list-style: none;
+        }
+        .folder-tree li {
+            margin: 0.2rem 0.2rem;
+        }
+        .folder-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+        .level-0 { padding-left: 0; }
+        .level-1 { padding-left: 1rem; }
+        .level-2 { padding-left: 2rem; }
+        .level-3 { padding-left: 3rem; }
+        .folder-item:hover {
+            background-color: #f3f4f6;
+        }
+        .folder-item.active {
+            background-color: #dbeafe;
+            font-weight: 500;
+        }
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 1rem;
+        }
+        .media-item {
+            background: white;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .media-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .preview {
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            width: 100%;
+            background: #f3f4f6;
+        }
+        .file-icon {
+            font-size: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto p-6">
+        <h1 class="text-2xl font-bold mb-4">媒体库</h1>
+
+        <div class="flex flex-col md:flex-row gap-6">
+            <!-- 左侧文件夹树 -->
+            <div class="w-full md:w-64 bg-white rounded shadow p-3">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="font-bold">文件夹</h2>
+                    <button id="create-folder-btn" class="text-blue-500 text-sm">+ 新建</button>
+                </div>
+                <div id="folder-tree" class="folder-tree text-sm">加载中...</div>
+            </div>
+
+            <!-- 右侧内容 -->
+            <div class="flex-1">
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <span class="text-gray-600">当前文件夹：</span>
+                        <span id="current-folder-name" class="font-medium">根目录</span>
+                    </div>
+                    <button id="upload-btn" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">上传文件</button>
+                </div>
+
+                <!-- 上传区域（隐藏） -->
+                <div id="upload-area" class="hidden bg-white p-4 rounded shadow mb-4">
+                    <form id="upload-form">
+                        <div class="mb-2">
+                            <input type="file" id="file-input" name="files" multiple class="w-full text-sm">
+                        </div>
+                        <div class="flex space-x-2">
+                            <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded text-sm">开始上传</button>
+                            <button type="button" id="cancel-upload" class="bg-gray-400 text-white px-3 py-1 rounded text-sm">取消</button>
+                        </div>
+                    </form>
+                    <div id="upload-progress" class="mt-2 text-sm text-gray-600 hidden">上传中，请稍后...</div>
+                </div>
+
+                <!-- 分页 -->
+                <div class="bg-white rounded shadow p-3 mb-3 flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm">每页显示：</span>
+                        <select id="per-page" class="border rounded p-1 text-sm">
+                            <option value="12">12</option>
+                            <option value="24">24</option>
+                            <option value="48">48</option>
+                        </select>
+                    </div>
+                    <div class="flex space-x-1" id="pagination"></div>
+                </div>
+
+                <!-- 媒体网格 -->
+                <div id="media-grid" class="media-grid">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script>
+        let currentPage = 1;
+        let perPage = 12;
+        let totalPages = 1;
+        let currentFolderId = null;
+        let currentFolderName = '根目录';
+
+        // 系统配置：允许的文件扩展名数组和最大文件大小(MB)
+        let allowedExtensions = [];
+        let maxFileSizeMB = 10;
+
+        async function loadUploadConfig() {
+            try {
+                const config = await apiCall('GET', '/api/admin/config');
+                const allowedStr = config.allowed_file_types || 'jpg,jpeg,png,gif,mp4,mp3,pdf,doc,docx,xls,xlsx';
+                allowedExtensions = allowedStr.split(',').map(s => s.trim().toLowerCase());
+                maxFileSizeMB = parseInt(config.max_file_size_mb) || 10;
+                console.log('上传配置加载完成', allowedExtensions, maxFileSizeMB);
+            } catch (err) {
+                console.error('加载上传配置失败', err);
+                allowedExtensions = ['jpg','jpeg','png','gif','mp4','mp3','pdf','doc','docx','xls','xlsx'];
+                maxFileSizeMB = 10;
+            }
+        }
+
+        (async () => {
+            if (!await requireAuth()) return;
+            await loadTopbar();
+            await loadFooter();
+            await loadUploadConfig();
+
+            const perms = await fetchUserPermissions();
+            if (!perms.includes('media:list')) {
+                document.getElementById('media-grid').innerHTML = '<div class="text-red-500">您没有权限访问媒体库。</div>';
+                return;
+            }
+
+            const savedPerPage = localStorage.getItem('mediaPerPage');
+            if (savedPerPage) {
+                perPage = parseInt(savedPerPage);
+                document.getElementById('per-page').value = perPage;
+            }
+
+            document.getElementById('per-page').addEventListener('change', (e) => {
+                perPage = parseInt(e.target.value);
+                localStorage.setItem('mediaPerPage', perPage);
+                currentPage = 1;
+                loadMedia();
+            });
+
+            document.getElementById('upload-btn').addEventListener('click', () => {
+                document.getElementById('upload-area').classList.toggle('hidden');
+            });
+            document.getElementById('cancel-upload').addEventListener('click', () => {
+                document.getElementById('upload-area').classList.add('hidden');
+                document.getElementById('upload-form').reset();
+            });
+
+            document.getElementById('upload-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const fileInput = document.getElementById('file-input');
+                const files = fileInput.files;
+                if (!files.length) return;
+
+                // 前端校验每个文件
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (!allowedExtensions.includes(ext)) {
+                        alert(`文件 "${file.name}" 类型不允许。允许的类型: ${allowedExtensions.join(', ')}`);
+                        return;
+                    }
+                    const fileSizeMB = file.size / (1024 * 1024);
+                    if (fileSizeMB > maxFileSizeMB) {
+                        alert(`文件 "${file.name}" 大小超过限制 (最大 ${maxFileSizeMB} MB)`);
+                        return;
+                    }
+                }
+
+                const formData = new FormData();
+                for (let i = 0; i < files.length; i++) {
+                    formData.append('files', files[i]);
+                }
+                formData.append('folder_id', currentFolderId !== null ? currentFolderId : '');
+
+                const progressDiv = document.getElementById('upload-progress');
+                progressDiv.classList.remove('hidden');
+
+                try {
+                    const response = await fetch('/api/admin/media', {
+                        method: 'POST',
+                        credentials: 'include',   // 使用 Cookie 认证
+                        body: formData
+                    });
+                    if (!response.ok) throw new Error(await response.text());
+                    alert('上传成功');
+                    document.getElementById('upload-area').classList.add('hidden');
+                    document.getElementById('upload-form').reset();
+                    await loadMedia();
+                } catch (err) {
+                    alert('上传失败: ' + err.message);
+                } finally {
+                    progressDiv.classList.add('hidden');
+                }
+            });
+
+            await loadFolderTree();
+            await loadMedia();
+        })();
+
+        // 加载文件夹树
+        async function loadFolderTree() {
+            const container = document.getElementById('folder-tree');
+            try {
+                let tree = await apiCall('GET', '/api/admin/media/folders/tree') || [];
+                const topLevel = tree.filter(f => f.parent_id === null);
+                const virtualRoot = {
+                    id: null,
+                    name: '根目录',
+                    parent_id: null,
+                    children: topLevel
+                };
+                container.innerHTML = renderFolderTree([virtualRoot]);
+                highlightActiveFolder();
+            } catch (err) {
+                container.innerHTML = `<div class="text-red-500">加载失败: ${err.message}</div>`;
+            }
+        }
+
+        function renderFolderTree(nodes, level = 0) {
+            if (!nodes || nodes.length === 0) return '<div class="text-gray-500">暂无文件夹</div>';
+            let html = '<ul>';
+            for (const node of nodes) {
+                const isRoot = (node.id === null);
+                const isActive = (currentFolderId === node.id);
+                const activeClass = isActive ? 'active' : '';
+                const idParam = node.id === null ? 'null' : node.id;
+                html += `
+                    <li>
+                        <div class="folder-item ${activeClass} level-${level}" data-id="${node.id}" data-name="${escapeHtml(node.name)}">
+                            <span onclick="selectFolder(${idParam}, '${escapeHtml(node.name)}')" style="display: flex; align-items: center; gap: 0.5rem;">
+                                📁 ${escapeHtml(node.name)}
+                            </span>
+                            <div class="text-xs">
+                                ${isRoot ? '<span class="text-gray-400">根目录</span>' : `
+                                    <button onclick="renameFolder(${node.id}, '${escapeHtml(node.name)}')" class="text-blue-500 mr-1">重命名</button>
+                                    <button onclick="deleteFolder(${node.id})" class="text-red-500">删除</button>
+                                `}
+                            </div>
+                        </div>
+                `;
+                if (node.children && node.children.length) {
+                    html += `<div>${renderFolderTree(node.children, level + 1)}</div>`;
+                }
+                html += `</li>`;
+            }
+            html += '</ul>';
+            return html;
+        }
+
+        function highlightActiveFolder() {
+            document.querySelectorAll('.folder-item').forEach(el => {
+                const idAttr = el.getAttribute('data-id');
+                const folderId = idAttr === 'null' ? null : parseInt(idAttr);
+                if (folderId === currentFolderId) el.classList.add('active');
+                else el.classList.remove('active');
+            });
+        }
+
+        window.selectFolder = function(id, name) {
+            if (id === null || id === 1) {
+                currentFolderId = null;
+                currentFolderName = '根目录';
+            } else {
+                currentFolderId = id;
+                currentFolderName = name;
+            }
+            document.getElementById('current-folder-name').innerText = currentFolderName;
+            currentPage = 1;
+            loadMedia();
+            loadFolderTree();
+        };
+
+        async function createFolder() {
+            const name = prompt('请输入文件夹名称');
+            if (!name) return;
+            const parent_id = currentFolderId === null ? null : currentFolderId;
+            try {
+                await apiCall('POST', '/api/admin/media/folders', { name, parent_id });
+                await loadFolderTree();
+                alert('文件夹创建成功');
+            } catch (err) {
+                alert('创建失败: ' + err.message);
+            }
+        }
+
+        window.renameFolder = async function(id, oldName) {
+            if (id === null || id === 1) {
+                alert('根目录不能重命名');
+                return;
+            }
+            const newName = prompt('请输入新名称', oldName);
+            if (!newName || newName === oldName) return;
+            try {
+                await apiCall('PUT', `/api/admin/media/folders/${id}`, { name: newName });
+                await loadFolderTree();
+                alert('重命名成功');
+            } catch (err) {
+                alert('重命名失败: ' + err.message);
+            }
+        };
+
+        window.deleteFolder = async function(id) {
+            if (id === null || id === 1) {
+                alert('根目录不能删除');
+                return;
+            }
+            if (!confirm('确定删除该文件夹吗？文件夹必须为空才能删除。')) return;
+            try {
+                await apiCall('DELETE', `/api/admin/media/folders/${id}`);
+                if (currentFolderId === id) {
+                    currentFolderId = null;
+                    currentFolderName = '根目录';
+                    document.getElementById('current-folder-name').innerText = '根目录';
+                }
+                await loadFolderTree();
+                await loadMedia();
+                alert('删除成功');
+            } catch (err) {
+                alert('删除失败: ' + err.message);
+            }
+        };
+
+        document.getElementById('create-folder-btn').addEventListener('click', createFolder);
+
+        async function loadMedia() {
+            try {
+                let url = `/api/admin/media?page=${currentPage}&per_page=${perPage}`;
+                if (currentFolderId) url += `&folder_id=${currentFolderId}`;
+                const data = await apiCall('GET', url);
+                const items = data.items;
+                totalPages = data.total_pages;
+                const container = document.getElementById('media-grid');
+                if (!items.length) {
+                    container.innerHTML = '<div class="col-span-full text-center text-gray-500">暂无文件，请上传。</div>';
+                } else {
+                    let html = '';
+                    for (const m of items) {
+                        const isImage = m.mime_type && m.mime_type.startsWith('image/');
+                        let thumbUrl = m.thumbnail_path ? `/${m.thumbnail_path}` : `/${m.storage_path}`;
+                        const preview = isImage ? `<img src="${thumbUrl}" class="preview" onerror="this.src='/${m.storage_path}'">` : `<div class="file-icon">📄</div>`;
+                        const sizeMB = (m.file_size / (1024*1024)).toFixed(2);
+                        html += `
+                            <div class="media-item">
+                                <div class="relative">
+                                    ${preview}
+                                    <button onclick="deleteMedia(${m.id})" class="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700 text-xs">×</button>
+                                </div>
+                                <div class="p-2 text-sm">
+                                    <div class="font-medium truncate" title="${escapeHtml(m.filename)}">${escapeHtml(m.filename)}</div>
+                                    <div class="text-gray-500 text-xs">${sizeMB} MB</div>
+                                    <button onclick="copyLink('/${m.storage_path}')" class="text-blue-500 text-xs mt-1">复制链接</button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    container.innerHTML = html;
+                }
+                renderPagination();
+            } catch (err) {
+                document.getElementById('media-grid').innerHTML = `<div class="col-span-full text-red-500">加载失败: ${err.message}</div>`;
+            }
+        }
+
+        function renderPagination() {
+            const paginationDiv = document.getElementById('pagination');
+            if (totalPages <= 1) {
+                paginationDiv.innerHTML = '';
+                return;
+            }
+            let html = '';
+            if (currentPage > 1) html += `<button onclick="goToPage(${currentPage - 1})" class="px-3 py-1 border rounded hover:bg-gray-100">上一页</button>`;
+            let start = Math.max(1, currentPage - 2);
+            let end = Math.min(totalPages, currentPage + 2);
+            for (let i = start; i <= end; i++) {
+                const active = i === currentPage ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100';
+                html += `<button onclick="goToPage(${i})" class="px-3 py-1 border rounded ${active}">${i}</button>`;
+            }
+            if (currentPage < totalPages) html += `<button onclick="goToPage(${currentPage + 1})" class="px-3 py-1 border rounded hover:bg-gray-100">下一页</button>`;
+            paginationDiv.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            loadMedia();
+        }
+
+        async function deleteMedia(id) {
+            if (!confirm('确定删除该文件吗？')) return;
+            try {
+                await apiCall('DELETE', `/api/admin/media/${id}`);
+                loadMedia();
+            } catch (err) {
+                alert('删除失败: ' + err.message);
+            }
+        }
+
+        function copyLink(url) {
+            navigator.clipboard.writeText(window.location.origin + url);
+            alert('链接已复制');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+        }
+    </script>
+</body>
+</html>

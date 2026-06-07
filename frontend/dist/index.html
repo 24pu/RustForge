@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企业官网</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 自定义样式 */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .content-card {
+            transition: transform 0.3s ease;
+        }
+        .content-card:hover {
+            transform: translateY(-5px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+<!-- 导航栏 -->
+<nav class="bg-white shadow-md sticky top-0 z-50">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="text-2xl font-bold text-purple-700">Enterprise</div>
+        <div class="space-x-6">
+            <a href="#" class="text-gray-700 hover:text-purple-600">首页</a>
+            <a href="#products" class="text-gray-700 hover:text-purple-600">产品</a>
+            <a href="#about" class="text-gray-700 hover:text-purple-600">关于</a>
+            <a href="/admin/" class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700">管理后台</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero 区域 -->
+<section class="hero text-white py-20">
+    <div class="container mx-auto text-center px-4">
+        <h1 class="text-5xl font-bold mb-4">欢迎来到 Enterprise</h1>
+        <p class="text-xl mb-8">领先的技术解决方案，助力您的业务增长</p>
+        <a href="#products" class="bg-white text-purple-700 px-6 py-3 rounded-full font-semibold hover:bg-gray-100">了解更多</a>
+    </div>
+</section>
+
+<!-- 内容列表区域（动态加载） -->
+<section id="products" class="container mx-auto py-16 px-4">
+    <h2 class="text-3xl font-bold text-center text-gray-800 mb-12">最新动态</h2>
+    <div id="content-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="text-center text-gray-500 col-span-full">加载中...</div>
+    </div>
+</section>
+
+<!-- 关于区域 -->
+<section id="about" class="bg-white py-16">
+    <div class="container mx-auto px-4 text-center">
+        <h2 class="text-3xl font-bold text-gray-800 mb-6">关于我们</h2>
+        <p class="text-gray-600 max-w-2xl mx-auto">我们是一家专注于创新技术的企业，致力于为客户提供最优质的服务。凭借多年的行业经验和专业技术团队，我们帮助客户实现数字化转型。</p>
+    </div>
+</section>
+
+<!-- 页脚 -->
+<footer class="bg-gray-800 text-white py-8">
+    <div class="container mx-auto text-center">
+        <p>&copy; 2025 Enterprise. All rights reserved.</p>
+    </div>
+</footer>
+
+<script>
+    // 从后端 API 获取已发布的内容并渲染
+    async function loadContents() {
+        try {
+            const response = await fetch('/api/contents');
+            if (!response.ok) throw new Error('Failed to fetch');
+            const contents = await response.json();
+            const container = document.getElementById('content-list');
+            if (!contents.length) {
+                container.innerHTML = '<div class="col-span-full text-center text-gray-500">暂无内容</div>';
+                return;
+            }
+            let html = '';
+            for (const item of contents) {
+                html += `
+                    <div class="content-card bg-white rounded-lg shadow-md overflow-hidden">
+                        <div class="p-6">
+                            <h3 class="text-xl font-bold text-gray-800 mb-2">${escapeHtml(item.title)}</h3>
+                            <p class="text-gray-600 mb-4">${escapeHtml(item.body.substring(0, 100))}${item.body.length > 100 ? '...' : ''}</p>
+                            <div class="text-sm text-gray-400">${new Date(item.created_at).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        } catch (err) {
+            console.error(err);
+            document.getElementById('content-list').innerHTML = '<div class="col-span-full text-center text-red-500">加载失败，请稍后重试</div>';
+        }
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    loadContents();
+</script>
+</body>
+</html>

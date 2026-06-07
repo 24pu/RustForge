@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>编辑内容 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+    <script src="common.js"></script>
+    <style>
+        .EasyMDEContainer .CodeMirror { min-height: 400px; }
+        .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem; max-height: 500px; overflow-y: auto; }
+        .media-item { background: white; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; }
+        .media-item:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .preview { aspect-ratio: 1 / 1; object-fit: cover; width: 100%; background: #f3f4f6; }
+        .file-icon { font-size: 3rem; display: flex; align-items: center; justify-content: center; height: 100%; }
+        .modal { transition: opacity 0.25s ease; }
+        .folder-tree ul { list-style: none; padding-left: 0; }
+        .folder-tree li { margin: 0.2rem 0; }
+        .folder-item { display: flex; align-items: center; padding: 0.2rem 0.5rem; border-radius: 0.25rem; cursor: pointer; white-space: nowrap; }
+        .folder-item .folder-icon { margin-right: 0.5rem; flex-shrink: 0; }
+        .folder-item .folder-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; text-align: left; }
+        .level-1 { margin-left: 1rem; }
+        .level-2 { margin-left: 2rem; }
+        .level-3 { margin-left: 3rem; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto p-6">
+        <div class="bg-white rounded shadow">
+            <div class="p-6 flex justify-between items-center">
+                <h1 class="text-2xl font-bold">编辑内容</h1>
+                <button type="button" id="media-library-btn" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700">📁 媒体库</button>
+            </div>
+            <form id="edit-form" novalidate>
+                <div class="flex flex-wrap">
+                    <div class="w-full lg:w-2/3 p-6 border-r border-gray-200">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="slug">Slug (唯一标识)</label>
+                            <input type="text" id="slug" name="slug" required readonly class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-100">
+                            <p class="text-gray-500 text-xs mt-1">Slug 不可修改</p>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="title">标题</label>
+                            <input type="text" id="title" name="title" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        </div>
+                        <!-- 封面图片区域 -->
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">封面图片</label>
+                            <div class="flex items-center space-x-3">
+                                <img id="cover-preview" src="" alt="封面预览" class="h-20 w-20 object-cover rounded border hidden">
+                                <button type="button" id="select-cover-btn" class="bg-gray-200 px-3 py-1 rounded text-sm">从媒体库选择</button>
+                                <button type="button" id="remove-cover-btn" class="text-red-500 text-sm hidden">移除</button>
+                            </div>
+                            <input type="hidden" id="cover_image" name="cover_image">
+                        </div>
+                        <!-- 语言选择（已创建的内容不允许修改语言） -->
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">语言 <span class="text-xs text-red-500">(创建后不可修改)</span></label>
+                            <select id="lang" class="shadow border rounded w-full py-2 px-3 bg-gray-100" disabled>
+                                <option value="">加载中...</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">如需创建其他语言版本，请使用"添加翻译"功能</p>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="body">正文 (Markdown)</label>
+                            <textarea id="body" name="body" rows="10"></textarea>
+                        </div>
+                        <div class="mb-6">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" id="published" name="published" class="form-checkbox h-5 w-5 text-blue-600">
+                                <span class="ml-2 text-gray-700">发布（立即公开）</span>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">保存修改</button>
+                            <a href="contents.html" class="text-gray-600 hover:text-gray-800">取消</a>
+                        </div>
+                    </div>
+                    <div class="w-full lg:w-1/3 p-6 bg-gray-50">
+                        <h2 class="text-lg font-bold mb-3">分类</h2>
+                        <div id="category-tree" class="border rounded p-2 max-h-96 overflow-y-auto bg-white">
+                            加载中...
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">可多选，支持无限级分类。</p>
+                        
+                        <!-- 翻译组信息 -->
+                        <div id="translation-info" class="mt-4 p-3 bg-blue-50 rounded hidden">
+                            <h3 class="text-sm font-bold text-blue-800 mb-1">翻译组</h3>
+                            <p class="text-xs text-blue-600">该内容属于翻译组，可创建其他语言版本</p>
+                            <p class="text-xs text-gray-500 mt-1" id="translation-group-id"></p>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 媒体库模态框 -->
+    <div id="media-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal">
+        <div class="bg-white rounded-lg w-3/4 max-w-5xl p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">媒体库</h2>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="w-full md:w-64 bg-gray-50 rounded p-3 overflow-y-auto max-h-[70vh]">
+                    <div class="font-bold mb-2">文件夹</div>
+                    <div id="folder-tree-container" class="folder-tree text-sm">加载中...</div>
+                </div>
+                <div class="flex-1">
+                    <div class="mb-4 flex justify-between items-center">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm">每页显示：</span>
+                            <select id="media-per-page" class="border rounded p-1 text-sm">
+                                <option value="12">12</option>
+                                <option value="24">24</option>
+                                <option value="48">48</option>
+                            </select>
+                        </div>
+                        <div class="flex space-x-1" id="media-pagination"></div>
+                    </div>
+                    <div id="media-grid" class="media-grid">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script>
+        let easyMDE;
+        let currentMediaPage = 1;
+        let mediaPerPage = 12;
+        let mediaTotalPages = 1;
+        let currentFolderId = null;
+        let selectingCover = false;
+        let contentLang = null;
+
+        async function loadLangOptions() {
+            try {
+                const data = await apiCall('GET', '/api/admin/lang-settings');
+                const select = document.getElementById('lang');
+                select.innerHTML = data.supported_langs.map(code => {
+                    const lang = data.available_langs.find(l => l.code === code);
+                    return `<option value="${code}">${lang ? lang.name : code}</option>`;
+                }).join('');
+                
+                if (contentLang) {
+                    select.value = contentLang;
+                }
+            } catch (err) {
+                console.error('Failed to load languages', err);
+            }
+        }
+
+        function renderTreeWithSelected(categories, selectedIds, level = 0) {
+            let html = '';
+            for (const cat of categories) {
+                const indent = '&nbsp;'.repeat(level * 4);
+                const checked = selectedIds.includes(cat.id) ? 'checked' : '';
+                html += `<div class="py-1"><label class="flex items-start"><input type="checkbox" value="${cat.id}" class="mr-2 mt-1" ${checked}> <span class="text-sm">${indent}${escapeHtml(cat.name)}</span></label></div>`;
+                if (cat.children && cat.children.length) {
+                    html += renderTreeWithSelected(cat.children, selectedIds, level + 1);
+                }
+            }
+            return html;
+        }
+
+        async function loadCategoryTree(selectedIds = []) {
+            const container = document.getElementById('category-tree');
+            if (!container) return;
+            try {
+                const tree = await apiCall('GET', '/api/admin/categories/tree');
+                if (tree && tree.length) {
+                    container.innerHTML = renderTreeWithSelected(tree, selectedIds);
+                } else {
+                    container.innerHTML = '<div class="text-gray-500 text-sm">暂无分类，请先<a href="categories.html" class="text-blue-500">创建分类</a></div>';
+                }
+            } catch (err) {
+                console.error('加载分类失败', err);
+                container.innerHTML = '<div class="text-red-500 text-sm">加载分类失败，请刷新重试</div>';
+            }
+        }
+
+        async function loadFolderTree() {
+            const container = document.getElementById('folder-tree-container');
+            if (!container) return;
+            try {
+                let tree = await apiCall('GET', '/api/admin/media/folders/tree') || [];
+                const topLevel = tree.filter(f => f.parent_id === null);
+                const virtualRoot = { id: null, name: '根目录', parent_id: null, children: topLevel };
+                container.innerHTML = renderFolderTree([virtualRoot]);
+                highlightActiveFolder();
+            } catch (err) {
+                container.innerHTML = `<div class="text-red-500">加载失败: ${err.message}</div>`;
+            }
+        }
+
+        function renderFolderTree(nodes, level = 0) {
+            if (!nodes || nodes.length === 0) return '<div class="text-gray-500">暂无文件夹</div>';
+            let html = '<ul>';
+            for (const node of nodes) {
+                const isActive = (currentFolderId === node.id);
+                const activeClass = isActive ? 'active' : '';
+                const idParam = node.id === null ? 'null' : node.id;
+                html += `
+                    <li>
+                        <div class="folder-item ${activeClass} level-${level}" data-id="${node.id}" data-name="${escapeHtml(node.name)}">
+                            <span class="folder-icon">📁</span>
+                            <span class="folder-name" onclick="selectFolderInMedia(${idParam}, '${escapeHtml(node.name)}')">
+                                ${escapeHtml(node.name)}
+                            </span>
+                        </div>
+                `;
+                if (node.children && node.children.length) {
+                    html += `<div class="ml-4">${renderFolderTree(node.children, level + 1)}</div>`;
+                }
+                html += `</li>`;
+            }
+            html += '</ul>';
+            return html;
+        }
+
+        function highlightActiveFolder() {
+            document.querySelectorAll('#folder-tree-container .folder-item').forEach(el => {
+                const idAttr = el.getAttribute('data-id');
+                const folderId = idAttr === 'null' ? null : parseInt(idAttr);
+                if (folderId === currentFolderId) el.classList.add('active');
+                else el.classList.remove('active');
+            });
+        }
+
+        function selectFolderInMedia(id, name) {
+            currentFolderId = (id === null) ? null : id;
+            currentMediaPage = 1;
+            loadMedia(1);
+            highlightActiveFolder();
+        }
+
+        async function loadMedia(page = 1) {
+            try {
+                let url = `/api/admin/media?page=${page}&per_page=${mediaPerPage}`;
+                if (currentFolderId !== null) url += `&folder_id=${currentFolderId}`;
+                const data = await apiCall('GET', url);
+                const items = data.items;
+                mediaTotalPages = data.total_pages;
+                const container = document.getElementById('media-grid');
+                if (!items.length) {
+                    container.innerHTML = '<div class="col-span-full text-center text-gray-500">暂无媒体文件。</div>';
+                } else {
+                    let html = '';
+                    for (const m of items) {
+                        const isImage = m.mime_type && m.mime_type.startsWith('image/');
+                        const imageUrl = m.thumbnail_path ? `/${m.thumbnail_path}` : `/${m.storage_path}`;
+                        const preview = isImage ? `<img src="${imageUrl}" class="preview" onerror="this.src='/${m.storage_path}'">` : `<div class="file-icon">📄</div>`;
+                        const sizeMB = (m.file_size / (1024*1024)).toFixed(2);
+                        html += `
+                            <div class="media-item" data-url="/${m.storage_path}" data-filename="${escapeHtml(m.filename)}" data-mime="${m.mime_type}">
+                                <div class="relative">
+                                    ${preview}
+                                </div>
+                                <div class="p-2 text-sm">
+                                    <div class="font-medium truncate" title="${escapeHtml(m.filename)}">${escapeHtml(m.filename)}</div>
+                                    <div class="text-gray-500 text-xs">${sizeMB} MB</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    container.innerHTML = html;
+                    document.querySelectorAll('.media-item').forEach(el => {
+                        el.addEventListener('click', () => {
+                            const url = el.getAttribute('data-url');
+                            const filename = el.getAttribute('data-filename');
+                            const mime = el.getAttribute('data-mime');
+                            insertMediaToEditor(url, filename, mime);
+                        });
+                    });
+                }
+                renderMediaPagination();
+            } catch (err) {
+                document.getElementById('media-grid').innerHTML = `<div class="col-span-full text-red-500">加载失败: ${err.message}</div>`;
+            }
+        }
+
+        function renderMediaPagination() {
+            const paginationDiv = document.getElementById('media-pagination');
+            if (mediaTotalPages <= 1) {
+                paginationDiv.innerHTML = '';
+                return;
+            }
+            let html = '';
+            if (currentMediaPage > 1) html += `<button onclick="loadMedia(${currentMediaPage - 1})" class="px-3 py-1 border rounded hover:bg-gray-100">上一页</button>`;
+            let start = Math.max(1, currentMediaPage - 2);
+            let end = Math.min(mediaTotalPages, currentMediaPage + 2);
+            for (let i = start; i <= end; i++) {
+                const active = i === currentMediaPage ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100';
+                html += `<button onclick="loadMedia(${i})" class="px-3 py-1 border rounded ${active}">${i}</button>`;
+            }
+            if (currentMediaPage < mediaTotalPages) html += `<button onclick="loadMedia(${currentMediaPage + 1})" class="px-3 py-1 border rounded hover:bg-gray-100">下一页</button>`;
+            paginationDiv.innerHTML = html;
+        }
+
+        function insertMediaToEditor(url, filename, mime) {
+            if (selectingCover) {
+                if (!mime || !mime.startsWith('image/')) {
+                    alert('请选择图片文件作为封面');
+                    return;
+                }
+                document.getElementById('cover_image').value = url;
+                document.getElementById('cover-preview').src = url;
+                document.getElementById('cover-preview').classList.remove('hidden');
+                document.getElementById('remove-cover-btn').classList.remove('hidden');
+                document.getElementById('media-modal').style.display = 'none';
+                selectingCover = false;
+                return;
+            }
+
+            if (!easyMDE) return;
+            const isImage = mime.startsWith('image/');
+            let insertText = '';
+            if (isImage) {
+                insertText = `<img src="${url}" alt="${filename}">`;
+            } else {
+                insertText = `[${filename}](${url})`;
+            }
+            const cm = easyMDE.codemirror;
+            const cursor = cm.getCursor();
+            cm.replaceRange(insertText, cursor);
+            document.getElementById('media-modal').style.display = 'none';
+        }
+
+        (async () => {
+            if (!await requireAuth()) return;
+            await loadTopbar();
+            await loadFooter();
+
+            const perms = await fetchUserPermissions();
+            if (!perms.includes('content:edit')) {
+                document.getElementById('error-msg').innerText = '您没有权限编辑内容。';
+                document.getElementById('error-msg').classList.remove('hidden');
+                document.querySelector('form').style.display = 'none';
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const contentId = urlParams.get('id');
+            if (!contentId) {
+                alert('缺少内容 ID');
+                window.location.href = '/admin/contents.html';
+                return;
+            }
+
+            let content;
+            try {
+                content = await apiCall('GET', `/api/admin/contents/${contentId}`);
+                document.getElementById('slug').value = content.slug;
+                document.getElementById('title').value = content.title;
+                document.getElementById('published').checked = content.published;
+                contentLang = content.lang || 'zh';
+
+                if (content.cover_image) {
+                    document.getElementById('cover_image').value = content.cover_image;
+                    document.getElementById('cover-preview').src = content.cover_image;
+                    document.getElementById('cover-preview').classList.remove('hidden');
+                    document.getElementById('remove-cover-btn').classList.remove('hidden');
+                }
+
+                // 显示翻译组信息
+                if (content.translation_group) {
+                    document.getElementById('translation-info').classList.remove('hidden');
+                    document.getElementById('translation-group-id').innerText = '翻译组 ID: ' + content.translation_group;
+                }
+
+                easyMDE = new EasyMDE({
+                    element: document.getElementById('body'),
+                    spellChecker: false,
+                    placeholder: '在这里编写内容...',
+                    toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'code', 'unordered-list', 'ordered-list', '|', 'link', 'image', '|', 'preview', 'side-by-side', 'fullscreen', '|', 'guide']
+                });
+                easyMDE.value(content.body);
+            } catch (err) {
+                alert('加载内容失败: ' + err.message);
+                window.location.href = '/admin/contents.html';
+                return;
+            }
+
+            await loadLangOptions();
+            
+            let selectedCategoryIds = [];
+            if (content.categories && content.categories.length) {
+                selectedCategoryIds = content.categories.map(c => c.id);
+            }
+            await loadCategoryTree(selectedCategoryIds);
+
+            document.getElementById('media-library-btn').addEventListener('click', async () => {
+                const mediaPerms = await fetchUserPermissions();
+                if (!mediaPerms.includes('media:list')) {
+                    alert('您没有权限查看媒体库');
+                    return;
+                }
+                selectingCover = false;
+                currentFolderId = null;
+                currentMediaPage = 1;
+                mediaPerPage = parseInt(document.getElementById('media-per-page').value);
+                document.getElementById('media-modal').style.display = 'flex';
+                await loadFolderTree();
+                await loadMedia(1);
+            });
+
+            document.getElementById('select-cover-btn').addEventListener('click', async () => {
+                const mediaPerms = await fetchUserPermissions();
+                if (!mediaPerms.includes('media:list')) {
+                    alert('您没有权限查看媒体库');
+                    return;
+                }
+                selectingCover = true;
+                currentFolderId = null;
+                currentMediaPage = 1;
+                mediaPerPage = parseInt(document.getElementById('media-per-page').value);
+                document.getElementById('media-modal').style.display = 'flex';
+                await loadFolderTree();
+                await loadMedia(1);
+            });
+
+            document.getElementById('remove-cover-btn').addEventListener('click', () => {
+                document.getElementById('cover_image').value = '';
+                document.getElementById('cover-preview').src = '';
+                document.getElementById('cover-preview').classList.add('hidden');
+                document.getElementById('remove-cover-btn').classList.add('hidden');
+                selectingCover = false;
+            });
+
+            document.getElementById('close-modal').addEventListener('click', () => {
+                document.getElementById('media-modal').style.display = 'none';
+            });
+            document.getElementById('media-per-page').addEventListener('change', () => {
+                mediaPerPage = parseInt(document.getElementById('media-per-page').value);
+                currentMediaPage = 1;
+                loadMedia(1);
+            });
+
+            document.getElementById('edit-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const title = document.getElementById('title').value.trim();
+                const body = easyMDE.value();
+                const published = document.getElementById('published').checked;
+                const selectedCheckboxes = document.querySelectorAll('#category-tree input[type="checkbox"]:checked');
+                const categoryIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
+                const coverImage = document.getElementById('cover_image').value.trim() || null;
+                if (!title || !body) {
+                    alert('标题和正文不能为空');
+                    return;
+                }
+                try {
+                    await apiCall('PUT', `/api/admin/contents/${contentId}`, { title, body, published, category_ids: categoryIds, cover_image: coverImage });
+                    alert('内容更新成功');
+                    window.location.href = '/admin/contents.html';
+                } catch (err) {
+                    alert('更新失败: ' + err.message);
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

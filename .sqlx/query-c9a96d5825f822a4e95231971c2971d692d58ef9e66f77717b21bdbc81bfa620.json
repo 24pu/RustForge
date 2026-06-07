@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO plugin_settings (plugin_name, settings) VALUES ($1, $2)\n               ON CONFLICT (plugin_name) DO UPDATE SET settings = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c9a96d5825f822a4e95231971c2971d692d58ef9e66f77717b21bdbc81bfa620"
+}

@@ -1,0 +1,11 @@
+[database]
+max_connections = 10
+url = "postgresql://postgres:postgres@localhost/rustforge"
+
+[server]
+host = "0.0.0.0"
+port = 3000
+
+[theme]
+default_theme = "Default"
+themes_dir = "themes"

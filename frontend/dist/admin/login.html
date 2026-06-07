@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>登录 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded shadow-md w-96">
+        <h1 class="text-2xl font-bold mb-6">管理员登录</h1>
+        <input id="email" type="email" placeholder="电子邮箱" class="w-full border p-2 mb-3 rounded">
+        <input id="password" type="password" placeholder="密码" class="w-full border p-2 mb-3 rounded">
+        <button id="loginBtn" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">登录</button>
+        <p id="errorMsg" class="text-red-500 text-sm mt-2 hidden"></p>
+        <p class="mt-4 text-center text-sm">没有账号？<a href="register.html" class="text-blue-600">立即注册</a></p>
+    </div>
+    <script src="common.js"></script>
+    <script>
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            try {
+                // 直接调用 /api/login，Cookie 会自动设置
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                if (response.ok) {
+                    // 登录成功，跳转到后台首页
+                    window.location.href = '/admin/index.html';
+                } else {
+                    const data = await response.json();
+                    throw new Error(data.error || '登录失败');
+                }
+            } catch (err) {
+                const errDiv = document.getElementById('errorMsg');
+                errDiv.innerText = err.message;
+                errDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

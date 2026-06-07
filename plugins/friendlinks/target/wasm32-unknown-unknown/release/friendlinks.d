@@ -1,0 +1,1 @@
+/Users/ljh/Documents/webpro/rustpro/enterprise-web/plugins/friendlinks/target/wasm32-unknown-unknown/release/friendlinks.wasm: /Users/ljh/Documents/webpro/rustpro/enterprise-web/plugins/friendlinks/src/lib.rs

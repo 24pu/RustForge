@@ -1,0 +1,167 @@
+   Compiling admin-ui v0.1.0 (/Users/ljh/Documents/webpro/rustpro/enterprise-web/frontend)
+warning: unused import: `leptos::html::Input`
+ --> src/lib.rs:2:5
+  |
+2 | use leptos::html::Input;
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0599]: no method named `send` found for enum `Result<T, E>` in the current scope
+   --> src/lib.rs:51:10
+    |
+ 48 |       let resp = Request::post(&format!("/api{}", path))
+    |                  ---------------------------------------
+    |                  |
+    |  ________________method `send` is available on `RequestBuilder`
+    | |
+ 49 | |         .header("Content-Type", "application/json")
+    | |          ------------------------------------------ method `send` is available on `RequestBuilder`
+ 50 | |         .body(serde_json::to_string(body).unwrap())
+ 51 | |         .send()
+    | |         -^^^^ method not found in `Result<gloo_net::http::Request, gloo_net::Error>`
+    | |_________|
+    |
+    |
+note: the method `send` exists on the type `gloo_net::http::Request`
+   --> /Users/ljh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gloo-net-0.5.0/src/http/request.rs:321:5
+    |
+321 |     pub async fn send(self) -> Result<Response, Error> {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the `?` operator to extract the `gloo_net::http::Request` value, propagating a `Result::Err` value to the caller
+    |
+ 50 |         .body(serde_json::to_string(body).unwrap())?
+    |                                                    +
+
+error[E0308]: mismatched types
+  --> src/lib.rs:97:33
+   |
+97 |     provide_context(AuthState { logged_in, user_email: set_user_email });
+   |                                 ^^^^^^^^^ expected `RwSignal<bool>`, found `ReadSignal<bool>`
+   |
+   = note: expected struct `leptos::RwSignal<bool>`
+              found struct `ReadSignal<bool>`
+
+error[E0308]: mismatched types
+  --> src/lib.rs:97:56
+   |
+97 |     provide_context(AuthState { logged_in, user_email: set_user_email });
+   |                                                        ^^^^^^^^^^^^^^ expected `RwSignal<String>`, found `WriteSignal<String>`
+   |
+   = note: expected struct `leptos::RwSignal<std::string::String>`
+              found struct `WriteSignal<std::string::String>`
+
+error[E0618]: expected function, found `WriteSignal<bool>`
+   --> src/lib.rs:103:75
+    |
+ 95 | ... (logged_in, set_logged_in) = create_signal(false);
+    |                 ------------- `set_logged_in` has type `WriteSignal<bool>`
+...
+103 | ...         fallback=move || view! { <Login on_success=move |email| { set_logged_in(true); set_user_email(email...
+    |                                                                       ^^^^^^^^^^^^^------
+    |                                                                       |
+    |                                                                       call expression requires function
+
+error[E0618]: expected function, found `WriteSignal<std::string::String>`
+   --> src/lib.rs:103:96
+    |
+ 96 | ...ail, set_user_email) = create_signal(String::new());
+    |         -------------- `set_user_email` has type `WriteSignal<std::string::String>`
+...
+103 | ...fallback=move || view! { <Login on_success=move |email| { set_logged_in(true); set_user_email(email); } /> }
+    |                                                                                   ^^^^^^^^^^^^^^-------
+    |                                                                                   |
+    |                                                                                   call expression requires function
+
+error[E0618]: expected function, found `WriteSignal<bool>`
+   --> src/lib.rs:105:51
+    |
+ 95 |     let (logged_in, set_logged_in) = create_signal(false);
+    |                     ------------- `set_logged_in` has type `WriteSignal<bool>`
+...
+105 |                 <AdminDashboard on_logout=move || set_logged_in(false) />
+    |                                                   ^^^^^^^^^^^^^-------
+    |                                                   |
+    |                                                   call expression requires function
+
+error[E0618]: expected function, found `WriteSignal<std::option::Option<std::string::String>>`
+   --> src/lib.rs:123:27
+    |
+115 |     let (error, set_error) = create_signal(None::<String>);
+    |                 --------- `set_error` has type `WriteSignal<std::option::Option<std::string::String>>`
+...
+123 |                 Err(e) => set_error(Some(e)),
+    |                           ^^^^^^^^^---------
+    |                           |
+    |                           call expression requires function
+
+error[E0618]: expected function, found `WriteSignal<std::string::String>`
+   --> src/lib.rs:135:40
+    |
+113 |     let (email, set_email) = create_signal(String::new());
+    |                 --------- `set_email` has type `WriteSignal<std::string::String>`
+...
+135 |                     on:input=move |ev| set_email(event_target_value(&ev)) />
+    |                                        ^^^^^^^^^-------------------------
+    |                                        |
+    |                                        call expression requires function
+
+error[E0618]: expected function, found `WriteSignal<std::string::String>`
+   --> src/lib.rs:137:40
+    |
+114 |     let (password, set_password) = create_signal(String::new());
+    |                    ------------ `set_password` has type `WriteSignal<std::string::String>`
+...
+137 |                     on:input=move |ev| set_password(event_target_value(&ev)) />
+    |                                        ^^^^^^^^^^^^-------------------------
+    |                                        |
+    |                                        call expression requires function
+
+error[E0618]: expected function, found `WriteSignal<Vec<ContentItem>>`
+   --> src/lib.rs:155:13
+    |
+151 |     let (contents, set_contents) = create_signal(Vec::<ContentItem>::new());
+    |                    ------------ `set_contents` has type `WriteSignal<Vec<ContentItem>>`
+...
+155 |             set_contents(items);
+    |             ^^^^^^^^^^^^-------
+    |             |
+    |             call expression requires function
+
+error[E0618]: expected function, found `WriteSignal<std::string::String>`
+   --> src/lib.rs:214:89
+    |
+195 | ...g, set_slug) = create_signal(String::new());
+    |       -------- `set_slug` has type `WriteSignal<std::string::String>`
+...
+214 | ...<input class="border p-2 w-full mb-2" placeholder="Slug" on:input=move |ev| set_slug(event_target_value(&ev)) />
+    |                                                                                ^^^^^^^^-------------------------
+    |                                                                                |
+    |                                                                                call expression requires function
+
+error[E0618]: expected function, found `WriteSignal<std::string::String>`
+   --> src/lib.rs:215:90
+    |
+196 | ...e, set_title) = create_signal(String::new());
+    |       --------- `set_title` has type `WriteSignal<std::string::String>`
+...
+215 | ...input class="border p-2 w-full mb-2" placeholder="Title" on:input=move |ev| set_title(event_target_value(&ev)) />
+    |                                                                                ^^^^^^^^^-------------------------
+    |                                                                                |
+    |                                                                                call expression requires function
+
+error[E0618]: expected function, found `WriteSignal<std::string::String>`
+   --> src/lib.rs:216:99
+    |
+197 | ...y, set_body) = create_signal(String::new());
+    |       -------- `set_body` has type `WriteSignal<std::string::String>`
+...
+216 | ...<textarea class="border p-2 w-full mb-2" placeholder="Body" rows=3 on:input=move |ev| set_body(event_target_value(&ev)) />
+    |                                                                                          ^^^^^^^^-------------------------
+    |                                                                                          |
+    |                                                                                          call expression requires function
+
+Some errors have detailed explanations: E0308, E0599, E0618.
+For more information about an error, try `rustc --explain E0308`.
+warning: `admin-ui` (lib) generated 1 warning
+error: could not compile `admin-ui` (lib) due to 13 previous errors; 1 warning emitted

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>内容管理 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="common.js"></script>
+    <style>
+        .thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 0.25rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">内容管理</h1>
+            <a href="add-content.html" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">+ 新建内容</a>
+        </div>
+
+        <!-- 搜索和筛选 -->
+        <div class="bg-white rounded shadow p-4 mb-4 flex flex-wrap gap-3 items-end">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">关键词</label>
+                <input type="text" id="keyword" placeholder="搜索标题、正文..." class="border rounded p-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">分类</label>
+                <select id="category-filter" class="border rounded p-2">
+                    <option value="">所有分类</option>
+                </select>
+            </div>
+            <button id="search-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">搜索</button>
+            <button id="reset-btn" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">重置</button>
+        </div>
+
+        <!-- 内容列表 -->
+        <div class="bg-white rounded shadow overflow-hidden">
+            <table class="min-w-full">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-3 text-left">封面</th>
+                        <th class="p-3 text-left">标题</th>
+                        <th class="p-3 text-left">Slug</th>
+                        <th class="p-3 text-left">语言</th>
+                        <th class="p-3 text-left">状态</th>
+                        <th class="p-3 text-left">更新时间</th>
+                        <th class="p-3 text-left">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="contents-list">
+                    <tr><td colspan="7" class="p-3 text-center">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        <div id="pagination" class="flex justify-center mt-4 space-x-2"></div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script>
+        let currentPage = 1;
+        let perPage = 20;
+        let totalPages = 1;
+
+        (async () => {
+            if (!await requireAuth()) return;
+            await loadTopbar();
+            await loadFooter();
+
+            const perms = await fetchUserPermissions();
+            if (!perms.includes('content:list')) {
+                document.getElementById('contents-list').innerHTML = '<tr><td colspan="7" class="p-3 text-red-500">您没有权限查看内容</td></tr>';
+                return;
+            }
+
+            await loadCategoryFilter();
+            await loadContents();
+
+            document.getElementById('search-btn').addEventListener('click', () => {
+                currentPage = 1;
+                loadContents();
+            });
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                document.getElementById('keyword').value = '';
+                document.getElementById('category-filter').value = '';
+                currentPage = 1;
+                loadContents();
+            });
+        })();
+
+        async function loadCategoryFilter() {
+            try {
+                const tree = await apiCall('GET', '/api/admin/categories/tree');
+                const select = document.getElementById('category-filter');
+                function addOptions(categories, level = 0) {
+                    for (const cat of categories) {
+                        const indent = '─'.repeat(level);
+                        select.innerHTML += `<option value="${cat.id}">${indent} ${cat.name}</option>`;
+                        if (cat.children) addOptions(cat.children, level + 1);
+                    }
+                }
+                addOptions(tree);
+            } catch (e) {
+                console.error('加载分类失败', e);
+            }
+        }
+
+        async function loadContents() {
+            const keyword = document.getElementById('keyword').value.trim();
+            const categoryId = document.getElementById('category-filter').value;
+            let url = `/api/admin/contents?page=${currentPage}&per_page=${perPage}`;
+            if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+            if (categoryId) url += `&category_id=${categoryId}`;
+
+            try {
+                const data = await apiCall('GET', url);
+                const items = data.items;
+                totalPages = data.total_pages;
+                const tbody = document.getElementById('contents-list');
+                if (!items.length) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="p-3 text-center text-gray-500">暂无内容</td></tr>';
+                } else {
+                    let html = '';
+                    for (const c of items) {
+                        const coverHtml = c.cover_image
+                            ? `<img src="${c.cover_image}" class="thumbnail" alt="封面">`
+                            : '<span class="text-gray-400">无</span>';
+                        const statusClass = c.published
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800';
+                        const langName = c.lang === 'en' ? 'English' : '中文';
+                        const langFlag = c.lang === 'en' ? '🇬🇧' : '🇨🇳';
+                        html += `
+                            <tr class="border-t">
+                                <td class="p-3">${coverHtml}</td>
+                                <td class="p-3 font-medium">${escapeHtml(c.title)}</td>
+                                <td class="p-3 text-sm">${escapeHtml(c.slug)}</td>
+                                <td class="p-3 text-sm">${langFlag} ${langName}</td>
+                                <td class="p-3"><span class="px-2 py-1 rounded text-xs ${statusClass}">${c.published ? '已发布' : '草稿'}</span></td>
+                                <td class="p-3 text-sm text-gray-500">${new Date(c.updated_at).toLocaleDateString('zh-CN')}</td>
+                                <td class="p-3 space-x-2">
+                                    <a href="edit-content.html?id=${c.id}" class="text-blue-600 hover:underline">编辑</a>
+                                    <a href="add-content.html?translation_from=${c.id}&slug=${encodeURIComponent(c.slug)}&lang=${c.lang || 'zh'}&group=${encodeURIComponent(c.translation_group || '')}" class="text-green-600 hover:underline">添加翻译</a>
+                                    <button onclick="deleteContent('${c.id}')" class="text-red-500 hover:underline">删除</button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    tbody.innerHTML = html;
+                }
+                renderPagination();
+            } catch (err) {
+                document.getElementById('contents-list').innerHTML = `<tr><td colspan="7" class="p-3 text-red-500">加载失败: ${err.message}</td></tr>`;
+            }
+        }
+
+        function renderPagination() {
+            const container = document.getElementById('pagination');
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+            let html = '';
+            if (currentPage > 1) {
+                html += `<button onclick="goToPage(${currentPage - 1})" class="px-3 py-1 border rounded hover:bg-gray-100">上一页</button>`;
+            }
+            for (let i = 1; i <= totalPages; i++) {
+                const active = i === currentPage ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100';
+                html += `<button onclick="goToPage(${i})" class="px-3 py-1 border rounded ${active}">${i}</button>`;
+            }
+            if (currentPage < totalPages) {
+                html += `<button onclick="goToPage(${currentPage + 1})" class="px-3 py-1 border rounded hover:bg-gray-100">下一页</button>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            loadContents();
+        }
+
+        async function deleteContent(id) {
+            if (!confirm('确定删除该内容吗？')) return;
+            try {
+                await apiCall('DELETE', `/api/admin/contents/${id}`);
+                alert('删除成功');
+                loadContents();
+            } catch (err) {
+                alert('删除失败: ' + err.message);
+            }
+        }
+    </script>
+</body>
+</html>

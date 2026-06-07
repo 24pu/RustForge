@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(DISTINCT c.id) as count\n             FROM contents c\n             JOIN content_categories cc ON c.id = cc.content_id\n             WHERE cc.category_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "248282f6205cb7dbc21ae35cfa37dd6f514bd866cff987c0ea72ff9e15c108c3"
+}

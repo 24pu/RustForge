@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT c.id, c.name, c.slug, c.description, c.parent_id, c.sort, c.display_type, c.show_in_nav, c.created_at, c.updated_at\n             FROM content_categories cc\n             JOIN categories c ON cc.category_id = c.id\n             WHERE cc.content_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "slug",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "parent_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "sort",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "display_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "show_in_nav",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "f31e64f5f3699cf71c422b5c45016210e76613edf841dbbe6a3d57615844429c"
+}

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>主题管理 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.3/src-min-noconflict/ace.js"></script>
+    <script src="common.js"></script>
+    <style>
+        .ace_editor {
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto p-6">
+        <h1 class="text-2xl font-bold mb-4">主题管理</h1>
+
+        <div class="flex flex-wrap gap-6">
+            <!-- 左侧主题列表 -->
+            <div class="w-full md:w-1/3 bg-white rounded shadow p-4">
+                <h2 class="text-lg font-bold mb-3">已安装主题</h2>
+                <div id="themes-list" class="space-y-2">加载中...</div>
+            </div>
+
+            <!-- 右侧模板编辑器 -->
+            <div class="flex-1 bg-white rounded shadow p-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold">模板编辑器</h2>
+                    <div>
+                        <select id="template-select" class="border rounded p-1 text-sm" disabled>
+                            <option>请先选择主题</option>
+                        </select>
+                        <button id="save-template" class="bg-blue-600 text-white px-3 py-1 rounded ml-2 text-sm" disabled>保存</button>
+                    </div>
+                </div>
+                <div id="editor" class="ace_editor"></div>
+                <div id="editor-status" class="text-sm text-gray-500 mt-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script>
+        let editor = null;
+        let currentTheme = null;
+        let currentFile = null;
+        let canEdit = false;
+
+        (async () => {
+            if (!await requireAuth()) return;
+            await loadTopbar();
+            await loadFooter();
+
+            const perms = await fetchUserPermissions();
+            canEdit = perms.includes('theme:edit');
+
+            await loadThemes();
+        })();
+
+        async function loadThemes() {
+            try {
+                const themes = await apiCall('GET', '/api/admin/themes');
+                const container = document.getElementById('themes-list');
+                if (!themes.length) {
+                    container.innerHTML = '<p class="text-gray-500">暂无主题</p>';
+                    return;
+                }
+                let html = '';
+                for (const theme of themes) {
+                    html += `
+                        <div class="border rounded p-3 ${theme.is_active ? 'bg-purple-50 border-purple-300' : ''}">
+                            <div class="font-bold">${escapeHtml(theme.name)}</div>
+                            <div class="text-sm text-gray-500">版本: ${escapeHtml(theme.version)} | 作者: ${escapeHtml(theme.author)}</div>
+                            <div class="text-sm mt-1">${escapeHtml(theme.description || '')}</div>
+                            <div class="mt-2 flex space-x-2">
+                               
+                                ${!theme.is_active ? `<button onclick="activateTheme('${escapeHtml(theme.name)}')" class="bg-green-600 text-white px-2 py-1 rounded text-sm">激活</button>` : '<span class="text-green-600 text-sm">当前主题</span>'}
+                                <button onclick="selectTheme('${escapeHtml(theme.name)}')" class="bg-blue-600 text-white px-2 py-1 rounded text-sm">编辑模板</button>
+                            </div>
+                        </div>
+                    `;
+                }
+                container.innerHTML = html;
+            } catch (err) {
+                document.getElementById('themes-list').innerHTML = `<p class="text-red-500">加载失败: ${err.message}</p>`;
+            }
+        }
+
+        async function activateTheme(themeName) {
+            if (!confirm(`确定切换到主题“${themeName}”吗？切换后需要重启服务器生效。`)) return;
+            try {
+                await apiCall('POST', '/api/admin/themes/activate', { name: themeName });
+                alert('主题已切换，请重启服务器以使更改生效。');
+                loadThemes();
+            } catch (err) {
+                alert('激活失败: ' + err.message);
+            }
+        }
+
+        async function selectTheme(themeName) {
+            currentTheme = themeName;
+            // 加载模板列表
+            try {
+                const files = await apiCall('GET', `/api/admin/themes/${themeName}/templates`);
+                const select = document.getElementById('template-select');
+                select.innerHTML = '<option value="">请选择模板</option>';
+                for (const f of files) {
+                    select.innerHTML += `<option value="${escapeHtml(f.name)}">${escapeHtml(f.name)}</option>`;
+                }
+                select.disabled = false;
+                select.onchange = () => loadTemplate(select.value);
+                if (!canEdit) {
+                    document.getElementById('save-template').disabled = true;
+                    document.getElementById('editor-status').innerText = '您没有编辑权限';
+                } else {
+                    document.getElementById('save-template').disabled = false;
+                }
+            } catch (err) {
+                alert('加载模板列表失败: ' + err.message);
+            }
+        }
+
+        async function loadTemplate(filename) {
+            if (!filename) return;
+            currentFile = filename;
+            try {
+                const data = await apiCall('GET', `/api/admin/themes/${currentTheme}/templates/${filename}`);
+                if (!editor) {
+                    editor = ace.edit("editor");
+                    editor.setTheme("ace/theme/monokai");
+                    editor.session.setMode("ace/mode/html");
+                }
+                editor.setValue(data.content, -1);
+                document.getElementById('save-template').disabled = false;
+                document.getElementById('editor-status').innerText = '已加载，可编辑';
+            } catch (err) {
+                alert('加载模板失败: ' + err.message);
+            }
+        }
+
+        document.getElementById('save-template').addEventListener('click', async () => {
+            if (!currentTheme || !currentFile || !editor) return;
+            const content = editor.getValue();
+            try {
+                await apiCall('PUT', `/api/admin/themes/${currentTheme}/templates/${currentFile}`, { content });
+                alert('保存成功');
+                document.getElementById('editor-status').innerText = '已保存';
+            } catch (err) {
+                alert('保存失败: ' + err.message);
+            }
+        });
+    </script>
+</body>
+</html>

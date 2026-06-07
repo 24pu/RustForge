@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>仪表盘 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="common.js"></script>
+    <style>
+        .sidebar { transition: transform 0.3s ease; }
+        .nav-link.active { background-color: #374151; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">仪表盘</h1>
+        
+        <!-- 两列布局 -->
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- 左侧：统计卡片 + 最近内容 -->
+            <div class="flex-1 space-y-6">
+                <!-- 统计卡片 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white rounded-lg shadow p-5 flex items-center space-x-4">
+                        <div class="p-3 bg-blue-100 rounded-full">
+                            <i class="fas fa-file-alt text-blue-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="text-gray-500 text-sm">总内容数</div>
+                            <div id="totalCount" class="text-2xl font-bold">-</div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-5 flex items-center space-x-4">
+                        <div class="p-3 bg-green-100 rounded-full">
+                            <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="text-gray-500 text-sm">已发布</div>
+                            <div id="publishedCount" class="text-2xl font-bold">-</div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-5 flex items-center space-x-4">
+                        <div class="p-3 bg-yellow-100 rounded-full">
+                            <i class="fas fa-edit text-yellow-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="text-gray-500 text-sm">草稿数</div>
+                            <div id="draftCount" class="text-2xl font-bold">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 最近内容表格 -->
+                <div class="bg-white rounded-lg shadow">
+                    <div class="p-4 border-b">
+                        <h2 class="text-lg font-semibold text-gray-800">最近内容</h2>
+                    </div>
+                    <div id="recentContents" class="p-4">加载中...</div>
+                </div>
+            </div>
+
+            <!-- 右侧：服务器状态面板 -->
+            <div class="w-full lg:w-80 flex-shrink-0">
+                <div class="bg-white rounded-lg shadow p-5 sticky top-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-server text-purple-600 mr-2"></i> 服务器状态
+                    </h2>
+                    <div id="server-info" class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">内存总量</span>
+                            <span id="mem-total" class="font-medium">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">已用内存</span>
+                            <span id="mem-used" class="font-medium">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">可用内存</span>
+                            <span id="mem-avail" class="font-medium">-</span>
+                        </div>
+                        <hr class="my-2">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">运行时间</span>
+                            <span id="uptime" class="font-medium">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">系统负载</span>
+                            <span id="loadavg" class="font-medium">-</span>
+                        </div>
+                    </div>
+                    <div id="server-error" class="text-red-500 text-xs mt-3 hidden"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script>
+        (async () => {
+            if (!await requireAuth()) return;
+            await loadTopbar();
+            await loadFooter();
+            await loadDashboard();
+        })();
+
+        async function loadDashboard() {
+            try {
+                // 加载内容统计
+                const data = await apiCall('GET', '/api/admin/contents?page=1&per_page=100');
+                const contents = data.items || [];
+                const total = data.total || 0;
+                const published = contents.filter(c => c.published).length;
+
+                document.getElementById('totalCount').innerText = total;
+                document.getElementById('publishedCount').innerText = published;
+                document.getElementById('draftCount').innerText = total - published;
+
+                // 渲染最近内容
+                const recent = contents.slice(0, 5);
+                const container = document.getElementById('recentContents');
+                if (!recent.length) {
+                    container.innerHTML = '<p class="text-gray-500">暂无内容</p>';
+                } else {
+                    let html = '<ul class="divide-y">';
+                    for (const c of recent) {
+                        const statusClass = c.published 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800';
+                        html += `
+                            <li class="py-3 flex justify-between items-center">
+                                <div>
+                                    <div class="font-medium text-gray-800">${escapeHtml(c.title)}</div>
+                                    <div class="text-xs text-gray-500">${escapeHtml(c.slug)}</div>
+                                </div>
+                                <span class="text-xs px-2 py-1 rounded ${statusClass}">
+                                    ${c.published ? '已发布' : '草稿'}
+                                </span>
+                            </li>
+                        `;
+                    }
+                    html += '</ul>';
+                    container.innerHTML = html;
+                }
+            } catch (err) {
+                console.error('Failed to load stats', err);
+                document.getElementById('recentContents').innerHTML = '<p class="text-red-500">加载失败</p>';
+            }
+
+            // 加载服务器状态（独立调用，不阻塞内容显示）
+            loadServerInfo();
+        }
+
+        async function loadServerInfo() {
+            try {
+                const response = await fetch('/api/server-status', { credentials: 'include' });
+                if (!response.ok) throw new Error('Failed to fetch server status');
+                const data = await response.json();
+                const mem = data.memory || {};
+                const totalMB = (mem.total_kb / 1024).toFixed(0);
+                const usedMB = (mem.used_kb / 1024).toFixed(0);
+                const availMB = (mem.available_kb / 1024).toFixed(0);
+                document.getElementById('mem-total').innerText = totalMB + ' MB';
+                document.getElementById('mem-used').innerText = usedMB + ' MB';
+                document.getElementById('mem-avail').innerText = availMB + ' MB';
+
+                const uptimeSec = data.uptime_seconds || 0;
+                const hours = Math.floor(uptimeSec / 3600);
+                const minutes = Math.floor((uptimeSec % 3600) / 60);
+                document.getElementById('uptime').innerText = `${hours}小时${minutes}分钟`;
+
+                const load = data.load_average || {};
+                document.getElementById('loadavg').innerText = 
+                    `${load["1min"] || 0} / ${load["5min"] || 0} / ${load["15min"] || 0}`;
+            } catch(e) {
+                console.error('Failed to load server info', e);
+                document.getElementById('server-error').innerText = '无法获取服务器信息';
+                document.getElementById('server-error').classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

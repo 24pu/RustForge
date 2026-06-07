@@ -1,0 +1,33 @@
+
+# 编译产物
+/target/
+
+*.tar
+
+# 环境变量（包含敏感信息）
+.env
+
+# 上传文件
+# 编辑 .gitignore，改为：
+/uploads/*
+!/uploads/.gitkeep
+!/uploads/logo.svg
+!/uploads/logo-dark.svg
+!/uploads/favicon.svg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+._*
+
+# 数据库
+*.db
+*.sqlite
+
+# Docker
+docker-compose.override.yml

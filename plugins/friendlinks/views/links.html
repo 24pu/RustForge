@@ -1,0 +1,24 @@
+<div class="max-w-4xl mx-auto py-8">
+    <h1 class="text-3xl font-bold mb-6">友情链接</h1>
+    <div id="links-container" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <!-- 动态渲染 -->
+    </div>
+</div>
+<script>
+(async function() {
+    const resp = await fetch('/api/admin/plugins/friendlinks/settings');
+    const data = await resp.json();
+    const container = document.getElementById('links-container');
+    const links = data.links || [];
+    if (links.length > 0) {
+        container.innerHTML = links.map(link => `
+            <a href="${link.url}" target="_blank" rel="noopener noreferrer" class="bg-white rounded shadow p-4 hover:shadow-md transition flex flex-col justify-between">
+                <h3 class="text-lg font-semibold">${link.name}</h3>
+                <p class="text-sm text-gray-500 truncate">${link.url}</p>
+            </a>
+        `).join('');
+    } else {
+        container.innerHTML = '<p class="text-gray-500 col-span-full">暂无友情链接</p>';
+    }
+})();
+</script>

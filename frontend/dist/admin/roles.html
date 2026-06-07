@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>角色管理 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="common.js"></script>
+    <style>
+        .modal { transition: opacity 0.25s ease; }
+        .permission-group { margin-bottom: 1rem; }
+        .group-title { font-weight: bold; margin-bottom: 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid #e2e8f0; }
+        .permission-item { margin-left: 1rem; display: inline-block; width: 200px; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- 顶部导航栏容器 -->
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">角色管理</h1>
+            <button onclick="openCreateModal()" class="bg-green-600 text-white px-4 py-2 rounded">+ 新建角色</button>
+        </div>
+        <div class="bg-white rounded shadow">
+            <table class="min-w-full">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-3 text-left">ID</th>
+                        <th class="p-3 text-left">角色名称</th>
+                        <th class="p-3 text-left">描述</th>
+                        <th class="p-3 text-left">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="roles-table">
+                    <tr><td colspan="4" class="p-3 text-center">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="footer-container"></div>
+
+    <!-- 创建/编辑角色的模态框 -->
+    <div id="role-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg w-96 p-6">
+            <h3 id="modal-title" class="text-lg font-bold mb-3">创建角色</h3>
+            <input type="hidden" id="role-id">
+            <label class="block text-sm font-medium">角色名称</label>
+            <input id="role-name" type="text" class="border p-2 w-full mb-3 rounded">
+            <label class="block text-sm font-medium">描述</label>
+            <textarea id="role-desc" rows="3" class="border p-2 w-full mb-3 rounded"></textarea>
+            <div class="flex justify-end space-x-2">
+                <button onclick="closeModal()" class="bg-gray-300 px-4 py-2 rounded">取消</button>
+                <button id="saveRoleBtn" class="bg-blue-600 text-white px-4 py-2 rounded">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 权限分配模态框 -->
+ <div id="perm-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg w-2/3 max-h-[80vh] overflow-y-auto p-6">
+        <h3 class="text-lg font-bold mb-3">分配权限</h3>
+        <input type="hidden" id="perm-role-id">
+        <div id="permissions-container" class="mb-4">加载中...</div>
+        <div class="flex justify-end space-x-2">
+            <button onclick="closePermModal()" class="bg-gray-300 px-4 py-2 rounded">取消</button>
+            <button id="savePermBtn" class="bg-blue-600 text-white px-4 py-2 rounded">保存</button>
+        </div>
+    </div>
+</div>
+
+    <script>
+        let currentRoleIdForPerm = null;
+        // 缓存权限列表
+        let allPermissions = [];
+        const PERM_CACHE_KEY = 'allPermissions';
+        const PERM_CACHE_TIME_KEY = 'allPermissionsTime';
+        const CACHE_TTL = 5 * 60 * 1000; // 5分钟
+
+        // 带缓存的权限加载
+        async function loadPermissionsCached(force = false) {
+            const cached = localStorage.getItem(PERM_CACHE_KEY);
+            const cachedTime = localStorage.getItem(PERM_CACHE_TIME_KEY);
+            if (!force && cached && cachedTime && Date.now() - parseInt(cachedTime) < CACHE_TTL) {
+                allPermissions = JSON.parse(cached);
+                return allPermissions;
+            }
+            try {
+                const perms = await apiCall('GET', '/api/admin/permissions');
+                allPermissions = perms;
+                localStorage.setItem(PERM_CACHE_KEY, JSON.stringify(perms));
+                localStorage.setItem(PERM_CACHE_TIME_KEY, Date.now().toString());
+                return perms;
+            } catch (err) {
+                console.error('Failed to load permissions', err);
+                return [];
+            }
+        }
+
+        (async () => {
+            if (!await requireAuth()) return;
+            // 加载顶部导航栏（而不是侧边栏）
+            await loadTopbar();
+            // 根据角色显示用户管理和角色管理菜单（在顶部导航中）
+            if (isAdmin()) {
+                const usersNav = document.getElementById('users-nav');
+                const rolesNav = document.getElementById('roles-nav');
+                if (usersNav) usersNav.style.display = 'inline-block';
+                if (rolesNav) rolesNav.style.display = 'inline-block';
+            }
+            // 高亮当前页面菜单
+            document.querySelectorAll('.nav-link').forEach(link => {
+                if (link.getAttribute('href') === 'roles.html') {
+                    link.classList.add('text-yellow-400', 'font-semibold');
+                }
+            });
+            await loadRoles();
+            await loadPermissionsCached(); // 预加载权限缓存
+            await loadFooter(); // 添加这一行
+        })();
+
+        async function loadRoles() {
+            try {
+                const roles = await apiCall('GET', '/api/admin/roles');
+                const tbody = document.getElementById('roles-table');
+                if (!roles.length) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center">暂无角色</td></tr>';
+                    return;
+                }
+                let html = '';
+                for (const r of roles) {
+                    html += `
+                        <tr class="border-t">
+                            <td class="p-3">${r.id}</td>
+                            <td class="p-3">${escapeHtml(r.name)}</td>
+                            <td class="p-3">${escapeHtml(r.description || '')}</td>
+                            <td class="p-3">
+                                <button onclick="openEditModal(${r.id}, '${escapeHtml(r.name)}', '${escapeHtml(r.description || '')}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-sm">编辑</button>
+                                <button onclick="deleteRole(${r.id})" class="bg-red-500 text-white px-2 py-1 rounded text-sm ml-1">删除</button>
+                                <button onclick="openPermModal(${r.id})" class="bg-blue-500 text-white px-2 py-1 rounded text-sm ml-1">权限</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+                tbody.innerHTML = html;
+            } catch (err) {
+                document.getElementById('roles-table').innerHTML = `<tr><td colspan="4" class="p-3 text-red-500">加载失败: ${err.message}</td></tr>`;
+            }
+        }
+
+        // 角色 CRUD 函数
+        let currentRoleId = null;
+        function openCreateModal() {
+            currentRoleId = null;
+            document.getElementById('modal-title').innerText = '创建角色';
+            document.getElementById('role-id').value = '';
+            document.getElementById('role-name').value = '';
+            document.getElementById('role-desc').value = '';
+            document.getElementById('role-modal').style.display = 'flex';
+        }
+        function openEditModal(id, name, desc) {
+            currentRoleId = id;
+            document.getElementById('modal-title').innerText = '编辑角色';
+            document.getElementById('role-id').value = id;
+            document.getElementById('role-name').value = name;
+            document.getElementById('role-desc').value = desc;
+            document.getElementById('role-modal').style.display = 'flex';
+        }
+        function closeModal() {
+            document.getElementById('role-modal').style.display = 'none';
+            currentRoleId = null;
+        }
+        document.getElementById('saveRoleBtn').addEventListener('click', async () => {
+            const id = document.getElementById('role-id').value;
+            const name = document.getElementById('role-name').value.trim();
+            const description = document.getElementById('role-desc').value.trim() || null;
+            if (!name) return alert('角色名称不能为空');
+            try {
+                if (id) {
+                    await apiCall('PUT', `/api/admin/roles/${id}`, { name, description });
+                } else {
+                    await apiCall('POST', '/api/admin/roles', { name, description });
+                }
+                closeModal();
+                loadRoles();
+            } catch (err) {
+                alert('操作失败: ' + err.message);
+            }
+        });
+        async function deleteRole(id) {
+            if (!confirm('确定删除该角色吗？删除后无法恢复。')) return;
+            try {
+                await apiCall('DELETE', `/api/admin/roles/${id}`);
+                loadRoles();
+            } catch (err) {
+                alert('删除失败: ' + err.message);
+            }
+        }
+
+        // 权限管理
+        async function openPermModal(roleId) {
+            currentRoleIdForPerm = roleId;
+            document.getElementById('perm-role-id').value = roleId;
+            document.getElementById('perm-modal').style.display = 'flex';
+            await renderPermissionTree(roleId);
+        }
+        function closePermModal() {
+            document.getElementById('perm-modal').style.display = 'none';
+            currentRoleIdForPerm = null;
+        }
+
+        async function renderPermissionTree(roleId) {
+            // 确保 allPermissions 已加载（缓存或新请求）
+            let perms = allPermissions;
+            if (!perms.length) {
+                perms = await loadPermissionsCached();
+            }
+            // 获取角色当前权限
+            let rolePerms = [];
+            try {
+                rolePerms = await apiCall('GET', `/api/admin/roles/${roleId}/permissions`);
+            } catch (err) {
+                console.error(err);
+            }
+            const rolePermIds = rolePerms.map(p => p.id);
+            // 按模块分组
+            const groups = {};
+            for (const perm of perms) {
+                const module = perm.module || '其他';
+                if (!groups[module]) groups[module] = [];
+                groups[module].push(perm);
+            }
+            let html = `
+                <div class="mb-4 flex space-x-4">
+                    <button id="select-all-perms" class="bg-blue-500 text-white px-3 py-1 rounded text-sm">全选</button>
+                    <button id="unselect-all-perms" class="bg-gray-500 text-white px-3 py-1 rounded text-sm">全不选</button>
+                </div>
+            `;
+            for (const [module, permsArr] of Object.entries(groups)) {
+                html += `<div class="permission-group"><div class="group-title">${escapeHtml(module)}</div>`;
+                for (const perm of permsArr) {
+                    const checked = rolePermIds.includes(perm.id);
+                    html += `
+                        <label class="permission-item">
+                            <input type="checkbox" value="${perm.id}" ${checked ? 'checked' : ''}> ${escapeHtml(perm.name)}
+                        </label>`;
+                }
+                html += `</div>`;
+            }
+            document.getElementById('permissions-container').innerHTML = html;
+
+            // 绑定全选/全不选事件
+            const selectAllBtn = document.getElementById('select-all-perms');
+            const unselectAllBtn = document.getElementById('unselect-all-perms');
+            if (selectAllBtn) {
+                selectAllBtn.onclick = () => {
+                    document.querySelectorAll('#permissions-container input[type="checkbox"]').forEach(cb => cb.checked = true);
+                };
+            }
+            if (unselectAllBtn) {
+                unselectAllBtn.onclick = () => {
+                    document.querySelectorAll('#permissions-container input[type="checkbox"]').forEach(cb => cb.checked = false);
+                };
+            }
+        }
+
+        async function savePermissions() {
+            const roleId = currentRoleIdForPerm;
+            if (!roleId) return;
+            const checkboxes = document.querySelectorAll('#permissions-container input[type="checkbox"]');
+            const permissionIds = Array.from(checkboxes).filter(cb => cb.checked).map(cb => parseInt(cb.value));
+            try {
+                await apiCall('PUT', `/api/admin/roles/${roleId}/permissions`, { permission_ids: permissionIds });
+                alert('权限更新成功');
+                closePermModal();
+            } catch (err) {
+                alert('更新失败: ' + err.message);
+            }
+        }
+
+        document.getElementById('savePermBtn').addEventListener('click', savePermissions);
+        
+    </script>
+</body>
+</html>

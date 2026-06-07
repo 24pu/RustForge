@@ -1,0 +1,49 @@
+<div class="max-w-md mx-auto bg-white rounded shadow p-6">
+    <h2 class="text-2xl font-bold mb-4">{{ register }}</h2>
+    <form id="register-form" class="space-y-4">
+        <div>
+            <label class="block text-sm font-medium">{{ email }}</label>
+            <input type="email" id="email" required class="border rounded w-full p-2">
+        </div>
+        <div>
+            <label class="block text-sm font-medium">{{ password }}</label>
+            <input type="password" id="password" required class="border rounded w-full p-2">
+        </div>
+        <div>
+            <label class="block text-sm font-medium">{{ nickname }}</label>
+            <input type="text" id="name" class="border rounded w-full p-2">
+        </div>
+        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded w-full">{{ register }}</button>
+    </form>
+    <div id="message" class="mt-2 text-sm text-center"></div>
+    <p class="mt-4 text-center">
+        {{ already_have_account }}
+        <a href="/plugins/user-center/login" class="text-blue-600">{{ go_to_login }}</a>
+    </p>
+</div>
+<script>
+    const __t = (key, fallback) => (window.__plugin_locales__ && window.__plugin_locales__[key]) || fallback || key;
+
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const name = document.getElementById('name').value;
+        try {
+            const res = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, name: name || undefined })
+            });
+            const data = await res.json();
+            if (data.message === 'User registered') {
+                alert(__t('register_success', '注册成功，请登录'));
+                window.location.href = '/plugins/user-center/login';
+            } else {
+                document.getElementById('message').innerText = data.error || __t('register_failed', '注册失败');
+            }
+        } catch(err) {
+            document.getElementById('message').innerText = __t('network_error', '网络错误');
+        }
+    });
+</script>

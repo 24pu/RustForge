@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, slug, title, body, published, cover_image, lang, translation_group, created_at, updated_at\n             FROM contents WHERE slug = $1 AND published = true",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "body",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "published",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "cover_image",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "lang",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "translation_group",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "394bebbfe77972780948517776587a83fa8009d03ebdb3df7059668ce510a0e1"
+}

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>文档插件设置</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-6">
+    <h3 class="text-lg font-semibold mb-2">RustForge 开发文档</h3>
+    <div class="text-sm text-gray-600 space-y-3">
+        <p>本文档插件提供了 RustForge 的完整开发指南，可通过以下链接直接访问：</p>
+        <ul class="list-disc list-inside ml-4 space-y-2">
+            <li>
+                <strong>插件开发指南</strong><br>
+                <a href="/plugins/docs/static/plugin-dev-guide.html" target="_blank" class="text-blue-600 hover:underline">
+                    /plugins/docs/static/plugin-dev-guide.html
+                </a><br>
+                <span class="text-gray-500">学习如何使用 WebAssembly 开发 RustForge 插件，包括导出函数、前端集成、页面保护等。</span>
+            </li>
+            <li>
+                <strong>主题开发指南</strong><br>
+                <a href="/plugins/docs/static/theme-dev-guide.html" target="_blank" class="text-blue-600 hover:underline">
+                    /plugins/docs/static/theme-dev-guide.html
+                </a><br>
+                <span class="text-gray-500">基于 Tera 模板引擎构建企业网站主题，变量详解与核心模板开发。</span>
+            </li>
+            <li>
+                <strong>主程序开发文档</strong><br>
+                <a href="/plugins/docs/static/main-program-dev-guide.html" target="_blank" class="text-blue-600 hover:underline">
+                    /plugins/docs/static/main-program-dev-guide.html
+                </a><br>
+                <span class="text-gray-500">RustForge 核心架构、路由、中间件、插件系统与部署全解析。</span>
+            </li>
+        </ul>
+        <p><strong>文档首页：</strong> <a href="/plugins/docs/index" target="_blank" class="text-blue-600 hover:underline">/plugins/docs/index</a></p>
+        <p class="mt-4">所有文档均为静态 HTML，可随时更新。无需重启容器。</p>
+    </div>
+</body>
+</html>

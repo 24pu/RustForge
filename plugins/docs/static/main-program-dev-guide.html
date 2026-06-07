@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主程序开发文档 | RustForge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.875rem;
+        }
+        code {
+            font-family: monospace;
+            background: #f3f4f6;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            color: #d63384;
+        }
+        pre code { background: transparent; padding: 0; color: inherit; }
+        .anchor { scroll-margin-top: 5rem; }
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; text-align: left; }
+        th { background: #f9fafb; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <nav class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="text-xl font-bold text-purple-700">RustForge 主程序开发</div>
+            <div class="space-x-4 text-sm flex flex-wrap">
+                <a href="#overview" class="hover:text-purple-600">概述</a>
+                <a href="#structure" class="hover:text-purple-600">项目结构</a>
+                <a href="#config" class="hover:text-purple-600">配置</a>
+                <a href="#routing" class="hover:text-purple-600">路由与处理器</a>
+                <a href="#middleware" class="hover:text-purple-600">中间件</a>
+                <a href="#database" class="hover:text-purple-600">数据库</a>
+                <a href="#auth" class="hover:text-purple-600">认证授权</a>
+                <a href="#i18n" class="hover:text-purple-600">多语言</a>
+                <a href="#plugin" class="hover:text-purple-600">插件系统</a>
+                <a href="#theme" class="hover:text-purple-600">主题系统</a>
+                <a href="#deploy" class="hover:text-purple-600">部署</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8 max-w-4xl">
+
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">RustForge 主程序开发文档</h1>
+            <p class="text-xl text-gray-600">基于 Rust + Axum 的企业级网站核心架构详解</p>
+            <div class="mt-4 flex justify-center space-x-2">
+                <span class="bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full">Rust</span>
+                <span class="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">Axum</span>
+                <span class="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">SQLx</span>
+                <span class="bg-yellow-100 text-yellow-800 text-sm px-3 py-1 rounded-full">Wasmtime</span>
+            </div>
+        </div>
+
+        <!-- 概述 -->
+        <section id="overview" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">📖 概述</h2>
+            <p>RustForge 是一个使用 Rust 编写的企业级网站系统，后端采用 <strong>Axum</strong> 框架，数据库使用 <strong>PostgreSQL</strong> + <strong>SQLx</strong>，集成 <strong>Tera</strong> 模板引擎和基于 <strong>Wasmtime</strong> 的插件系统。</p>
+            <p>核心设计理念：分层架构、依赖注入、可扩展插件系统、RBAC 权限管理、多语言支持。</p>
+        </section>
+
+        <!-- 项目结构 -->
+        <section id="structure" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">📁 项目结构</h2>
+            <pre><code>rustforge/
+├── Cargo.toml
+├── config.toml
+├── locales/                   # 主程序语言包
+│   ├── zh.json
+│   └── en.json
+├── migrations/
+├── src/
+│   ├── main.rs
+│   ├── presentation/
+│   ├── core/
+│   └── infrastructure/
+│       └── i18n/              # 多语言管理器
+├── plugins/
+├── themes/
+└── frontend/dist/</code></pre>
+        </section>
+
+        <!-- 中间件 -->
+        <section id="middleware" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">⛓️ 中间件</h2>
+            <p>系统中间件按顺序执行：</p>
+            <ul class="list-disc list-inside space-y-1">
+                <li><code>lang_middleware</code>：从 Cookie 提取语言偏好，注入请求</li>
+                <li><code>check_installed</code>：检查系统是否已安装</li>
+                <li><code>CookieManagerLayer</code>：解析和设置 Cookie</li>
+                <li><code>inject_user_info</code>：从 Cookie 提取 JWT，查询用户信息，注入语言和翻译数据</li>
+            </ul>
+        </section>
+
+        <!-- 多语言 -->
+        <section id="i18n" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🌐 多语言系统</h2>
+            <p>多语言系统由 <code>I18n</code> 管理器实现，支持主程序语言包和插件语言包的自动合并。</p>
+
+            <h3 class="text-xl font-semibold mt-4 mb-2">语言包加载流程</h3>
+            <ol class="list-decimal list-inside space-y-2">
+                <li>启动时扫描 <code>locales/</code> 目录，识别可用语言</li>
+                <li>读取数据库 <code>site_config</code> 中的 <code>supported_langs</code> 和 <code>default_lang</code></li>
+                <li>扫描所有<strong>已启用</strong>插件的 <code>locales/</code> 目录</li>
+                <li>合并主程序和插件语言包（主程序优先）</li>
+                <li>安装/启用/禁用/卸载插件时自动重新加载</li>
+            </ol>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">Tera 模板中使用</h3>
+            <pre><code>{{ t(key="home", lang=lang) }}
+{{ t(key="read_more", lang=lang) }}</code></pre>
+            <p><code>t()</code> 函数在主题初始化时注册到 Tera 实例，所有模板可直接调用。</p>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">语言切换</h3>
+            <p>用户切换语言时，前端设置 Cookie <code>lang=zh</code>，刷新页面。中间件读取 Cookie 确定当前语言。</p>
+            <pre><code>function switchLang(lang) {
+    document.cookie = 'lang=' + lang + ';path=/;max-age=31536000';
+    location.reload();
+}</code></pre>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">后台语言设置 API</h3>
+            <p><code>GET /api/admin/lang-settings</code> 获取当前语言配置，<code>PUT</code> 更新。更新后自动重载所有语言包。</p>
+        </section>
+
+        <!-- 插件系统 -->
+        <section id="plugin" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🔌 插件系统</h2>
+            <p>基于 <strong>Wasmtime</strong> 运行时，支持动态加载 <code>.wasm</code> 模块。</p>
+
+            <h3 class="text-xl font-semibold mt-4 mb-2">插件多语言</h3>
+            <p>插件只需在目录下创建 <code>locales/zh.json</code> 和 <code>locales/en.json</code>，系统启动和插件状态变更时自动加载合并。</p>
+            <pre><code>plugins/user-center/
+├── locales/
+│   ├── zh.json    # { "profile": "个人资料", ... }
+│   └── en.json    # { "profile": "Profile", ... }
+├── views/
+└── user-center.wasm</code></pre>
+            <p>插件视图使用 <code>{{ key }}</code> 语法，<code>plugin_page_handler</code> 会在渲染前将变量替换为对应翻译。</p>
+        </section>
+
+        <!-- 部署 -->
+        <section id="deploy" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🚢 部署</h2>
+            <h3 class="text-xl font-semibold mt-4 mb-2">Docker 部署</h3>
+            <pre><code>docker run -d --name rustforge -p 3000:3000 \
+  -e DATABASE_URL="postgresql://..." \
+  -v /host/config.toml:/app/config.toml \
+  -v /host/uploads:/app/uploads \
+  -v /host/plugins:/app/plugins \
+  -v /host/themes:/app/themes \
+  -v /host/locales:/app/locales \
+  rustforge</code></pre>
+        </section>
+
+        <footer class="border-t pt-6 text-center text-gray-500 text-sm">
+            <p>至此，你已经全面了解 RustForge 主程序的架构和开发要点。</p>
+            <p class="mt-2">© 2025 RustForge Team</p>
+        </footer>
+    </main>
+</body>
+</html>

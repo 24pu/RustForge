@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RustForge 插件开发文档</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.875rem;
+        }
+        code {
+            font-family: monospace;
+            background: #f3f4f6;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            color: #d63384;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+        .anchor { scroll-margin-top: 5rem; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <nav class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="text-xl font-bold text-purple-700">RustForge 插件开发</div>
+            <div class="space-x-4 text-sm">
+                <a href="#overview" class="hover:text-purple-600">概述</a>
+                <a href="#structure" class="hover:text-purple-600">文件结构</a>
+                <a href="#rust-source" class="hover:text-purple-600">Rust 源码</a>
+                <a href="#frontend" class="hover:text-purple-600">前端实现</a>
+                <a href="#i18n" class="hover:text-purple-600">多语言支持</a>
+                <a href="#interaction" class="hover:text-purple-600">主程序交互</a>
+                <a href="#settings" class="hover:text-purple-600">插件设置</a>
+                <a href="#deploy" class="hover:text-purple-600">开发部署</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8 max-w-4xl">
+
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">RustForge 插件开发完全指南</h1>
+            <p class="text-xl text-gray-600">以用户中心插件为例，掌握 Wasm 插件开发全流程</p>
+            <div class="mt-4 flex justify-center space-x-2">
+                <span class="bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full">Rust</span>
+                <span class="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">Wasm</span>
+                <span class="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">Axum</span>
+                <span class="bg-yellow-100 text-yellow-800 text-sm px-3 py-1 rounded-full">插件系统</span>
+            </div>
+        </div>
+
+        <!-- 概述 -->
+        <section id="overview" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">📖 概述</h2>
+            <p class="mb-2">RustForge 的插件系统基于 WebAssembly (Wasm)，允许您使用 Rust 或其他能编译到 Wasm 的语言安全地扩展网站功能。用户中心插件是一个完整的参考实现，演示了如何构建包含前端页面、API 调用、用户认证、页面保护和多语言支持的插件。</p>
+            <p>通过本指南，你将学习到：</p>
+            <ul class="list-disc list-inside mt-2 space-y-1">
+                <li>插件的基本结构和必需的导出函数</li>
+                <li>如何通过插件网关自动获取登录用户 <code>user_id</code></li>
+                <li>编写前端视图并引用插件静态资源</li>
+                <li>实现 <code>is_page_protected</code> 进行登录保护</li>
+                <li>集成插件设置页面，允许管理员动态配置</li>
+                <li>利用扫描功能一键安装未启用的插件</li>
+                <li>为插件添加多语言支持（locales 目录）</li>
+            </ul>
+        </section>
+
+        <!-- 文件结构 -->
+        <section id="structure" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">📁 插件文件结构</h2>
+            <pre><code>plugins/user-center/
+├── Cargo.toml                 # Rust 项目配置
+├── src/
+│   └── lib.rs                 # 插件核心逻辑 (Wasm)
+├── locales/                   # 多语言翻译文件
+│   ├── zh.json                # 中文翻译
+│   └── en.json                # 英文翻译
+├── views/                     # 前端视图片段
+│   ├── profile.html
+│   ├── password.html
+│   ├── login.html
+│   ├── register.html
+│   └── settings.html          # 后台管理设置界面
+└── static/                    # 静态资源
+    ├── nav.html               # 导航栏片段
+    └── nav-loader.js          # 导航加载与事件绑定</code></pre>
+            <p class="mt-2">最终编译产物为 <code>user-center.wasm</code>，放在 <code>plugins/user-center/</code> 目录下即可被系统扫描识别。</p>
+        </section>
+
+        <!-- Rust 源码解析 -->
+        <section id="rust-source" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">⚙️ 插件 Rust 源码解析</h2>
+
+            <h3 class="text-xl font-semibold mt-4 mb-2">项目配置 (Cargo.toml)</h3>
+            <pre><code>[package]
+name = "user-center"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+lazy_static = "1.4"</code></pre>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">导出函数一览</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded shadow mt-2">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="py-2 px-4 text-left">函数名</th>
+                            <th class="py-2 px-4 text-left">签名</th>
+                            <th class="py-2 px-4 text-left">作用</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="py-2 px-4"><code>plugin_metadata</code></td><td class="py-2 px-4"><code>() -> *mut u8</code></td><td class="py-2 px-4">返回插件元数据 JSON</td></tr>
+                        <tr><td class="py-2 px-4"><code>get_last_result_len</code></td><td class="py-2 px-4"><code>() -> usize</code></td><td class="py-2 px-4">返回最后一次输出数据长度</td></tr>
+                        <tr><td class="py-2 px-4"><code>execute</code></td><td class="py-2 px-4"><code>(ptr: *const u8, len: usize) -> *mut u8</code></td><td class="py-2 px-4">核心 API 处理函数</td></tr>
+                        <tr><td class="py-2 px-4"><code>is_page_protected</code></td><td class="py-2 px-4"><code>(ptr: *const u8, len: usize) -> *mut u8</code></td><td class="py-2 px-4">返回页面是否需要登录保护</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">元数据定义</h3>
+            <pre><code>const PLUGIN_METADATA: &str = r#"{
+    "name": "user-center",
+    "version": "1.0.0",
+    "author": "RustForge Team",
+    "description": "用户中心插件，提供个人资料、密码修改等功能"
+}"#;</code></pre>
+            <p>安装或扫描时，主程序会调用 <code>plugin_metadata</code> 获取这些信息并存入数据库。</p>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">内存管理与输出</h3>
+            <p>所有返回给主程序的数据都通过 Rust 的 <code>alloc</code> 在堆上分配，并将指针返回给宿主，同时设置 <code>LAST_LEN</code> 记录数据长度。<strong>必须严格遵守此模式</strong>。</p>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2"><code>execute</code> 函数详解</h3>
+            <pre><code>#[no_mangle]
+pub extern "C" fn execute(ptr: *const u8, len: usize) -> *mut u8 {
+    let input: serde_json::Value = serde_json::from_str(input_str)?;
+    let action = input["action"].as_str().unwrap_or("");
+    let user_id = input["user_id"].as_str().unwrap_or("");  // 由网关自动注入
+
+    let result = match action {
+        "get_profile" => handle_get_profile(user_id),
+        "update_profile" => handle_update_profile(user_id, &input),
+        "change_password" => handle_change_password(user_id, &input),
+        "get_orders" => handle_get_orders(user_id),
+        "logout" => json!({ "message": "Logout successful" }),
+        _ => json!({ "error": "Unknown action" }),
+    };
+    // 将 result 序列化为字符串，分配内存，返回指针
+}</code></pre>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">页面保护：<code>is_page_protected</code></h3>
+            <pre><code>#[no_mangle]
+pub extern "C" fn is_page_protected(ptr: *const u8, len: usize) -> *mut u8 {
+    let page_name = /* 读取字符串 */;
+    let protected = match page_name {
+        "profile" | "orders" | "password" => "true",
+        _ => "false",
+    };
+    // 返回 "true" 或 "false" 字符串
+}</code></pre>
+        </section>
+
+        <!-- 多语言支持 -->
+        <section id="i18n" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🌐 多语言支持</h2>
+            <p>插件只需在根目录下创建 <code>locales/</code> 文件夹，放入对应语言的 JSON 文件即可实现多语言。系统启动时会自动加载所有已启用插件的语言包，合并到全局翻译中。</p>
+
+            <h3 class="text-xl font-semibold mt-4 mb-2">语言包文件格式</h3>
+            <p><strong>locales/zh.json</strong>：</p>
+            <pre><code>{
+    "profile": "个人资料",
+    "nickname": "昵称",
+    "email": "邮箱",
+    "phone": "手机号",
+    "save_changes": "保存修改",
+    "login": "登录",
+    "register": "注册"
+}</code></pre>
+
+            <p><strong>locales/en.json</strong>：</p>
+            <pre><code>{
+    "profile": "Profile",
+    "nickname": "Nickname",
+    "email": "Email",
+    "phone": "Phone",
+    "save_changes": "Save Changes",
+    "login": "Login",
+    "register": "Register"
+}</code></pre>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">在视图模板中使用</h3>
+            <p>插件视图使用简单变量语法 <code>{{ key }}</code>，主程序会在渲染前自动将变量替换为对应语言的翻译文本：</p>
+            <pre><code>&lt;h2&gt;{{ profile }}&lt;/h2&gt;
+&lt;label&gt;{{ nickname }}&lt;/label&gt;
+&lt;label&gt;{{ email }}&lt;/label&gt;
+&lt;button&gt;{{ save_changes }}&lt;/button&gt;</code></pre>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">在 JavaScript 中使用</h3>
+            <p>插件页面加载时，主程序会自动注入 <code>window.__plugin_locales__</code> 全局变量：</p>
+            <pre><code>const __t = (key, fallback) => (window.__plugin_locales__ && window.__plugin_locales__[key]) || fallback || key;
+alert(__t('profile_success', '保存成功'));</code></pre>
+
+            <p><strong>注意</strong>：主程序语言包和插件语言包会合并，插件键不覆盖主程序键。安装/启用/卸载插件时会自动重新加载语言包。</p>
+        </section>
+
+        <!-- 与主程序交互 -->
+        <section id="interaction" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🔗 插件与主程序交互</h2>
+
+            <h3 class="text-xl font-semibold mt-4 mb-2">页面访问</h3>
+            <ul class="list-disc list-inside space-y-1">
+                <li>访问 <code>/plugins/user-center/profile</code></li>
+                <li>主程序路由 <code>GET /plugins/:plugin_name/:page</code> 触发 <code>plugin_page_handler</code></li>
+                <li>Handler 加载插件语言包，读取视图文件，替换模板变量，渲染到 <code>base.html</code></li>
+            </ul>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">API 调用</h3>
+            <ul class="list-disc list-inside space-y-1">
+                <li>前端请求 <code>POST /api/plugin/user-center</code></li>
+                <li>主程序 <code>plugin_gateway_handler</code> 自动注入 <code>user_id</code></li>
+                <li>加载 Wasm 插件，调用 <code>execute</code></li>
+                <li>插件返回 JSON，网关返回给客户端</li>
+            </ul>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">退出登录</h3>
+            <p>调用主程序 <code>POST /api/logout</code> 清除 HttpOnly Cookie。</p>
+        </section>
+
+        <!-- 插件设置 -->
+        <section id="settings" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">⚙️ 插件设置</h2>
+            <p>在 <code>views/settings.html</code> 中创建设置界面，通过 <code>/api/admin/plugins/{name}/settings</code> 读写配置。</p>
+        </section>
+
+        <!-- 开发与部署 -->
+        <section id="deploy" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🚀 开发与部署流程</h2>
+
+            <h3 class="text-xl font-semibold mt-4 mb-2">1. 编写 Rust 插件</h3>
+            <ol class="list-decimal list-inside space-y-1">
+                <li>创建项目 <code>cargo new user-center --lib</code></li>
+                <li>配置 <code>Cargo.toml</code>，设置 <code>crate-type = ["cdylib"]</code></li>
+                <li>编译为 wasm：<code>cargo build --target wasm32-unknown-unknown --release</code></li>
+            </ol>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">2. 创建前端视图和语言包</h3>
+            <p>按照文件结构创建 <code>views/</code>、<code>static/</code> 和 <code>locales/</code> 目录。</p>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">3. 安装与启用</h3>
+            <p>将插件文件夹放入 <code>plugins/</code> 目录，后台点击"扫描可用插件"，找到对应插件并点击"安装"。</p>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">4. 测试</h3>
+            <ul class="list-disc list-inside space-y-1">
+                <li>访问 <code>/plugins/user-center/login</code></li>
+                <li>登录后访问 <code>/plugins/user-center/profile</code></li>
+                <li>切换语言验证多语言翻译是否生效</li>
+            </ul>
+        </section>
+
+        <!-- 注意事项 -->
+        <section class="mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">⚠️ 注意事项与最佳实践</h2>
+            <ul class="list-disc list-inside space-y-2">
+                <li><strong>插件 Wasm 应保持轻量</strong></li>
+                <li><strong>内存安全</strong>：必须通过 <code>LAST_LEN</code> 告知数据长度</li>
+                <li><strong>语言包</strong>：JSON 文件末尾不能有多余逗号</li>
+                <li><strong>前端 API 路径</strong>：使用 <code>/api/plugin/{name}</code></li>
+                <li><strong>静态资源路径</strong>：使用 <code>/plugins/{name}/static/{file}</code></li>
+                <li><strong>插件安装</strong>：系统会复制 wasm 文件，卸载时删除副本，原始文件保留</li>
+                <li><strong>多语言</strong>：安装/启用/卸载插件时自动重新加载语言包</li>
+            </ul>
+        </section>
+
+        <footer class="border-t pt-6 text-center text-gray-500 text-sm">
+            <p>通过本用户中心插件，你已经掌握了在 RustForge 中开发功能完备的插件的所有知识。</p>
+            <p class="mt-2">© 2025 RustForge Team</p>
+        </footer>
+    </main>
+</body>
+</html>

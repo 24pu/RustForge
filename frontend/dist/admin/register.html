@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>注册 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="common.js"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded shadow-md w-96">
+        <h1 class="text-2xl font-bold mb-6">注册新账号</h1>
+        <input id="email" type="email" placeholder="电子邮箱" class="w-full border p-2 mb-3 rounded">
+        <input id="name" placeholder="姓名（选填）" class="w-full border p-2 mb-3 rounded">
+        <input id="password" type="password" placeholder="密码" class="w-full border p-2 mb-3 rounded">
+        <button id="registerBtn" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">注册</button>
+        <p id="errorMsg" class="text-red-500 text-sm mt-2 hidden"></p>
+        <p class="mt-4 text-center text-sm">已有账号？<a href="login.html" class="text-blue-600">去登录</a></p>
+    </div>
+    <script>
+        document.getElementById('registerBtn').addEventListener('click', async () => {
+            const email = document.getElementById('email').value.trim();
+            const name = document.getElementById('name').value.trim() || null;
+            const password = document.getElementById('password').value;
+            try {
+                await apiCall('POST', '/register', { email, password, name });
+                alert('注册成功，请登录');
+                window.location.href = 'login.html';
+            } catch (err) {
+                const errDiv = document.getElementById('errorMsg');
+                errDiv.innerText = err.message;
+                errDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

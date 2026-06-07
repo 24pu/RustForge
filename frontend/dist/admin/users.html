@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户管理 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="common.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+    <div class="container mx-auto p-6">
+        <div class="bg-white p-4 rounded shadow">
+            <h2 class="text-xl font-bold mb-3">用户列表</h2>
+            <div id="users-list">加载中...</div>
+        </div>
+    </div>
+    <div id="footer-container"></div>
+
+    <script>
+        let canAssignRole = false;
+        let canDeleteUser = false;
+        let currentUserId = null;
+        let allRoles = [];
+
+        (async () => {
+            if (!await requireAuth()) return;
+
+            // 获取当前用户信息（包含 id）
+            const userInfo = await apiCall('GET', '/api/me');
+            currentUserId = userInfo.id;
+
+            const perms = await fetchUserPermissions();
+            canAssignRole = perms.includes('role:assign');
+            canDeleteUser = perms.includes('user:delete');
+
+            await loadTopbar();
+            await loadRoles();   // 先加载角色
+            await loadUsers();   // 再加载用户
+            await loadFooter();
+        })();
+
+        // 加载所有角色
+        async function loadRoles() {
+            try {
+                allRoles = await apiCall('GET', '/api/admin/roles');
+                if (!Array.isArray(allRoles)) allRoles = [];
+            } catch (err) {
+                console.error('加载角色列表失败', err);
+                allRoles = [];
+            }
+        }
+
+        // 加载用户列表
+        async function loadUsers() {
+            try {
+                const users = await apiCall('GET', '/api/admin/users');
+                if (!users || users.length === 0) {
+                    document.getElementById('users-list').innerHTML = '<p class="text-center text-gray-500">暂无用户</p>';
+                    return;
+                }
+
+                let html = '<table class="min-w-full bg-white border">';
+                html += '<thead class="bg-gray-100">';
+                html += '<th class="p-2 text-left">Email</th>';
+                html += '<th class="p-2 text-left">姓名</th>';
+                html += '<th class="p-2 text-left">角色</th>';
+                html += '<th class="p-2 text-left">操作</th>';
+                html += '</thead><tbody>';
+
+                for (const u of users) {
+                    const rolesText = u.roles.join(', ') || '无';
+                    let actionsHtml = '';
+
+                    // 分配角色控件
+                    if (canAssignRole && allRoles.length > 0) {
+                        let options = '';
+                        for (const role of allRoles) {
+                            const selected = u.roles.includes(role.name) ? 'selected' : '';
+                            options += `<option value="${role.name}" ${selected}>${role.name}</option>`;
+                        }
+                        actionsHtml = `
+                            <select id="role-select-${u.id}" class="border p-1 rounded text-sm">
+                                ${options}
+                            </select>
+                            <button onclick="updateUserRole('${u.id}')" class="bg-blue-500 text-white px-2 py-1 rounded ml-1 text-sm">更新</button>
+                        `;
+                    } else {
+                        actionsHtml = '<span class="text-gray-400 text-sm">无权限</span>';
+                    }
+
+                    // 删除按钮：仅当有删除权限且不是当前用户时显示
+                    if (canDeleteUser && u.id !== currentUserId) {
+                        actionsHtml += ` <button onclick="deleteUser('${u.id}')" class="bg-red-500 text-white px-2 py-1 rounded ml-1 text-sm">删除</button>`;
+                    }
+
+                    html += `
+                        <tr class="border-t hover:bg-gray-50">
+                            <td class="p-2">${escapeHtml(u.email)}</td>
+                            <td class="p-2">${escapeHtml(u.name || '')}</td>
+                            <td class="p-2">${escapeHtml(rolesText)}</td>
+                            <td class="p-2">${actionsHtml}</td>
+                        </tr>
+                    `;
+                }
+                html += '</tbody></table>';
+                document.getElementById('users-list').innerHTML = html;
+            } catch (err) {
+                console.error('加载用户列表失败', err);
+                document.getElementById('users-list').innerHTML = `<p class="text-red-500">加载失败: ${err.message}</p>`;
+            }
+        }
+
+        // 更新用户角色
+        async function updateUserRole(userId) {
+            if (!canAssignRole) {
+                alert('您没有权限分配角色');
+                return;
+            }
+            const select = document.getElementById(`role-select-${userId}`);
+            if (!select) return;
+            const role = select.value;
+            try {
+                await apiCall('PUT', `/api/admin/users/${userId}/roles`, { roles: [role] });
+                alert('角色更新成功');
+                await loadUsers();  // 刷新列表
+            } catch (err) {
+                alert('更新失败: ' + err.message);
+            }
+        }
+
+        // 删除用户
+        async function deleteUser(userId) {
+            if (!canDeleteUser) {
+                alert('您没有权限删除用户');
+                return;
+            }
+            if (!confirm('确定要删除该用户吗？此操作不可恢复。')) return;
+            try {
+                await apiCall('DELETE', `/api/admin/users/${userId}`);
+                alert('用户删除成功');
+                await loadUsers(); // 刷新列表
+            } catch (err) {
+                alert('删除失败: ' + err.message);
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+        }
+    </script>
+</body>
+</html>

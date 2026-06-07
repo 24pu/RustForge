@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>系统设置 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="common.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto p-6">
+        <div class="bg-white p-6 rounded shadow max-w-2xl mx-auto">
+            <h1 class="text-2xl font-bold mb-4">系统设置</h1>
+            <form id="settings-form">
+                <div class="bg-white rounded-lg shadow p-4 mb-6">
+                <h2 class="text-lg font-bold mb-3">语言设置</h2>
+                <div id="lang-settings-content">加载中...</div>
+            </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">站点名称</label>
+                    <input type="text" id="site_name" class="border rounded w-full p-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">SEO 标题</label>
+                    <input type="text" id="seo_title" class="border rounded w-full p-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">SEO 描述</label>
+                    <textarea id="seo_description" rows="2" class="border rounded w-full p-2"></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">SEO 关键词</label>
+                    <input type="text" id="seo_keywords" placeholder="关键词1,关键词2" class="border rounded w-full p-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">Logo URL</label>
+                    <input type="text" id="logo_url" class="border rounded w-full p-2" placeholder="/upload/logo.png">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">Favicon URL</label>
+                    <input type="text" id="favicon_url" class="border rounded w-full p-2" placeholder="/upload/favicon.ico">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">每页默认显示条数</label>
+                    <input type="number" id="default_per_page" class="border rounded w-full p-2">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">主题颜色</label>
+                    <select id="theme_color" class="border rounded w-full p-2">
+                        <option value="blue">蓝色</option>
+                        <option value="green">绿色</option>
+                        <option value="purple">紫色</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">允许上传的文件类型（逗号分隔）</label>
+                    <input type="text" id="allowed_file_types" class="border rounded w-full p-2" placeholder="jpg,png,pdf">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">单个文件最大大小 (MB)</label>
+                    <input type="number" id="max_file_size_mb" class="border rounded w-full p-2" step="1" min="1">
+                </div>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">保存设置</button>
+            </form>
+            <div id="error-msg" class="text-red-500 mt-4 hidden"></div>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script>
+        (async () => {
+            if (!await requireAuth()) return;
+            await loadTopbar();
+            await loadFooter();
+
+            const perms = await fetchUserPermissions();
+            if (!perms.includes('config:view')) {
+                document.getElementById('error-msg').innerText = '您没有权限访问系统设置。';
+                document.getElementById('error-msg').classList.remove('hidden');
+                document.querySelector('form').style.display = 'none';
+                return;
+            }
+
+            const canEdit = perms.includes('config:edit');
+            if (!canEdit) {
+                document.querySelectorAll('#settings-form input, #settings-form select, #settings-form button[type="submit"]').forEach(el => {
+                    el.disabled = true;
+                });
+                const note = document.createElement('p');
+                note.className = 'text-gray-500 text-sm mt-2';
+                note.innerText = '您只有查看权限，无法修改设置。';
+                document.querySelector('#settings-form').appendChild(note);
+            }
+
+            await loadSettings();
+
+            document.getElementById('settings-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!canEdit) {
+                    alert('您没有权限修改设置');
+                    return;
+                }
+                const site_name = document.getElementById('site_name').value.trim();
+                const default_per_page = parseInt(document.getElementById('default_per_page').value);
+                const theme_color = document.getElementById('theme_color').value;
+                const seo_title = document.getElementById('seo_title').value;
+                const seo_description = document.getElementById('seo_description').value;
+                const seo_keywords = document.getElementById('seo_keywords').value;
+                const logo_url = document.getElementById('logo_url').value;
+                const favicon_url = document.getElementById('favicon_url').value;
+                const allowed_file_types = document.getElementById('allowed_file_types').value;
+                const max_file_size_mb = parseInt(document.getElementById('max_file_size_mb').value);
+                if (!site_name || isNaN(default_per_page) || isNaN(max_file_size_mb)) {
+                    alert('请正确填写所有字段');
+                    return;
+                }
+                try {
+                    await apiCall('PUT', '/api/admin/config', {
+                        site_name, default_per_page, theme_color,
+                        seo_title, seo_description, seo_keywords,
+                        logo_url, favicon_url,
+                        allowed_file_types, max_file_size_mb
+                    });
+                    alert('设置保存成功');
+                    // 可选：重新加载页面
+                } catch (err) {
+                    alert('保存失败: ' + err.message);
+                }
+            });
+        })();
+
+        async function loadSettings() {
+                try {
+                    const config = await apiCall('GET', '/api/admin/config');
+                    document.getElementById('site_name').value = config.site_name || '';
+                    document.getElementById('default_per_page').value = config.default_per_page || 20;
+                    document.getElementById('theme_color').value = config.theme_color || 'blue';
+                    document.getElementById('seo_title').value = config.seo_title || '';
+                    document.getElementById('seo_description').value = config.seo_description || '';
+                    document.getElementById('seo_keywords').value = config.seo_keywords || '';
+                    document.getElementById('logo_url').value = config.logo_url || '';
+                    document.getElementById('favicon_url').value = config.favicon_url || '';
+                    document.getElementById('allowed_file_types').value = config.allowed_file_types || 'jpg,jpeg,png,gif,mp4,mp3,pdf,doc,docx,xls,xlsx';
+                    document.getElementById('max_file_size_mb').value = config.max_file_size_mb || 10;
+                } catch (err) {
+                    console.error(err);
+                    document.getElementById('error-msg').innerText = '加载配置失败: ' + err.message;
+                    document.getElementById('error-msg').classList.remove('hidden');
+                }
+            }
+            async function loadLangSettings() {
+        try {
+            const data = await apiCall('GET', '/api/admin/lang-settings');
+            const { available_langs, supported_langs, default_lang } = data;
+            
+            let html = `
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">可用语言包</label>
+                    <div class="text-sm text-gray-600 mb-2">
+                        扫描自 locales/ 目录，支持的语言包：
+                        ${available_langs.map(l => `<span class="bg-gray-200 px-2 py-1 rounded mr-1">${l.name} (${l.code})</span>`).join('')}
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">启用的语言</label>
+                    <div id="supported-langs-checkboxes">
+                        ${available_langs.map(l => `
+                            <label class="inline-flex items-center mr-4">
+                                <input type="checkbox" value="${l.code}" 
+                                    ${supported_langs.includes(l.code) ? 'checked' : ''} 
+                                    class="lang-checkbox">
+                                <span class="ml-1">${l.name} (${l.code})</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">默认语言</label>
+                    <select id="default-lang-select" class="border rounded p-2">
+                        ${available_langs.map(l => `
+                            <option value="${l.code}" ${default_lang === l.code ? 'selected' : ''}>
+                                ${l.name} (${l.code})
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                
+                <button onclick="saveLangSettings()" class="bg-blue-600 text-white px-4 py-2 rounded">保存</button>
+            `;
+            document.getElementById('lang-settings-content').innerHTML = html;
+        } catch (err) {
+            document.getElementById('lang-settings-content').innerHTML = '<p class="text-red-500">加载失败</p>';
+        }
+    }
+
+    async function saveLangSettings() {
+        const checkboxes = document.querySelectorAll('.lang-checkbox:checked');
+        const supported_langs = Array.from(checkboxes).map(cb => cb.value);
+        const default_lang = document.getElementById('default-lang-select').value;
+        
+        try {
+            await apiCall('PUT', '/api/admin/lang-settings', { supported_langs, default_lang });
+            alert('语言设置已更新');
+        } catch (err) {
+            alert('保存失败: ' + err.message);
+        }
+    }
+
+    // 页面初始化时调用
+    loadLangSettings();
+    </script>
+</body>
+</html>

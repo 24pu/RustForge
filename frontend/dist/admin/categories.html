@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>分类管理 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="common.js"></script>
+    <style>
+        .sortable-container li {
+            cursor: grab;
+            list-style: none;
+            margin: 4px 0;
+            padding: 8px;
+            background-color: #f9fafb;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .sortable-container li:active {
+            cursor: grabbing;
+        }
+        .sortable-container li:hover {
+            background-color: #e5e7eb;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">分类管理</h1>
+            <a href="add-category.html" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">+ 新建分类</a>
+        </div>
+        <div class="bg-white rounded shadow p-4">
+            <div id="category-tree-container">加载中...</div>
+            <div class="mt-4 text-right">
+                <button id="save-order" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">保存排序</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script>
+        let sortableInstances = [];
+
+        (async () => {
+            if (!await requireAuth()) return;
+            await loadTopbar();
+            await loadFooter();
+
+            const perms = await fetchUserPermissions();
+            if (!perms.includes('category:list')) {
+                document.getElementById('category-tree-container').innerHTML = '<div class="text-red-500">您没有权限查看分类。</div>';
+                return;
+            }
+
+            await loadCategoryTree();
+        })();
+
+        async function loadCategoryTree() {
+            const container = document.getElementById('category-tree-container');
+            try {
+                const tree = await apiCall('GET', '/api/admin/categories/tree');
+                if (!tree || !tree.length) {
+                    container.innerHTML = '<div class="text-gray-500">暂无分类，请点击上方按钮创建。</div>';
+                    return;
+                }
+                container.innerHTML = renderTree(tree, 0);
+                initSortable();
+            } catch (err) {
+                container.innerHTML = `<div class="text-red-500">加载失败: ${err.message}</div>`;
+                console.error(err);
+            }
+        }
+
+        function renderTree(categories, level = 0) {
+            let containerClass = level === 0 ? 'sortable-container' : '';
+            let html = `<ul class="${containerClass} list-none">`;
+            for (const cat of categories) {
+                html += `
+                    <li data-id="${cat.id}">
+                        <div class="flex items-center justify-between py-1 px-2">
+                            <div class="flex items-center">
+                                ${'&nbsp;'.repeat(level * 4)}
+                                <span class="font-medium">${escapeHtml(cat.name)}</span>
+                                <span class="text-gray-400 text-sm ml-2">(${escapeHtml(cat.slug)})</span>
+                            </div>
+                            <div>
+                                <a href="add-category.html?id=${cat.id}" class="text-blue-500 hover:underline mr-2">编辑</a>
+                                <button onclick="deleteCategory(${cat.id})" class="text-red-500 hover:underline">删除</button>
+                                <a href="add-category.html?parent_id=${cat.id}" class="text-green-500 hover:underline ml-2">添加子分类</a>
+                            </div>
+                        </div>
+                `;
+                if (cat.children && cat.children.length) {
+                    html += `<div class="ml-6"><ul class="sortable-container" data-parent="${cat.id}">`;
+                    html += renderTree(cat.children, level + 1);
+                    html += `</ul></div>`;
+                }
+                html += `</li>`;
+            }
+            html += '</ul>';
+            return html;
+        }
+
+        function initSortable() {
+            sortableInstances.forEach(s => s.destroy());
+            sortableInstances = [];
+
+            const containers = document.querySelectorAll('.sortable-container');
+            if (!containers.length) {
+                console.warn('没有找到 .sortable-container 元素');
+                return;
+            }
+            containers.forEach(container => {
+                const sortable = new Sortable(container, {
+                    animation: 150,
+                });
+                sortableInstances.push(sortable);
+            });
+            console.log(`初始化了 ${sortableInstances.length} 个 Sortable 实例`);
+        }
+
+        async function saveOrder() {
+            const updates = [];
+            document.querySelectorAll('.sortable-container').forEach(container => {
+                const items = container.querySelectorAll('li');
+                items.forEach((li, idx) => {
+                    const id = li.getAttribute('data-id');
+                    if (id) {
+                        updates.push({ id: parseInt(id), sort: idx });
+                    }
+                });
+            });
+            if (updates.length === 0) {
+                alert('没有可排序的分类');
+                return;
+            }
+            try {
+                await apiCall('POST', '/api/admin/categories/reorder', { items: updates });
+                alert('排序已保存');
+                await loadCategoryTree();
+            } catch (err) {
+                alert('保存失败: ' + err.message);
+            }
+        }
+
+        async function deleteCategory(id) {
+            if (!confirm('确定删除该分类吗？子分类也会一并删除！')) return;
+            try {
+                await apiCall('DELETE', `/api/admin/categories/${id}`);
+                alert('删除成功');
+                loadCategoryTree();
+            } catch (err) {
+                alert('删除失败: ' + err.message);
+            }
+        }
+
+        document.getElementById('save-order').addEventListener('click', saveOrder);
+    </script>
+</body>
+</html>

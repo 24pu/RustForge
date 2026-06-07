@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>插件管理 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="common.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">插件管理</h1>
+            <div class="space-x-2">
+                <button id="scan-btn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">扫描可用插件</button>
+                <button id="install-btn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">+ 安装插件</button>
+            </div>
+        </div>
+
+        <!-- 已安装插件列表 -->
+        <div class="bg-white rounded shadow overflow-hidden mb-6">
+            <table class="min-w-full">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-3 text-left">名称</th>
+                        <th class="p-3 text-left">版本</th>
+                        <th class="p-3 text-left">作者</th>
+                        <th class="p-3 text-left">描述</th>
+                        <th class="p-3 text-left">状态</th>
+                        <th class="p-3 text-left">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="plugins-list">
+                    <tr><td colspan="6" class="p-3 text-center">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 可用插件（扫描结果） -->
+        <div id="available-plugins-section" class="hidden">
+            <h2 class="text-lg font-bold mb-2">未安装的可用插件</h2>
+            <div class="bg-white rounded shadow overflow-hidden">
+                <table class="min-w-full">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="p-3 text-left">名称</th>
+                            <th class="p-3 text-left">版本</th>
+                            <th class="p-3 text-left">作者</th>
+                            <th class="p-3 text-left">描述</th>
+                            <th class="p-3 text-left">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="available-plugins-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 安装模态框（上传 .wasm 文件） -->
+    <div id="install-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg w-96 p-6">
+            <h2 class="text-lg font-bold mb-3">安装插件</h2>
+            <form id="install-form" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="block text-sm font-medium">插件文件 (.wasm)</label>
+                    <input type="file" id="plugin-file" accept=".wasm" required class="border rounded w-full p-2">
+                    <p class="text-xs text-gray-500 mt-1">插件将自动读取元数据（名称、版本、作者、描述）</p>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" id="close-modal" class="bg-gray-300 px-4 py-2 rounded">取消</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">安装</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script>
+        (async () => {
+            if (!await requireAuth()) return;
+            await loadTopbar();
+            await loadFooter();
+
+            const perms = await fetchUserPermissions();
+            if (!perms.includes('plugin:list')) {
+                document.getElementById('plugins-list').innerHTML = '<tr><td colspan="6" class="p-3 text-red-500">您没有权限查看插件</td></tr>';
+                return;
+            }
+
+            await loadPlugins();
+
+            // 扫描可用插件
+            document.getElementById('scan-btn').addEventListener('click', async () => {
+                try {
+                    const available = await apiCall('GET', '/api/admin/plugins/available');
+                    const tbody = document.getElementById('available-plugins-list');
+                    const section = document.getElementById('available-plugins-section');
+                    if (!available.length) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-gray-500">没有发现新插件</td></tr>';
+                    } else {
+                        let html = '';
+                        for (const p of available) {
+                            html += `
+                                <tr class="border-t">
+                                    <td class="p-3">${escapeHtml(p.name)}</td>
+                                    <td class="p-3">${escapeHtml(p.version)}</td>
+                                    <td class="p-3">${escapeHtml(p.author || '')}</td>
+                                    <td class="p-3">${escapeHtml(p.description || '')}</td>
+                                    <td class="p-3">
+                                        <button onclick="installAvailable('${escapeHtml(p.file_path)}')" class="bg-green-600 text-white px-2 py-1 rounded text-sm">安装</button>
+                                    </td>
+                                </tr>
+                            `;
+                        }
+                        tbody.innerHTML = html;
+                    }
+                    section.classList.remove('hidden');
+                } catch (err) {
+                    alert('扫描失败: ' + err.message);
+                }
+            });
+
+            // 上传安装
+            document.getElementById('install-btn').addEventListener('click', () => {
+                document.getElementById('install-modal').classList.remove('hidden');
+            });
+            document.getElementById('close-modal').addEventListener('click', () => {
+                document.getElementById('install-modal').classList.add('hidden');
+                document.getElementById('install-form').reset();
+            });
+
+            document.getElementById('install-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const fileInput = document.getElementById('plugin-file');
+                if (!fileInput.files.length) {
+                    alert('请选择插件文件');
+                    return;
+                }
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                try {
+                    const response = await fetch('/api/admin/plugins', {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
+                    if (!response.ok) throw new Error(await response.text());
+                    alert('安装成功');
+                    document.getElementById('install-modal').classList.add('hidden');
+                    document.getElementById('install-form').reset();
+                    await loadPlugins();
+                } catch (err) {
+                    alert('安装失败: ' + err.message);
+                }
+            });
+        })();
+
+        async function loadPlugins() {
+            try {
+                const plugins = await apiCall('GET', '/api/admin/plugins');
+                const tbody = document.getElementById('plugins-list');
+                if (!plugins.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="p-3 text-center text-gray-500">暂无插件</td></tr>';
+                    return;
+                }
+                let html = '';
+                for (const p of plugins) {
+                    html += `
+                        <tr class="border-t">
+                            <td class="p-3">${escapeHtml(p.name)}</td>
+                            <td class="p-3">${escapeHtml(p.version)}</td>
+                            <td class="p-3">${escapeHtml(p.author || '')}</td>
+                            <td class="p-3">${escapeHtml(p.description || '')}</td>
+                            <td class="p-3">
+                                <button onclick="togglePlugin(${p.id}, ${!p.enabled})" class="px-2 py-1 rounded text-sm ${p.enabled ? 'bg-green-500' : 'bg-gray-500'} text-white">
+                                    ${p.enabled ? '已启用' : '已禁用'}
+                                </button>
+                                <button onclick="openSettings('${escapeHtml(p.name)}')" class="bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded text-sm ml-1">设置</button>
+                            </td>
+                            <td class="p-3">
+                                <button onclick="uninstallPlugin(${p.id})" class="bg-red-500 text-white px-2 py-1 rounded text-sm">卸载</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+                tbody.innerHTML = html;
+            } catch (err) {
+                document.getElementById('plugins-list').innerHTML = `<tr><td colspan="6" class="p-3 text-red-500">加载失败: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function togglePlugin(id, enabled) {
+            try {
+                await apiCall('PUT', `/api/admin/plugins/${id}`, { enabled });
+                await loadPlugins();
+            } catch (err) {
+                alert('操作失败: ' + err.message);
+            }
+        }
+
+        async function uninstallPlugin(id) {
+            if (!confirm('确定卸载该插件吗？')) return;
+            try {
+                await apiCall('DELETE', `/api/admin/plugins/${id}`);
+                await loadPlugins();
+            } catch (err) {
+                alert('卸载失败: ' + err.message);
+            }
+        }
+
+        // 安装扫描到的插件（通过文件路径）
+        async function installAvailable(filePath) {
+            try {
+                await apiCall('POST', '/api/admin/plugins', { file_path: filePath });
+                alert('安装成功');
+                await loadPlugins();
+                // 可选：重新扫描以更新可用列表
+                document.getElementById('scan-btn').click();
+            } catch (err) {
+                alert('安装失败: ' + err.message);
+            }
+        }
+    </script>
+</body>
+</html>
