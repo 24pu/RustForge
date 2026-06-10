@@ -86,6 +86,11 @@
             visibility: visible;
             opacity: 1;
         }
+        .full-bleed {
+            width: 100vw;
+            margin-left: 50%;
+            transform: translateX(-50%);
+        }
     </style>
 </head>
 <body class="bg-white">
@@ -248,14 +253,14 @@
 
     <!-- 主内容区块 -->
   <!-- 主内容区块 (移除 py-8，让 Banner 贴边) -->
-<main class=" px-0">
+<!-- 主内容区块 -->
+<main class="container mx-auto px-4 py-8">
     {% if content %}
         {{ content | safe }}
     {% else %}
         {% block content %}{% endblock %}
     {% endif %}
 </main>
-
     <!-- 页脚 -->
    <footer class="bg-gray-900 text-gray-400 pt-10 pb-6 mt-12">
     <div class="max-w-7xl mx-auto px-4 text-center text-sm">

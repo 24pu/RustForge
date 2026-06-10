@@ -15,7 +15,7 @@ pub struct TeraThemeManager {
 }
 
 impl TeraThemeManager {
-    pub async fn scan_and_load(themes_dir: &str, i18n: Arc<I18n>) -> Result<Self, ThemeError> {
+    pub async fn scan_and_load(themes_dir: &str, i18n: Arc<I18n>, default_theme: &str) -> Result<Self, ThemeError> {
         let mut themes_map = HashMap::new();
         let entries = WalkDir::new(themes_dir)
             .min_depth(1)
@@ -63,7 +63,14 @@ impl TeraThemeManager {
             return Err(ThemeError::ScanError("No valid themes found".into()));
         }
 
-        let active = themes_map.keys().next().unwrap().clone();
+        // 优先使用配置文件中的默认主题，若不存在则回退到第一个主题
+        let active = if themes_map.contains_key(default_theme) {
+            default_theme.to_string()
+        } else {
+            tracing::warn!("Default theme '{}' not found, using first available theme", default_theme);
+            themes_map.keys().next().unwrap().clone()
+        };
+
         Ok(Self {
             themes: RwLock::new(themes_map),
             active: RwLock::new(active),

@@ -90,8 +90,14 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     i18n.reload_with_plugins(supported_langs, default_lang, &pool).await;
 
     // ---- 初始化主题管理器 ----
+  
+
     let theme_manager = Arc::new(tokio::sync::RwLock::new(
-        TeraThemeManager::scan_and_load(&config.theme.themes_dir, i18n.clone()).await?
+        TeraThemeManager::scan_and_load(
+            &config.theme.themes_dir,
+            i18n.clone(),
+            &config.theme.default_theme,   // 读取配置中的默认主题
+        ).await?
     ));
 
     // ---- 创建 state ----
