@@ -16,6 +16,7 @@ pub mod plugin_settings;
 pub mod install;
 pub mod server_status;
 pub mod lang_settings;
+pub mod search;
 
 pub use install::install_handler;
 

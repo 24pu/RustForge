@@ -5,14 +5,27 @@
 
 {% block content %}
 <!-- Hero Banner 区域 -->
-<section class="relative bg-gradient-to-r from-purple-600 via-indigo-500 to-blue-500 text-white">
-    <div class="absolute inset-0 bg-black/10"></div>
-    <div class="relative max-w-7xl mx-auto px-4 py-16 md:py-24 text-center">
-        <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 animate-fade-in">{{ t(key="hero_title", lang=lang) }}</h1>
-        <p class="text-lg md:text-xl text-white/80 max-w-2xl mx-auto mb-8">{{ t(key="hero_subtitle", lang=lang) }}</p>
+<!-- Hero Banner 全屏，无缝衔接导航 -->
+<section class="relative bg-gradient-to-r from-teal-400 via-cyan-300 to-emerald-300 text-dark py-16 md:py-24">
+    <div class="absolute inset-0 bg-black/5"></div>
+    <div class="relative max-w-7xl mx-auto px-4 text-center">
+        {% if t(key="welcome_badge", lang=lang) != "welcome_badge" %}
+        <div class="inline-flex items-center bg-white/30 backdrop-blur-sm rounded-full px-4 py-1.5 mb-6 text-sm font-medium text-dark">
+            <i class="fas fa-pulse mr-2 text-accent"></i> {{ t(key="welcome_badge", lang=lang) }}
+        </div>
+        {% endif %}
+        <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight mb-6">
+            {{ t(key="hero_title", lang=lang) }}
+        </h1>
+        <p class="text-lg md:text-xl text-gray-700 max-w-2xl mx-auto mb-8">
+            {{ t(key="hero_subtitle", lang=lang) }}
+        </p>
         <div class="flex flex-wrap gap-4 justify-center">
-            <a href="/about" class="inline-flex items-center px-6 py-3 rounded-full border-2 border-white text-white font-semibold hover:bg-white/10 transition">
-                {{ t(key="learn_more", lang=lang) }} <i class="fas fa-info-circle ml-2"></i>
+            <a href="#content" class="inline-flex items-center px-6 py-3 rounded-full bg-dark text-white font-semibold shadow-md hover:bg-gray-800 transition">
+                {{ t(key="start_explore", lang=lang) }} <i class="fas fa-arrow-down ml-2"></i>
+            </a>
+            <a href="/about" class="inline-flex items-center px-6 py-3 rounded-full bg-transparent border-2 border-dark text-dark font-semibold hover:bg-gray-100 transition">
+                {{ t(key="learn_more", lang=lang) }} <i class="fas fa-archive ml-2"></i>
             </a>
         </div>
     </div>
@@ -22,22 +35,17 @@
         </svg>
     </div>
 </section>
-
 <!-- 搜索区域 -->
 <section class="relative z-10 px-4 -mt-8 mb-12 md:mb-20">
     <div class="max-w-3xl mx-auto">
         <div class="bg-white rounded-2xl shadow-xl p-2 md:p-3 flex flex-col md:flex-row gap-2 border border-gray-200">
             <div class="flex-1 relative">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                </span>
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
                 <input type="text" id="searchInput" placeholder="搜索内容..." 
-                       class="w-full py-4 pl-12 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-700 placeholder-gray-400 bg-gray-50">
+                       class="w-full py-4 pl-12 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700 placeholder-gray-400 bg-gray-50">
             </div>
-            <button id="searchBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 px-8 rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
-                搜索
+            <button id="searchBtn" class="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-4 px-8 rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
+                <i class="fas fa-search"></i> 搜索
             </button>
         </div>
     </div>
@@ -83,7 +91,7 @@
                         <div class="p-6">
                             <h3 class="text-xl font-semibold mb-2">{{ content.title }}</h3>
                             <p class="text-gray-600 mb-4">{{ content.body|striptags|truncate(length=80) }}</p>
-                            <a href="/content/{{ content.slug }}" class="text-purple-600 hover:underline">{{ t(key="read_more", lang=lang) }}</a>
+                            <a href="/content/{{ content.slug }}" class="text-orange-600 hover:underline">{{ t(key="read_more", lang=lang) }}</a>
                         </div>
                     </div>
                 {% endfor %}
@@ -95,7 +103,7 @@
 </section>
 
 <!-- 数据统计 -->
-<section class="py-16 bg-purple-700 text-white">
+<section class="py-16 bg-orange-700 text-white">
     <div class="container mx-auto px-4">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
             <div>
@@ -123,12 +131,10 @@
     <div class="container mx-auto px-4 text-center">
         <h2 class="text-3xl font-bold text-gray-800 mb-4">{{ t(key="ready_to_start", lang=lang) }}</h2>
         <p class="text-gray-600 mb-8">{{ t(key="contact_us_desc", lang=lang) }}</p>
-        <a href="/contact" class="bg-purple-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-purple-700 transition">{{ t(key="contact_us", lang=lang) }}</a>
+        <a href="/contact" class="bg-orange-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-orange-700 transition">{{ t(key="contact_us", lang=lang) }}</a>
     </div>
 </section>
-
 <script>
-// 搜索事件
 document.getElementById('searchBtn')?.addEventListener('click', () => {
     const keyword = document.getElementById('searchInput')?.value.trim();
     if (keyword) window.location.href = '/search?q=' + encodeURIComponent(keyword);
@@ -138,3 +144,4 @@ document.getElementById('searchInput')?.addEventListener('keypress', (e) => {
 });
 </script>
 {% endblock %}
+

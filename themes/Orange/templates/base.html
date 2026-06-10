@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+    {% block title_prefix %}{{ site_config.seo_title | default(value='RustForge') }}{% endblock %}
+    {% block title_suffix %}{% endblock %}
+    </title>
+
+    <meta name="description" content="{{ site_config.seo_description | default(value='') }}">
+    <meta name="keywords" content="{{ site_config.seo_keywords | default(value='') }}">
+    <link rel="icon" href="{{ site_config.favicon_url | default(value='/uploads/favicon.svg') }}" type="image/svg+xml">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .nav-item {
+            position: relative;
+            padding-bottom: 8px;
+            margin-bottom: -8px;
+        }
+        .nav-item .submenu {
+            display: block;
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 0.5rem 0;
+            border-radius: 0.5rem;
+            transition: visibility 0.15s, opacity 0.15s;
+            z-index: 50;
+            white-space: nowrap;
+        }
+        .nav-item:hover .submenu {
+            visibility: visible;
+            opacity: 1;
+        }
+        .mobile-submenu {
+            padding-left: 1rem;
+        }
+        .user-dropdown {
+            position: relative;
+        }
+        .user-dropdown .dropdown-menu {
+            display: block;
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 0.5rem;
+            padding: 0.5rem 0;
+            min-width: 120px;
+            transition: visibility 0.15s, opacity 0.15s;
+            z-index: 50;
+            white-space: nowrap;
+        }
+        .user-dropdown:hover .dropdown-menu {
+            visibility: visible;
+            opacity: 1;
+        }
+        .lang-dropdown {
+            position: relative;
+        }
+        .lang-dropdown .dropdown-menu {
+            display: block;
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 0.5rem;
+            padding: 0.5rem 0;
+            min-width: 100px;
+            transition: visibility 0.15s, opacity 0.15s;
+            z-index: 50;
+            white-space: nowrap;
+        }
+        .lang-dropdown:hover .dropdown-menu {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-white">
+    <!-- 顶部导航栏 -->
+    <nav class="bg-white shadow-md">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <!-- Logo -->
+            <div class="text-2xl font-bold text-orange-700 shrink-0">
+                <a href="/">
+                    {% if site_config.logo_url %}
+                        <img src="{{ site_config.logo_url }}" alt="RustForge" class="h-10">
+                    {% else %}
+                        <img src="/uploads/logo.svg" alt="RustForge" class="h-10">
+                    {% endif %}
+                </a>
+            </div>
+
+            <!-- 桌面端导航（md以上显示） -->
+            <div class="hidden md:flex items-center space-x-6">
+                <ul class="flex space-x-6">
+                    <li><a href="/" class="hover:text-orange-600">{{ t(key="home", lang=lang) }}</a></li>
+                    {% for cat in nav_categories %}
+                        <li class="relative nav-item">
+                            <a href="/{{ cat.slug }}" class="hover:text-orange-600">{{ cat.name }}</a>
+                            {% if cat.children %}
+                                <ul class="submenu">
+                                    {% for child in cat.children %}
+                                        <li><a href="/{{ child.slug }}" class="block px-4 py-2 hover:bg-gray-100">{{ child.name }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                    <li class="relative nav-item">
+                        <a href="/plugins/docs/index" class="hover:text-orange-600">{{ t(key="development_docs", lang=lang) }}</a>
+                        <ul class="submenu">
+                            <li><a href="/plugins/docs/static/plugin-dev-guide.html" target="_blank" class="block px-4 py-2 hover:bg-gray-100">{{ t(key="plugin_dev_guide", lang=lang) }}</a></li>
+                            <li><a href="/plugins/docs/static/theme-dev-guide.html" target="_blank" class="block px-4 py-2 hover:bg-gray-100">{{ t(key="theme_dev_guide", lang=lang) }}</a></li>
+                            <li><a href="/plugins/docs/static/main-program-dev-guide.html" target="_blank" class="block px-4 py-2 hover:bg-gray-100">{{ t(key="main_program_dev_docs", lang=lang) }}</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 右侧：语言切换 + 用户菜单 -->
+            <div class="hidden md:flex items-center space-x-4 text-sm shrink-0">
+                <!-- 语言切换下拉 -->
+                <div class="lang-dropdown">
+                    <button class="text-gray-600 hover:text-orange-600 py-2">
+                        🌐 {{ lang_options | filter(attribute="code", value=lang) | first | default(value="") | get(key="name", default=lang) }}
+                    </button>
+                    <div class="dropdown-menu">
+                        {% for lang_option in lang_options %}
+                            <a href="#" onclick="switchLang('{{ lang_option.code }}'); return false;" 
+                               class="block px-4 py-2 hover:bg-gray-100 {% if lang == lang_option.code %}font-bold bg-orange-50{% endif %}">
+                                {{ lang_option.name }}
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- 用户菜单 -->
+                {% if user_info and user_info.is_logged_in %}
+                    <div class="user-dropdown">
+                        <button class="flex items-center space-x-1 text-gray-600 hover:text-orange-600 py-2">
+                            <span>👤 {{ user_info.user_name | default(value="用户") }}</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a href="/plugins/user-center/profile" class="block px-4 py-2 hover:bg-gray-100">{{ t(key="user_center", lang=lang) }}</a>
+                            <a href="/admin/" class="block px-4 py-2 hover:bg-gray-100">{{ t(key="admin_panel", lang=lang) }}</a>
+                            <hr class="my-1">
+                            <a href="#" id="logout-link-desktop" class="block px-4 py-2 hover:bg-gray-100 text-red-600">{{ t(key="logout", lang=lang) }}</a>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="flex items-center space-x-3">
+                        <a href="/plugins/user-center/login" class="text-orange-600 hover:underline">{{ t(key="login", lang=lang) }}</a>
+                        <a href="/plugins/user-center/register" class="text-gray-600 hover:underline">{{ t(key="register", lang=lang) }}</a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- 移动端汉堡按钮 -->
+            <button id="menu-toggle" class="md:hidden text-gray-600 focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- 移动端折叠菜单（默认隐藏） -->
+        <div id="mobile-menu" class="md:hidden hidden bg-white border-t">
+            <ul class="flex flex-col px-4 py-2 space-y-2">
+                <li><a href="/" class="block py-1 hover:text-orange-600">{{ t(key="home", lang=lang) }}</a></li>
+                {% for cat in nav_categories %}
+                    <li>
+                        <a href="/{{ cat.slug }}" class="block py-1 hover:text-orange-600">{{ cat.name }}</a>
+                        {% if cat.children %}
+                            <ul class="mobile-submenu">
+                                {% for child in cat.children %}
+                                    <li><a href="/{{ child.slug }}" class="block py-1 text-sm text-gray-600 hover:text-orange-600">{{ child.name }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+                <li class="mt-2">
+                    <span class="block py-1 font-semibold text-gray-700">{{ t(key="development_docs", lang=lang) }}</span>
+                    <ul class="mobile-submenu pl-4">
+                        <li><a href="/plugins/docs/static/plugin-dev-guide.html" target="_blank" class="block py-1 text-sm text-gray-600 hover:text-orange-600">{{ t(key="plugin_dev_guide", lang=lang) }}</a></li>
+                        <li><a href="/plugins/docs/static/theme-dev-guide.html" target="_blank" class="block py-1 text-sm text-gray-600 hover:text-orange-600">{{ t(key="theme_dev_guide", lang=lang) }}</a></li>
+                        <li><a href="/plugins/docs/static/main-program-dev-guide.html" target="_blank" class="block py-1 text-sm text-gray-600 hover:text-orange-600">{{ t(key="main_program_dev_docs", lang=lang) }}</a></li>
+                    </ul>
+                </li>
+            </ul>
+
+            <!-- 移动端用户区域 -->
+            <div class="px-4 py-2 border-t text-sm space-y-2">
+                {% if user_info and user_info.is_logged_in %}
+                    <div class="text-gray-600">👤 {{ user_info.user_name | default(value="用户") }}</div>
+                    <a href="/plugins/user-center/profile" class="block text-orange-600 hover:underline">{{ t(key="user_center", lang=lang) }}</a>
+                    <a href="/admin/" class="block text-orange-600 hover:underline">{{ t(key="admin_panel", lang=lang) }}</a>
+                    <a href="#" id="logout-link-mobile" class="block text-red-600 hover:underline">{{ t(key="logout", lang=lang) }}</a>
+
+                    <!-- 移动端语言切换 -->
+                    <div class="pt-2 border-t mt-2">
+                        <span class="text-gray-500 text-xs">🌐 {{ t(key="switch_lang", lang=lang) }}</span>
+                        <div class="flex space-x-2 mt-1">
+                            {% for lang_option in lang_options %}
+                                <a href="#" onclick="switchLang('{{ lang_option.code }}'); return false;" 
+                                   class="px-2 py-1 rounded text-xs {% if lang == lang_option.code %}bg-orange-100 font-bold{% else %}bg-gray-100{% endif %}">
+                                    {{ lang_option.name }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% else %}
+                    <a href="/plugins/user-center/login" class="block text-orange-600 hover:underline">{{ t(key="login", lang=lang) }}</a>
+                    <a href="/plugins/user-center/register" class="block text-gray-600 hover:underline">{{ t(key="register", lang=lang) }}</a>
+
+                    <!-- 移动端语言切换 -->
+                    <div class="pt-2 border-t mt-2">
+                        <span class="text-gray-500 text-xs">🌐 {{ t(key="switch_lang", lang=lang) }}</span>
+                        <div class="flex space-x-2 mt-1">
+                            {% for lang_option in lang_options %}
+                                <a href="#" onclick="switchLang('{{ lang_option.code }}'); return false;" 
+                                   class="px-2 py-1 rounded text-xs {% if lang == lang_option.code %}bg-orange-100 font-bold{% else %}bg-gray-100{% endif %}">
+                                    {{ lang_option.name }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区块 -->
+  <!-- 主内容区块 (移除 py-8，让 Banner 贴边) -->
+<main class=" px-0">
+    {% if content %}
+        {{ content | safe }}
+    {% else %}
+        {% block content %}{% endblock %}
+    {% endif %}
+</main>
+
+    <!-- 页脚 -->
+   <footer class="bg-gray-900 text-gray-400 pt-10 pb-6 mt-12">
+    <div class="max-w-7xl mx-auto px-4 text-center text-sm">
+        <p>{{ t(key="copyright", lang=lang) | replace(from="{year}", to=now() | date(format="%Y")) }}</p>
+    </div>
+</footer>
+
+    <!-- 汉堡菜单切换脚本 -->
+    <script>
+        const menuToggle = document.getElementById('menu-toggle');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (menuToggle && mobileMenu) {
+            menuToggle.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
+
+        // 语言切换函数
+        function switchLang(lang) {
+            document.cookie = 'lang=' + lang + ';path=/;max-age=31536000';
+            location.reload();
+        }
+    </script>
+
+    <!-- 退出登录脚本（仅登录用户可见） -->
+    {% if user_info and user_info.is_logged_in %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        function handleLogout(e) {
+            e.preventDefault();
+            fetch('/api/logout', { method: 'POST', credentials: 'include' })
+                .finally(() => {
+                    window.location.href = '/';
+                });
+        }
+        const desktopLogout = document.getElementById('logout-link-desktop');
+        if (desktopLogout) desktopLogout.addEventListener('click', handleLogout);
+        const mobileLogout = document.getElementById('logout-link-mobile');
+        if (mobileLogout) mobileLogout.addEventListener('click', handleLogout);
+    });
+    </script>
+    {% endif %}
+</body>
+</html>

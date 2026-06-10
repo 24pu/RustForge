@@ -633,6 +633,44 @@ impl ContentRepository for PostgresContentRepo {
         .await?;
         Ok(row.count.unwrap_or(0))
     }
+    
+    async fn search_published(&self, query: &str, limit: i64, offset: i64) -> Result<(Vec<Content>, i64)> {
+        let like = format!("%{}%", query);
+        let total_row = sqlx::query!(
+            "SELECT COUNT(*) as count FROM contents WHERE published = true AND (title ILIKE $1 OR body ILIKE $1 OR slug ILIKE $1)",
+            like
+        )
+        .fetch_one(&self.pool)
+        .await?;
+        let total = total_row.count.unwrap_or(0);
+
+        let rows = sqlx::query!(
+            r#"SELECT id, slug, title, body, published, cover_image, lang, translation_group, created_at, updated_at
+            FROM contents
+            WHERE published = true AND (title ILIKE $1 OR body ILIKE $1 OR slug ILIKE $1)
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3"#,
+            like, limit, offset
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let items: Vec<Content> = rows.into_iter().map(|r| Content {
+            id: r.id,
+            slug: r.slug,
+            title: r.title,
+            body: r.body,
+            cover_image: r.cover_image,
+            published: r.published,
+            lang: r.lang,
+            translation_group: r.translation_group.unwrap_or_else(Uuid::new_v4),
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+            categories: vec![],
+        }).collect();
+
+        Ok((items, total))
+    }
 }
 
 // 辅助函数：构建分类树

@@ -35,6 +35,7 @@ use crate::presentation::handlers::plugin_settings::{get_plugin_settings, update
 use crate::presentation::handlers::auth::logout_handler;
 use crate::presentation::handlers::plugin_admin::scan_available_plugins_handler;
 use crate::presentation::handlers::server_status::server_status_handler;
+use crate::presentation::search::search_page_handler;
 
 pub struct AppState {
     pub theme_manager: Arc<tokio::sync::RwLock<TeraThemeManager>>,
@@ -170,6 +171,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/", get(home_handler))
+        .route("/search", get(search_page_handler))
         .route("/api/server-status", get(server_status_handler))
         .route("/health", get(health_handler))
         .route("/api/public/plugin/:name/settings", get(get_public_plugin_settings))

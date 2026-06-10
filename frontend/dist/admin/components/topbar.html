@@ -1,10 +1,10 @@
 <nav class="bg-gray-800 text-white shadow-md">
     <div class="container mx-auto px-4">
         <div class="flex justify-between items-center py-3">
-            <!-- 左侧 Logo + 菜单（移动端折叠） -->
+            <!-- 左侧 Logo + 菜单 -->
             <div class="flex items-center space-x-6">
                 <div id="logo-container" class="text-xl font-bold tracking-wide">
-                   <a href="/admin/">
+                    <a href="/admin/">
                         <img src="/uploads/logo-dark.svg" alt="RustForge" class="h-8">
                     </a>
                 </div>
@@ -12,47 +12,64 @@
                 <!-- 桌面端菜单 -->
                 <div class="hidden md:flex space-x-4" id="desktop-menu">
                     <a href="index.html" class="nav-link hover:text-gray-300 transition" data-page="index">📊 仪表盘</a>
-                    <a href="categories.html" id="categories-nav" class="nav-link hover:text-gray-300 transition" style="display: none;" data-page="categories">🏷️ 分类管理</a>
-                    <!-- 下拉菜单：内容管理 -->
+                    
+                    <!-- 下拉菜单：内容与分类 -->
                     <div class="relative group">
-
                         <button class="hover:text-gray-300 transition flex items-center">
-                            📄 内容管理
+                            📄 内容
                             <svg class="ml-1 w-4 h-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                         </button>
-                        <div class="absolute hidden group-hover:block bg-gray-700 text-white rounded shadow-lg mt w-40 z-10">
+                        <div class="absolute hidden group-hover:block bg-gray-700 text-white rounded shadow-lg w-40 z-10">
                             <a href="add-content.html" class="block px-4 py-2 hover:bg-gray-600">➕ 添加内容</a>
                             <a href="contents.html" class="block px-4 py-2 hover:bg-gray-600">📋 内容管理</a>
+                            <a href="categories.html" id="categories-nav" class="block px-4 py-2 hover:bg-gray-600" style="display: none;">🏷️ 分类管理</a>
                         </div>
                     </div>
+
                     <a href="media.html" id="media-nav" class="nav-link hover:text-gray-300 transition" style="display: none;" data-page="media">🖼️ 媒体库</a>
-                    <a href="users.html" id="users-nav" class="nav-link hover:text-gray-300 transition" style="display: none;" data-page="users">👥 用户管理</a>
-                    <a href="roles.html" id="roles-nav" class="nav-link hover:text-gray-300 transition" style="display: none;" data-page="roles">🔑 角色管理</a>
+                    
+                    <!-- 下拉菜单：用户与权限 -->
+                    <div class="relative group">
+                        <button class="hover:text-gray-300 transition flex items-center">
+                            👥 用户与权限
+                            <svg class="ml-1 w-4 h-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </button>
+                        <div class="absolute hidden group-hover:block bg-gray-700 text-white rounded shadow-lg w-40 z-10">
+                            <a href="users.html" id="users-nav" class="block px-4 py-2 hover:bg-gray-600" style="display: none;">👤 用户管理</a>
+                            <a href="roles.html" id="roles-nav" class="block px-4 py-2 hover:bg-gray-600" style="display: none;">🔑 角色管理</a>
+                        </div>
+                    </div>
+
                     <a href="themes.html" id="themes-nav" class="nav-link hover:text-gray-300 transition" style="display: none;" data-page="themes">🎨 主题管理</a>
                     <a href="plugins.html" id="plugins-nav" class="nav-link hover:text-gray-300 transition" style="display: none;" data-page="plugins">🔌 插件管理</a>
                     <a href="settings.html" id="settings-nav" class="nav-link hover:text-gray-300 transition" style="display: none;" data-page="settings">⚙️ 系统设置</a>
                 </div>
             </div>
-            <!-- 右侧链接 + 移动端汉堡菜单按钮 -->
+
+            <!-- 右侧链接 + 移动端汉堡按钮 -->
             <div class="flex space-x-4 items-center">
                 <a href="/" class="hover:text-gray-300 transition hidden md:inline-block">🏠 网站主页</a>
                 <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm">退出登录</button>
-                <!-- 汉堡菜单按钮（仅移动端显示） -->
                 <button id="menu-toggle" class="block md:hidden text-white focus:outline-none">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
             </div>
         </div>
+
         <!-- 移动端折叠菜单 -->
         <div id="mobile-menu" class="hidden md:hidden py-4 space-y-2">
             <a href="index.html" class="block px-2 py-1 hover:bg-gray-700 rounded">📊 仪表盘</a>
-                        <a href="categories.html" id="categories-nav-mobile" class="block px-2 py-1 hover:bg-gray-700 rounded" style="display: none;">🏷️ 分类管理</a>
+            <div class="px-2 py-1 font-semibold text-gray-400 text-sm">内容</div>
             <a href="add-content.html" class="block px-2 py-1 hover:bg-gray-700 rounded">➕ 添加内容</a>
             <a href="contents.html" class="block px-2 py-1 hover:bg-gray-700 rounded">📋 内容管理</a>
-            <a href="users.html" id="users-nav-mobile" class="block px-2 py-1 hover:bg-gray-700 rounded" style="display: none;">👥 用户管理</a>
+            <a href="categories.html" id="categories-nav-mobile" class="block px-2 py-1 hover:bg-gray-700 rounded" style="display: none;">🏷️ 分类管理</a>
+            <a href="media.html" id="media-nav-mobile" class="block px-2 py-1 hover:bg-gray-700 rounded" style="display: none;">🖼️ 媒体库</a>
+            <div class="px-2 py-1 font-semibold text-gray-400 text-sm">用户与权限</div>
+            <a href="users.html" id="users-nav-mobile" class="block px-2 py-1 hover:bg-gray-700 rounded" style="display: none;">👤 用户管理</a>
             <a href="roles.html" id="roles-nav-mobile" class="block px-2 py-1 hover:bg-gray-700 rounded" style="display: none;">🔑 角色管理</a>
+            <div class="px-2 py-1 font-semibold text-gray-400 text-sm">其他</div>
             <a href="themes.html" id="themes-nav-mobile" class="block px-2 py-1 hover:bg-gray-700 rounded" style="display: none;">🎨 主题管理</a>
-           <a href="plugins.html" id="plugins-nav-mobile" class="block px-2 py-1 hover:bg-gray-700 rounded" style="display: none;">🔌 插件管理</a>
+            <a href="plugins.html" id="plugins-nav-mobile" class="block px-2 py-1 hover:bg-gray-700 rounded" style="display: none;">🔌 插件管理</a>
             <a href="settings.html" id="settings-nav-mobile" class="block px-2 py-1 hover:bg-gray-700 rounded" style="display: none;">⚙️ 系统设置</a>
             <a href="/" class="block px-2 py-1 hover:bg-gray-700 rounded">🏠 网站主页</a>
         </div>

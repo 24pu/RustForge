@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title_prefix %}{{ site_config.seo_title | default(value='RustForge') }}{% endblock %}
+{% block title_suffix %} - 搜索{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-2 text-purple-700">搜索结果</h1>
+    <div id="search-query-display" class="text-gray-500 mb-6"></div>
+
+    <div id="search-results" class="space-y-6">
+        <!-- 动态渲染 -->
+    </div>
+
+    <div id="pagination" class="flex justify-center mt-8 space-x-2"></div>
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const query = urlParams.get('q') || '';
+    document.getElementById('search-query-display').innerText = query ? `关键词：“${query}”` : '请输入搜索关键词';
+
+    if (!query) {
+        document.getElementById('search-results').innerHTML = '<p class="text-gray-500">请输入搜索内容</p>';
+    } else {
+        fetchSearchResults(query, 1);
+    }
+
+    async function fetchSearchResults(keyword, page = 1) {
+        const perPage = 10;
+        const url = `/api/contents?keyword=${encodeURIComponent(keyword)}&page=${page}&per_page=${perPage}`;
+        try {
+            const resp = await fetch(url, { credentials: 'include' });
+            if (!resp.ok) throw new Error('搜索失败');
+            const data = await resp.json();
+            const items = data.items || [];
+            const totalPages = data.total_pages || 1;
+            const container = document.getElementById('search-results');
+            if (items.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">没有找到相关内容</p>';
+            } else {
+                let html = '';
+                items.forEach(item => {
+                    html += `
+                        <div class="bg-white rounded-lg shadow p-6 hover:shadow-md transition">
+                            <h2 class="text-xl font-semibold mb-2">
+                                <a href="/content/${item.slug}" class="text-gray-900 hover:text-purple-600">${escapeHtml(item.title)}</a>
+                            </h2>
+                            <p class="text-sm text-gray-500 mb-3">${item.created_at ? item.created_at.substring(0,10) : ''}</p>
+                            <p class="text-gray-700 line-clamp-3">${escapeHtml(item.body || '').substring(0, 200)}</p>
+                            <a href="/content/${item.slug}" class="text-purple-600 text-sm font-medium mt-2 inline-flex items-center gap-1">
+                                阅读全文 &rarr;
+                            </a>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            }
+            renderPagination(page, totalPages, keyword);
+        } catch (e) {
+            document.getElementById('search-results').innerHTML = '<p class="text-red-500">搜索失败，请重试</p>';
+            console.error(e);
+        }
+    }
+
+    function renderPagination(current, total, keyword) {
+        const pag = document.getElementById('pagination');
+        if (total <= 1) { pag.innerHTML = ''; return; }
+        let html = '';
+        for (let i = 1; i <= total; i++) {
+            if (i === current) {
+                html += `<span class="px-3 py-1 bg-purple-600 text-white rounded">${i}</span>`;
+            } else {
+                html += `<a href="?q=${encodeURIComponent(keyword)}&page=${i}" class="px-3 py-1 bg-white border rounded hover:bg-gray-100">${i}</a>`;
+            }
+        }
+        pag.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+    }
+</script>
+{% endblock %}
