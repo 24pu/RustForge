@@ -83,6 +83,7 @@ pub struct ListContentsParams {
     pub per_page: Option<usize>,
     pub category_id: Option<i32>,
     pub keyword: Option<String>,
+    pub lang: Option<String>,   // 新增
 }
 
 #[derive(Deserialize)]

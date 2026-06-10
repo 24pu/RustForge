@@ -139,7 +139,7 @@ pub trait ContentRepository: Send + Sync {
     async fn get_content_translations(&self, translation_group: Uuid, exclude_lang: &str) -> Result<Vec<Content>>;
     async fn list_by_category_slug_and_lang(&self, slug: &str, lang: &str, limit: i64, offset: i64) -> Result<Vec<Content>>;
     async fn count_by_category_slug_and_lang(&self, slug: &str, lang: &str) -> Result<i64>;
-    async fn search_published(&self, query: &str, limit: i64, offset: i64) -> Result<(Vec<Content>, i64)>;
+    async fn search_published(&self, query: &str, lang: &str, limit: i64, offset: i64) -> Result<(Vec<Content>, i64)>;
 
 }
 #[async_trait]

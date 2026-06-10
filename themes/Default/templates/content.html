@@ -4,107 +4,100 @@
 {% block title_suffix %} - {{ post.title }}{% endblock %}
 
 {% block content %}
-<div class="flex flex-col md:flex-row gap-6">
-    <div class="flex-1">
-        <!-- 面包屑导航 -->
-        <nav class="text-sm text-gray-500 mb-4" aria-label="Breadcrumb">
-            <ol class="flex flex-wrap items-center space-x-2">
-                <li><a href="/" class="hover:text-purple-600">首页</a></li>
-                {% if post.categories %}
-                    {% for cat in post.categories %}
-                        <li class="flex items-center space-x-2">
-                            <span>/</span>
-                            <a href="/{{ cat.slug }}" class="hover:text-purple-600">{{ cat.name }}</a>
-                        </li>
-                    {% endfor %}
-                {% endif %}
-                <li class="flex items-center space-x-2">
-                    <span>/</span>
-                    <span class="text-gray-700 font-medium truncate max-w-xs">{{ post.title }}</span>
-                </li>
-            </ol>
-        </nav>
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="flex flex-col md:flex-row gap-6">
+        <div class="flex-1 min-w-0">
+            <nav class="text-sm text-gray-500 mb-4" aria-label="Breadcrumb">
+                <ol class="flex flex-wrap items-center space-x-2">
+                    <li><a href="/" class="hover:text-purple-600">{{ t(key="home", lang=lang) }}</a></li>
+                    {% if post.categories %}
+                        {% for cat in post.categories %}
+                            <li class="flex items-center space-x-2">
+                                <span>/</span>
+                                <a href="/{{ cat.slug }}" class="hover:text-purple-600">{{ cat.name }}</a>
+                            </li>
+                        {% endfor %}
+                    {% endif %}
+                    <li class="flex items-center space-x-2">
+                        <span>/</span>
+                        <span class="text-gray-700 font-medium truncate max-w-xs">{{ post.title }}</span>
+                    </li>
+                </ol>
+            </nav>
 
-        <!-- 文章内容卡片 -->
-        <article class="bg-white rounded-lg shadow-lg p-6 md:p-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4 leading-tight">{{ post.title }}</h1>
-            <div class="flex flex-wrap items-center text-gray-500 text-sm mb-6 pb-6 border-b border-gray-200">
-                <span class="mr-4">📅 {{ post.created_at|date(format="%Y-%m-%d") }}</span>
-                {% if post.categories %}
-                <span class="mr-4">
-                    📂 
-                    {% for cat in post.categories %}
-                        <a href="/{{ cat.slug }}" class="text-purple-600 hover:underline">{{ cat.name }}</a>{% if not loop.last %}, {% endif %}
-                    {% endfor %}
-                </span>
-                {% endif %}
-                {% if post.published %}
-                    <span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">已发布</span>
-                {% endif %}
-            </div>
-
-            <div class="prose max-w-none">
-                {{ body_html|safe }}
-            </div>
-
-            <!-- 相关文章 -->
-            {% if related and related | length > 0 %}
-            <div class="mt-10 pt-8 border-t border-gray-200">
-                <h3 class="text-xl font-bold text-gray-900 mb-4">相关文章</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {% for rel in related %}
-                        <a href="/content/{{ rel.slug }}" class="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition">
-                            {% if rel.cover_image %}
-                                <img src="{{ rel.cover_image }}" alt="{{ rel.title }}" class="w-16 h-16 object-cover rounded">
-                            {% else %}
-                                <div class="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-gray-400">无图</div>
-                            {% endif %}
-                            <div class="flex-1 min-w-0">
-                                <h4 class="font-medium text-gray-900 hover:text-purple-600 truncate">{{ rel.title }}</h4>
-                                <p class="text-xs text-gray-500 mt-1">{{ rel.created_at|date(format="%Y-%m-%d") }}</p>
-                            </div>
-                        </a>
-                    {% endfor %}
+            <article class="bg-white rounded-lg shadow-lg p-6 md:p-8">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4 leading-tight">{{ post.title }}</h1>
+                <div class="flex flex-wrap items-center text-gray-500 text-sm mb-6 pb-6 border-b border-gray-200">
+                    <span class="mr-4">📅 {{ post.created_at|date(format="%Y-%m-%d") }}</span>
+                    {% if post.categories %}
+                    <span class="mr-4">
+                        📂 
+                        {% for cat in post.categories %}
+                            <a href="/{{ cat.slug }}" class="text-purple-600 hover:underline">{{ cat.name }}</a>{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    </span>
+                    {% endif %}
+                    {% if post.published %}
+                        <span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">{{ t(key="published", lang=lang) }}</span>
+                    {% endif %}
                 </div>
-            </div>
-            {% endif %}
-        </article>
-    </div>
 
-    <!-- 右侧友情链接侧边栏 -->
-    <div id="friendlinks-sidebar" class="w-full md:w-64 shrink-0">
-        <!-- 动态加载 -->
+                <div class="prose max-w-none">
+                    {{ body_html|safe }}
+                </div>
+
+                {% if related and related | length > 0 %}
+                <div class="mt-10 pt-8 border-t border-gray-200">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">{{ t(key="related_articles", lang=lang) }}</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {% for rel in related %}
+                            <a href="/content/{{ rel.slug }}" class="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition">
+                                {% if rel.cover_image %}
+                                    <img src="{{ rel.cover_image }}" alt="{{ rel.title }}" class="w-16 h-16 object-cover rounded">
+                                {% else %}
+                                    <div class="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-gray-400">{{ t(key="no_image", lang=lang) }}</div>
+                                {% endif %}
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-medium text-gray-900 hover:text-purple-600 truncate">{{ rel.title }}</h4>
+                                    <p class="text-xs text-gray-500 mt-1">{{ rel.created_at|date(format="%Y-%m-%d") }}</p>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </article>
+        </div>
+
+        <div class="w-full md:w-64 shrink-0">
+            <div id="friendlinks-sidebar" class="space-y-6"></div>
+        </div>
     </div>
 </div>
 
-<!-- 友情链接加载脚本 -->
 <script>
 (function() {
     const sidebar = document.getElementById('friendlinks-sidebar');
     if (!sidebar) return;
-
     fetch('/api/public/plugin/friendlinks/settings')
         .then(res => res.json())
         .then(data => {
             const links = data.links || [];
-            let html = `
-                <div class="bg-white rounded-lg shadow p-4">
-                    <h3 class="text-lg font-semibold mb-3 text-gray-700">友情链接</h3>
-            `;
+            let html = `<div class="bg-white rounded-lg shadow p-4"><h3 class="text-lg font-semibold mb-3 text-gray-700">{{ t(key="friend_links", lang=lang) }}</h3>`;
             if (links.length > 0) {
                 html += '<div class="space-y-2 text-sm">';
                 links.forEach(link => {
-                    html += `<a href="${link.url}" target="_blank" rel="noopener" class="block text-blue-600 hover:underline truncate">${link.name}</a>`;
+                    html += `<a href="${link.url}" target="_blank" rel="noopener" class="block text-purple-600 hover:underline truncate">${link.name}</a>`;
                 });
                 html += '</div>';
             } else {
-                html += '<p class="text-gray-400 text-sm">暂无链接</p>';
+                html += '<p class="text-gray-400 text-sm">{{ t(key="no_links", lang=lang) }}</p>';
             }
             html += '</div>';
             sidebar.innerHTML = html;
         })
         .catch(() => {
-            sidebar.innerHTML = '<div class="bg-white rounded-lg shadow p-4"><p class="text-gray-400 text-sm">加载失败</p></div>';
+            sidebar.innerHTML = '<div class="bg-white rounded-lg shadow p-4"><p class="text-gray-400 text-sm">{{ t(key="load_failed", lang=lang) }}</p></div>';
         });
 })();
 </script>

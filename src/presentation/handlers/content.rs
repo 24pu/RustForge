@@ -213,10 +213,10 @@ pub async fn list_published_contents_handler(
     let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
     let offset = (page - 1) * per_page;
     let keyword = params.keyword.as_deref();
+    let lang = params.lang.as_deref().unwrap_or("zh");
 
     if let Some(kw) = keyword {
-        // 关键词搜索
-        match state.content_repo.search_published(kw, per_page as i64, offset as i64).await {
+        match state.content_repo.search_published(kw, lang, per_page as i64, offset as i64).await {
             Ok((items, total)) => {
                 let total_pages = (total + per_page as i64 - 1) / per_page as i64;
                 let resp = json!({
@@ -230,7 +230,7 @@ pub async fn list_published_contents_handler(
             Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Search failed"}))).into_response(),
         }
     } else {
-        // 无关键词，返回最新已发布内容
+        // 无关键词时返回最新内容（也可以按语言过滤，但当前保持原样）
         match state.content_repo.list_published(per_page as i64).await {
             Ok(contents) => (StatusCode::OK, Json(contents)).into_response(),
             Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to fetch contents"}))).into_response(),

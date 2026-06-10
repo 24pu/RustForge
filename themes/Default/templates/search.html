@@ -3,11 +3,11 @@
 {% block title_suffix %} - 搜索{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-2 text-purple-700">搜索结果</h1>
+<div class="max-w-4xl mx-auto px-4">
+    <h1 class="text-3xl font-bold mb-2">搜索结果</h1>
     <div id="search-query-display" class="text-gray-500 mb-6"></div>
 
-    <div id="search-results" class="space-y-6">
+    <div id="search-results" class="divide-y divide-dashed divide-gray-300">
         <!-- 动态渲染 -->
     </div>
 
@@ -15,6 +15,8 @@
 </div>
 
 <script>
+    const currentLang = '{{ lang | default(value="zh") }}';
+    
     const urlParams = new URLSearchParams(window.location.search);
     const query = urlParams.get('q') || '';
     document.getElementById('search-query-display').innerText = query ? `关键词：“${query}”` : '请输入搜索关键词';
@@ -27,7 +29,7 @@
 
     async function fetchSearchResults(keyword, page = 1) {
         const perPage = 10;
-        const url = `/api/contents?keyword=${encodeURIComponent(keyword)}&page=${page}&per_page=${perPage}`;
+        const url = `/api/contents?keyword=${encodeURIComponent(keyword)}&page=${page}&per_page=${perPage}&lang=${currentLang}`;
         try {
             const resp = await fetch(url, { credentials: 'include' });
             if (!resp.ok) throw new Error('搜索失败');
@@ -41,15 +43,11 @@
                 let html = '';
                 items.forEach(item => {
                     html += `
-                        <div class="bg-white rounded-lg shadow p-6 hover:shadow-md transition">
-                            <h2 class="text-xl font-semibold mb-2">
+                        <div class="flex justify-between items-center py-3">
+                            <h2 class="text-lg truncate mr-4">
                                 <a href="/content/${item.slug}" class="text-gray-900 hover:text-purple-600">${escapeHtml(item.title)}</a>
                             </h2>
-                            <p class="text-sm text-gray-500 mb-3">${item.created_at ? item.created_at.substring(0,10) : ''}</p>
-                            <p class="text-gray-700 line-clamp-3">${escapeHtml(item.body || '').substring(0, 200)}</p>
-                            <a href="/content/${item.slug}" class="text-purple-600 text-sm font-medium mt-2 inline-flex items-center gap-1">
-                                阅读全文 &rarr;
-                            </a>
+                            <span class="text-sm text-gray-500 flex-shrink-0">${item.created_at ? item.created_at.substring(0,10) : ''}</span>
                         </div>
                     `;
                 });

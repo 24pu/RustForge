@@ -40,7 +40,6 @@
         .mobile-submenu {
             padding-left: 1rem;
         }
-        /* 用户下拉菜单 */
         .user-dropdown {
             position: relative;
         }
@@ -64,7 +63,6 @@
             visibility: visible;
             opacity: 1;
         }
-        /* 语言下拉菜单 */
         .lang-dropdown {
             position: relative;
         }
@@ -88,9 +86,14 @@
             visibility: visible;
             opacity: 1;
         }
+        .full-bleed {
+            width: 100vw;
+            margin-left: 50%;
+            transform: translateX(-50%);
+        }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-white">
     <!-- 顶部导航栏 -->
     <nav class="bg-white shadow-md">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center">
@@ -137,7 +140,7 @@
                 <!-- 语言切换下拉 -->
                 <div class="lang-dropdown">
                     <button class="text-gray-600 hover:text-purple-600 py-2">
-                        🌐 {{ lang_options | filter(attribute="code", value=lang) | first | default(value="") | get(key="name", default=lang) }}
+                        🌐 {{ lang }}
                     </button>
                     <div class="dropdown-menu">
                         {% for lang_option in lang_options %}
@@ -258,8 +261,10 @@
     </main>
 
     <!-- 页脚 -->
-    <footer class="bg-gray-800 text-white text-center py-4 mt-8">
-        <p>{{ t(key="copyright", lang=lang) | replace(from="{year}", to=now() | date(format="%Y")) }}</p>
+    <footer class="bg-gray-900 text-gray-400 pt-10 pb-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-sm">
+            <p>{{ t(key="copyright", lang=lang) | replace(from="{year}", to=now() | date(format="%Y")) }}</p>
+        </div>
     </footer>
 
     <!-- 汉堡菜单切换脚本 -->
