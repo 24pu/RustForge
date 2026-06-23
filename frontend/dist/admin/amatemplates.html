@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMA模版管理 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1001;
+        }
+        .toast {
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">
+                <i class="fas fa-file-alt mr-2 text-blue-600"></i>AMA模版管理
+            </h1>
+            <div class="flex space-x-2">
+                <button id="defaultTemplateBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                    <i class="fas fa-download mr-2"></i>默认模版
+                </button>
+                <button id="createBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                    <i class="fas fa-plus mr-2"></i>新建模版
+                </button>
+            </div>
+        </div>
+
+        <!-- 模版列表 -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">模版名称</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">启用状态</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="templates-list" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>加载中...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建/编辑模版模态框 -->
+    <div id="templateModal" class="modal">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="modalTitle" class="text-lg font-semibold">新建模版</h3>
+                    <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <input type="hidden" id="templateId">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">模版名称</label>
+                    <input type="text" id="templateName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">模版内容</label>
+                    <textarea id="templateValue" rows="10" class="w-full px-3 py-2 border border-gray-300 rounded-md font-mono focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                <div class="mb-4 flex items-center">
+                    <input type="checkbox" id="templateIsUsed" class="mr-2 w-4 h-4 text-blue-600">
+                    <label class="text-sm text-gray-700">启用</label>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button id="cancelModalBtn" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">取消</button>
+                    <button id="saveModalBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载动画 -->
+    <div id="loading" class="loading">
+        <div class="bg-white rounded-lg p-6 shadow-xl">
+            <i class="fas fa-spinner fa-spin text-3xl text-blue-600"></i>
+            <p class="mt-2 text-gray-600">处理中...</p>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script src="/admin/common.js"></script>
+    <script>
+        let currentUserId = null;
+
+        // 加载模版列表
+        async function loadTemplates() {
+            showLoading(true);
+            try {
+                const templates = await apiCall('GET', '/api/admin/amatemplates');
+                renderTemplates(templates);
+            } catch (err) {
+                console.error('加载模版失败:', err);
+                showNotification('加载模版失败: ' + err.message, 'error');
+                document.getElementById('templates-list').innerHTML = `
+                    <tr><td colspan="4" class="px-6 py-8 text-center text-red-500">加载失败，请重试</td></tr>
+                `;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 渲染模版列表
+        function renderTemplates(templates) {
+            const tbody = document.getElementById('templates-list');
+            if (!templates || templates.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">暂无数据</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = templates.map(t => `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4">${escapeHtml(t.name)}</td>
+                    <td class="px-6 py-4">
+                        ${t.is_used 
+                            ? '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800"><i class="fas fa-check-circle mr-1"></i>启用</span>' 
+                            : '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-500"><i class="fas fa-ban mr-1"></i>禁用</span>'}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${formatDate(t.created_at)}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex space-x-2">
+                            <button onclick="editTemplate(${t.id})" class="text-blue-600 hover:text-blue-800" title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteTemplate(${t.id})" class="text-red-600 hover:text-red-800" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // 加载默认模版内容
+        async function loadDefaultTemplateContent() {
+            try {
+                const response = await fetch('/config/default_amatemplate.json');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                if (data && data.DEFAULT_T) {
+                    return data.DEFAULT_T;
+                } else {
+                    throw new Error('配置文件格式不正确（缺少 DEFAULT_T 字段）');
+                }
+            } catch (err) {
+                console.error('加载默认模版失败:', err);
+                showNotification('加载默认模版失败: ' + err.message, 'error');
+                return null;
+            }
+        }
+
+        // 使用默认模版填充新建表单
+        async function fillWithDefaultTemplate() {
+            const defaultContent = await loadDefaultTemplateContent();
+            if (!defaultContent) return;
+
+            // 生成带时间戳的默认名称
+            const now = new Date();
+            const timestamp = `${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}${now.getSeconds().toString().padStart(2,'0')}`;
+            document.getElementById('templateId').value = '';
+            document.getElementById('templateName').value = `默认模版_${timestamp}`;
+            document.getElementById('templateValue').value = defaultContent;
+            document.getElementById('templateIsUsed').checked = false;
+            document.getElementById('modalTitle').innerText = '新建模版 (基于默认)';
+            document.getElementById('templateModal').classList.add('show');
+        }
+
+        // 编辑模版
+        async function editTemplate(id) {
+            try {
+                const tmpl = await apiCall('GET', `/api/admin/amatemplates/${id}`);
+                document.getElementById('templateId').value = tmpl.id;
+                document.getElementById('templateName').value = tmpl.name;
+                document.getElementById('templateValue').value = tmpl.value;
+                document.getElementById('templateIsUsed').checked = tmpl.is_used;
+                document.getElementById('modalTitle').innerText = '编辑模版';
+                document.getElementById('templateModal').classList.add('show');
+            } catch (err) {
+                showNotification('加载模版失败: ' + err.message, 'error');
+            }
+        }
+
+        // 删除模版
+        async function deleteTemplate(id) {
+            if (!confirm('确定要删除该模版吗？此操作不可恢复。')) return;
+            showLoading(true);
+            try {
+                await apiCall('DELETE', `/api/admin/amatemplates/${id}`);
+                showNotification('模版删除成功', 'success');
+                await loadTemplates();
+            } catch (err) {
+                showNotification('删除失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 保存模版（新建或更新）
+        async function saveTemplate() {
+            const id = document.getElementById('templateId').value;
+            const name = document.getElementById('templateName').value.trim();
+            const value = document.getElementById('templateValue').value;
+            const is_used = document.getElementById('templateIsUsed').checked;
+
+            if (!name) {
+                showNotification('请输入模版名称', 'error');
+                return;
+            }
+            if (!value) {
+                showNotification('请输入模版内容', 'error');
+                return;
+            }
+
+            const payload = { name, value, is_used };
+            showLoading(true);
+            try {
+                if (id) {
+                    await apiCall('PUT', `/api/admin/amatemplates/${id}`, payload);
+                    showNotification('模版更新成功', 'success');
+                } else {
+                    await apiCall('POST', '/api/admin/amatemplates', payload);
+                    showNotification('模版创建成功', 'success');
+                }
+                closeModal();
+                await loadTemplates();
+            } catch (err) {
+                showNotification('保存失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 关闭模态框
+        function closeModal() {
+            document.getElementById('templateModal').classList.remove('show');
+            document.getElementById('templateId').value = '';
+            document.getElementById('templateName').value = '';
+            document.getElementById('templateValue').value = '';
+            document.getElementById('templateIsUsed').checked = false;
+        }
+
+        // 打开新建模版（空表单）
+        function openCreateModal() {
+            document.getElementById('templateId').value = '';
+            document.getElementById('templateName').value = '';
+            document.getElementById('templateValue').value = '';
+            document.getElementById('templateIsUsed').checked = false;
+            document.getElementById('modalTitle').innerText = '新建模版';
+            document.getElementById('templateModal').classList.add('show');
+        }
+
+        // 辅助函数
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            try {
+                const date = new Date(dateStr);
+                return date.toLocaleString('zh-CN');
+            } catch {
+                return dateStr;
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `toast fixed top-20 right-4 px-4 py-2 rounded shadow-lg z-50 ${type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
+            notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i>${message}`;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // 事件绑定
+        document.getElementById('createBtn').addEventListener('click', openCreateModal);
+        document.getElementById('defaultTemplateBtn').addEventListener('click', fillWithDefaultTemplate);
+        document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+        document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
+        document.getElementById('saveModalBtn').addEventListener('click', saveTemplate);
+        // 点击模态框背景关闭
+        document.getElementById('templateModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('templateModal')) closeModal();
+        });
+
+        // 初始化
+        requireAuth().then(async () => {
+            await loadTopbar();
+            await loadFooter();
+            await loadTemplates();
+        }).catch(() => {
+            // 未认证，自动跳转登录
+        });
+    </script>
+</body>
+</html>

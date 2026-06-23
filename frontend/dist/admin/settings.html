@@ -2,78 +2,424 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>系统设置 - 管理后台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="common.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .tab-active {
+            border-bottom-color: #3b82f6;
+            color: #3b82f6;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .mind-map-node {
+            transition: all 0.3s ease;
+        }
+        .mind-map-node:active {
+            transform: scale(0.98);
+        }
+        /* 移动端滚动优化 */
+        .overflow-x-auto {
+            -webkit-overflow-scrolling: touch;
+        }
+        /* 触摸优化 */
+        button, .tab-btn, .mind-map-node {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* 手机版隐藏导图 */
+        @media (max-width: 768px) {
+            .mind-map-sidebar {
+                display: none;
+            }
+            .mobile-mind-map-toggle {
+                display: block;
+            }
+            .form-field {
+                max-width: 100%;
+            }
+        }
+        /* 桌面端表单字段宽度控制 */
+        @media (min-width: 769px) {
+            .form-field {
+                max-width: 500px;
+            }
+            .mobile-mind-map-toggle {
+                display: none;
+            }
+        }
+        .mobile-mind-map-toggle {
+            display: none;
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <div id="topbar-container"></div>
 
-    <div class="container mx-auto p-6">
-        <div class="bg-white p-6 rounded shadow max-w-2xl mx-auto">
-            <h1 class="text-2xl font-bold mb-4">系统设置</h1>
-            <form id="settings-form">
-                <div class="bg-white rounded-lg shadow p-4 mb-6">
-                <h2 class="text-lg font-bold mb-3">语言设置</h2>
-                <div id="lang-settings-content">加载中...</div>
+    <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <!-- 左右分栏布局 - 左边设置占2/3，右边导图占1/3 -->
+            <div class="flex flex-col md:flex-row">
+                <!-- 左侧：系统设置区域 - 约占2/3 -->
+                <div class="w-full md:w-2/3 border-r border-gray-200">
+                    <!-- 顶部标题栏（左侧） -->
+                    <div class="p-4 sm:p-6 border-b border-gray-200">
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-800">系统设置</h1>
+                    </div>
+                    
+                    <!-- 选项卡导航 -->
+                    <div class="border-b border-gray-200 px-4 sm:px-6 overflow-x-auto whitespace-nowrap">
+                        <nav class="flex space-x-4 sm:space-x-8">
+                            <button class="tab-btn py-2 sm:py-3 px-1 border-b-2 border-transparent font-medium text-sm sm:text-base text-gray-600 hover:text-gray-900 transition flex-shrink-0" data-tab="basic">
+                                <i class="fas fa-cog mr-1 sm:mr-2"></i>基础设置
+                            </button>
+                            <button class="tab-btn py-2 sm:py-3 px-1 border-b-2 border-transparent font-medium text-sm sm:text-base text-gray-600 hover:text-gray-900 transition flex-shrink-0" data-tab="language">
+                                <i class="fas fa-language mr-1 sm:mr-2"></i>语言设置
+                            </button>
+                            <button class="tab-btn py-2 sm:py-3 px-1 border-b-2 border-transparent font-medium text-sm sm:text-base text-gray-600 hover:text-gray-900 transition flex-shrink-0" data-tab="media">
+                                <i class="fas fa-image mr-1 sm:mr-2"></i>媒体设置
+                            </button>
+                            <button class="tab-btn py-2 sm:py-3 px-1 border-b-2 border-transparent font-medium text-sm sm:text-base text-gray-600 hover:text-gray-900 transition flex-shrink-0" data-tab="product">
+                                <i class="fas fa-box mr-1 sm:mr-2"></i>产品设置
+                            </button>
+                        </nav>
+                    </div>
+
+                    <!-- 移动端：显示/隐藏导图按钮 -->
+                    <div class="mobile-mind-map-toggle p-3 bg-gray-50 border-b border-gray-200">
+                        <button id="toggle-mindmap-btn" class="w-full py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+                            <i class="fas fa-project-diagram"></i>
+                            查看系统架构图
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                    </div>
+
+                    <!-- 表单内容 -->
+                    <div class="p-4 sm:p-6">
+                        <form id="settings-form">
+                            <!-- 基础设置 -->
+                            <div id="tab-basic" class="tab-content">
+                                <div class="space-y-4">
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">站点名称</label>
+                                        <input type="text" id="site_name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">站点地址</label>
+                                        <input type="text" id="site_url" placeholder="https://yourdomain.com" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                        <p class="text-xs text-gray-500 mt-1">用于导出图片等资源的完整URL，末尾不要加斜杠</p>
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">主题颜色</label>
+                                        <select id="theme_color" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="blue">蓝色</option>
+                                            <option value="green">绿色</option>
+                                            <option value="purple">紫色</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">每页默认显示条数</label>
+                                        <input type="number" id="default_per_page" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" step="1" min="1">
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">SEO 标题</label>
+                                        <input type="text" id="seo_title" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">SEO 描述</label>
+                                        <textarea id="seo_description" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">SEO 关键词</label>
+                                        <input type="text" id="seo_keywords" placeholder="关键词1,关键词2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Logo URL</label>
+                                        <input type="text" id="logo_url" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="/uploads/logo.png">
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Favicon URL</label>
+                                        <input type="text" id="favicon_url" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="/uploads/favicon.ico">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 语言设置 -->
+                            <div id="tab-language" class="tab-content">
+                                <div id="lang-settings-content" class="space-y-4">加载中...</div>
+                            </div>
+
+                            <!-- 媒体设置 -->
+                            <div id="tab-media" class="tab-content">
+                                <div class="space-y-4">
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">允许上传的文件类型（逗号分隔）</label>
+                                        <input type="text" id="allowed_file_types" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="jpg,png,pdf">
+                                        <p class="text-xs text-gray-500 mt-1">例如: jpg,jpeg,png,gif,webp,mp4,mp3,pdf</p>
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">单个文件最大大小 (MB)</label>
+                                        <input type="number" id="max_file_size_mb" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" step="1" min="1">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 产品设置 -->
+                            <div id="tab-product" class="tab-content">
+                                <div class="space-y-4">
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">允许的产品图片类型</label>
+                                        <input type="text" id="product_allowed_image_types" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="jpg,jpeg,png,gif,webp">
+                                        <p class="text-xs text-gray-500 mt-1">支持的类型，用逗号分隔（不区分大小写）</p>
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">产品图片最大大小 (MB)</label>
+                                        <input type="number" id="product_max_image_size_mb" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" step="1" min="1" value="5">
+                                        <p class="text-xs text-gray-500 mt-1">单张产品图片的最大大小（整数，单位 MB）</p>
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">产品图片最大数量</label>
+                                        <input type="number" id="product_max_images_count" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" step="1" min="1" value="20">
+                                        <p class="text-xs text-gray-500 mt-1">每个产品最多可上传的图片数量</p>
+                                    </div>
+                                     <!-- 新增：尺码单位设置 -->
+                                    <div class="form-field">
+                                        <label class="flex items-center cursor-pointer">
+                                            <input type="checkbox" id="product_size_inch" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                            <span class="ml-2 text-sm font-medium text-gray-700">尺码使用英寸</span>
+                                        </label>
+                                        <p class="text-xs text-gray-500 mt-1">开启后尺码表显示英寸单位，关闭显示厘米单位</p>
+                                    </div>
+                                    <div class="form-field">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">是否自动生成缩略图</label>
+                                        <select id="product_auto_thumbnail" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="true">是</option>
+                                            <option value="false">否</option>
+                                        </select>
+                                        <p class="text-xs text-gray-500 mt-1">自动为产品图片生成缩略图</p>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3 form-field">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">缩略图宽度</label>
+                                            <input type="number" id="product_thumbnail_width" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" step="1" min="1" value="200">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">缩略图高度</label>
+                                            <input type="number" id="product_thumbnail_height" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" step="1" min="1" value="200">
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-gray-500">缩略图的像素尺寸（宽 x 高）</p>
+                                </div>
+                            </div>
+
+                            <div class="mt-8 pt-6 border-t border-gray-200">
+                                <button type="submit" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition">
+                                    <i class="fas fa-save mr-2"></i>保存所有设置
+                                </button>
+                            </div>
+                        </form>
+                        <div id="error-msg" class="text-red-500 mt-4 hidden"></div>
+                    </div>
+                </div>
+
+                <!-- 右侧：系统架构导图 - 约占1/3 -->
+                <div id="mindmap-sidebar" class="w-full md:w-1/3 bg-gradient-to-b from-blue-50 to-indigo-50">
+                    <div class="p-4 sm:p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                                <i class="fas fa-project-diagram text-blue-600 mr-2"></i>系统架构
+                            </h3>
+                            <button id="close-mindmap-btn" class="md:hidden text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-5">
+                            <!-- 核心层 -->
+                            <div class="text-center">
+                                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg p-3 shadow-md">
+                                    <i class="fas fa-crown text-xl mr-2"></i>
+                                    <span class="font-bold text-sm sm:text-base">RustForge Core</span>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">核心引擎</div>
+                            </div>
+
+                            <!-- 连接线 -->
+                            <div class="relative flex justify-center">
+                                <div class="w-px h-6 bg-gray-300"></div>
+                            </div>
+
+                            <!-- 中间层 - 三列 -->
+                            <div class="grid grid-cols-3 gap-1 sm:gap-2 text-center">
+                                <div class="bg-white rounded-lg p-1.5 sm:p-2 shadow-sm border border-gray-200 mind-map-node">
+                                    <i class="fas fa-database text-green-600 text-base sm:text-lg"></i>
+                                    <div class="text-xs font-medium mt-1">数据层</div>
+                                    <div class="text-xs text-gray-500 hidden sm:block">PostgreSQL</div>
+                                </div>
+                                <div class="bg-white rounded-lg p-1.5 sm:p-2 shadow-sm border border-gray-200 mind-map-node">
+                                    <i class="fas fa-code text-purple-600 text-base sm:text-lg"></i>
+                                    <div class="text-xs font-medium mt-1">API层</div>
+                                    <div class="text-xs text-gray-500 hidden sm:block">RESTful API</div>
+                                </div>
+                                <div class="bg-white rounded-lg p-1.5 sm:p-2 shadow-sm border border-gray-200 mind-map-node">
+                                    <i class="fas fa-palette text-pink-600 text-base sm:text-lg"></i>
+                                    <div class="text-xs font-medium mt-1">主题层</div>
+                                    <div class="text-xs text-gray-500 hidden sm:block">Tera模板</div>
+                                </div>
+                            </div>
+
+                            <!-- 连接线 -->
+                            <div class="relative flex justify-center">
+                                <div class="w-px h-6 bg-gray-300"></div>
+                            </div>
+
+                            <!-- 功能模块 -->
+                            <div class="space-y-1.5">
+                                <div class="bg-white rounded-lg p-2 shadow-sm border-l-4 border-blue-500 mind-map-node">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-users w-5 sm:w-6 text-blue-500 text-sm sm:text-base"></i>
+                                        <span class="text-xs sm:text-sm font-medium ml-2">用户管理</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 pl-6 sm:pl-7">角色/权限/认证</div>
+                                </div>
+                                <div class="bg-white rounded-lg p-2 shadow-sm border-l-4 border-green-500 mind-map-node">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-newspaper w-5 sm:w-6 text-green-500 text-sm sm:text-base"></i>
+                                        <span class="text-xs sm:text-sm font-medium ml-2">内容管理</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 pl-6 sm:pl-7">文章/分类/SEO</div>
+                                </div>
+                                <div class="bg-white rounded-lg p-2 shadow-sm border-l-4 border-purple-500 mind-map-node">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-box w-5 sm:w-6 text-purple-500 text-sm sm:text-base"></i>
+                                        <span class="text-xs sm:text-sm font-medium ml-2">产品管理</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 pl-6 sm:pl-7">产品/分类/变体</div>
+                                </div>
+                                <div class="bg-white rounded-lg p-2 shadow-sm border-l-4 border-orange-500 mind-map-node">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-image w-5 sm:w-6 text-orange-500 text-sm sm:text-base"></i>
+                                        <span class="text-xs sm:text-sm font-medium ml-2">媒体管理</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 pl-6 sm:pl-7">图片/上传/缩略图</div>
+                                </div>
+                                <div class="bg-white rounded-lg p-2 shadow-sm border-l-4 border-teal-500 mind-map-node">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-puzzle-piece w-5 sm:w-6 text-teal-500 text-sm sm:text-base"></i>
+                                        <span class="text-xs sm:text-sm font-medium ml-2">插件系统</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500 pl-6 sm:pl-7">扩展/钩子/设置</div>
+                                </div>
+                            </div>
+
+                            <!-- 连接线 -->
+                            <div class="relative flex justify-center">
+                                <div class="w-px h-6 bg-gray-300"></div>
+                            </div>
+
+                            <!-- 前端层 -->
+                            <div class="grid grid-cols-2 gap-2 text-center">
+                                <div class="bg-gray-100 rounded-lg p-2 mind-map-node">
+                                    <i class="fas fa-tv text-gray-600"></i>
+                                    <div class="text-xs mt-1">前台展示</div>
+                                </div>
+                                <div class="bg-gray-100 rounded-lg p-2 mind-map-node">
+                                    <i class="fas fa-laptop text-gray-600"></i>
+                                    <div class="text-xs mt-1">管理后台</div>
+                                </div>
+                            </div>
+
+                            <!-- 底部装饰 -->
+                            <div class="text-center pt-3">
+                                <div class="inline-flex flex-wrap items-center justify-center gap-2 text-xs text-gray-400">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <span>基于 Rust 构建</span>
+                                    <i class="fas fa-bolt"></i>
+                                    <span>高性能·安全</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 font-bold mb-2">站点名称</label>
-                    <input type="text" id="site_name" class="border rounded w-full p-2">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 font-bold mb-2">SEO 标题</label>
-                    <input type="text" id="seo_title" class="border rounded w-full p-2">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 font-bold mb-2">SEO 描述</label>
-                    <textarea id="seo_description" rows="2" class="border rounded w-full p-2"></textarea>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 font-bold mb-2">SEO 关键词</label>
-                    <input type="text" id="seo_keywords" placeholder="关键词1,关键词2" class="border rounded w-full p-2">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 font-bold mb-2">Logo URL</label>
-                    <input type="text" id="logo_url" class="border rounded w-full p-2" placeholder="/upload/logo.png">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 font-bold mb-2">Favicon URL</label>
-                    <input type="text" id="favicon_url" class="border rounded w-full p-2" placeholder="/upload/favicon.ico">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 font-bold mb-2">每页默认显示条数</label>
-                    <input type="number" id="default_per_page" class="border rounded w-full p-2">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 font-bold mb-2">主题颜色</label>
-                    <select id="theme_color" class="border rounded w-full p-2">
-                        <option value="blue">蓝色</option>
-                        <option value="green">绿色</option>
-                        <option value="purple">紫色</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 font-bold mb-2">允许上传的文件类型（逗号分隔）</label>
-                    <input type="text" id="allowed_file_types" class="border rounded w-full p-2" placeholder="jpg,png,pdf">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 font-bold mb-2">单个文件最大大小 (MB)</label>
-                    <input type="number" id="max_file_size_mb" class="border rounded w-full p-2" step="1" min="1">
-                </div>
-                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">保存设置</button>
-            </form>
-            <div id="error-msg" class="text-red-500 mt-4 hidden"></div>
         </div>
     </div>
 
     <div id="footer-container"></div>
 
     <script>
+        let canEdit = false;
+
+        function initTabs() {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const contents = document.querySelectorAll('.tab-content');
+            
+            document.getElementById('tab-basic').classList.add('active');
+            document.querySelector('.tab-btn[data-tab="basic"]').classList.add('tab-active', 'border-blue-500', 'text-blue-600');
+            
+            tabs.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tabId = btn.dataset.tab;
+                    
+                    tabs.forEach(b => {
+                        b.classList.remove('tab-active', 'border-blue-500', 'text-blue-600');
+                    });
+                    contents.forEach(c => c.classList.remove('active'));
+                    
+                    btn.classList.add('tab-active', 'border-blue-500', 'text-blue-600');
+                    document.getElementById(`tab-${tabId}`).classList.add('active');
+                });
+            });
+        }
+
+        // 移动端导图折叠功能
+        function initMobileMindmap() {
+            const sidebar = document.getElementById('mindmap-sidebar');
+            const toggleBtn = document.getElementById('toggle-mindmap-btn');
+            const closeBtn = document.getElementById('close-mindmap-btn');
+            
+            if (toggleBtn && sidebar) {
+                toggleBtn.addEventListener('click', () => {
+                    sidebar.style.display = 'block';
+                    toggleBtn.style.display = 'none';
+                });
+            }
+            
+            if (closeBtn && sidebar) {
+                closeBtn.addEventListener('click', () => {
+                    sidebar.style.display = 'none';
+                    if (toggleBtn) toggleBtn.style.display = 'block';
+                });
+            }
+            
+            // 检查屏幕宽度
+            function checkWidth() {
+                if (window.innerWidth >= 768) {
+                    if (sidebar) sidebar.style.display = 'block';
+                    if (toggleBtn) toggleBtn.style.display = 'none';
+                } else {
+                    if (sidebar) sidebar.style.display = 'none';
+                    if (toggleBtn) toggleBtn.style.display = 'block';
+                }
+            }
+            
+            checkWidth();
+            window.addEventListener('resize', checkWidth);
+        }
+
         (async () => {
             if (!await requireAuth()) return;
             await loadTopbar();
             await loadFooter();
+            
+            initTabs();
+            initMobileMindmap();
 
             const perms = await fetchUserPermissions();
             if (!perms.includes('config:view')) {
@@ -83,7 +429,7 @@
                 return;
             }
 
-            const canEdit = perms.includes('config:edit');
+            canEdit = perms.includes('config:edit');
             if (!canEdit) {
                 document.querySelectorAll('#settings-form input, #settings-form select, #settings-form button[type="submit"]').forEach(el => {
                     el.disabled = true;
@@ -95,6 +441,7 @@
             }
 
             await loadSettings();
+            await loadLangSettings();
 
             document.getElementById('settings-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -102,6 +449,20 @@
                     alert('您没有权限修改设置');
                     return;
                 }
+                
+                const productMaxImages = parseInt(document.getElementById('product_max_images_count').value);
+                const productMaxSize = parseInt(document.getElementById('product_max_image_size_mb').value);
+                // 产品设置 - 尺码使用英寸
+                const product_size_inch = document.getElementById('product_size_inch').checked;
+                if (productMaxImages < 1 || productMaxImages > 100) {
+                    alert('产品图片数量必须在 1-100 之间');
+                    return;
+                }
+                if (isNaN(productMaxSize) || productMaxSize < 1 || productMaxSize > 50) {
+                    alert('产品图片大小必须是整数，范围 1-50 MB');
+                    return;
+                }
+                
                 const site_name = document.getElementById('site_name').value.trim();
                 const default_per_page = parseInt(document.getElementById('default_per_page').value);
                 const theme_color = document.getElementById('theme_color').value;
@@ -112,19 +473,45 @@
                 const favicon_url = document.getElementById('favicon_url').value;
                 const allowed_file_types = document.getElementById('allowed_file_types').value;
                 const max_file_size_mb = parseInt(document.getElementById('max_file_size_mb').value);
+                const site_url = document.getElementById('site_url').value.trim();
+                // 在请求体中加入 site_url
+                const product_allowed_image_types = document.getElementById('product_allowed_image_types').value;
+                const product_max_image_size_mb = parseInt(document.getElementById('product_max_image_size_mb').value);
+                const product_max_images_count = parseInt(document.getElementById('product_max_images_count').value);
+                const product_auto_thumbnail = document.getElementById('product_auto_thumbnail').value === 'true';
+                const product_thumbnail_width = parseInt(document.getElementById('product_thumbnail_width').value);
+                const product_thumbnail_height = parseInt(document.getElementById('product_thumbnail_height').value);
+                
                 if (!site_name || isNaN(default_per_page) || isNaN(max_file_size_mb)) {
                     alert('请正确填写所有字段');
                     return;
                 }
+                
                 try {
                     await apiCall('PUT', '/api/admin/config', {
                         site_name, default_per_page, theme_color,
                         seo_title, seo_description, seo_keywords,
                         logo_url, favicon_url,
-                        allowed_file_types, max_file_size_mb
+                        allowed_file_types, max_file_size_mb,
+                        product_allowed_image_types,
+                        product_max_image_size_mb,
+                        product_max_images_count,
+                        site_url,
+                        product_size_inch: product_size_inch,  // 添加这一行
+                        product_auto_thumbnail,
+                        product_thumbnail_width,
+                        product_thumbnail_height
                     });
                     alert('设置保存成功');
-                    // 可选：重新加载页面
+                    localStorage.setItem('product_settings', JSON.stringify({
+                        allowed_image_types: product_allowed_image_types,
+                        max_image_size_mb: product_max_image_size_mb,
+                        max_images_count: product_max_images_count,
+                        size_inch: product_size_inch,
+                        auto_thumbnail: product_auto_thumbnail,
+                        thumbnail_width: product_thumbnail_width,
+                        thumbnail_height: product_thumbnail_height
+                    }));
                 } catch (err) {
                     alert('保存失败: ' + err.message);
                 }
@@ -132,55 +519,66 @@
         })();
 
         async function loadSettings() {
-                try {
-                    const config = await apiCall('GET', '/api/admin/config');
-                    document.getElementById('site_name').value = config.site_name || '';
-                    document.getElementById('default_per_page').value = config.default_per_page || 20;
-                    document.getElementById('theme_color').value = config.theme_color || 'blue';
-                    document.getElementById('seo_title').value = config.seo_title || '';
-                    document.getElementById('seo_description').value = config.seo_description || '';
-                    document.getElementById('seo_keywords').value = config.seo_keywords || '';
-                    document.getElementById('logo_url').value = config.logo_url || '';
-                    document.getElementById('favicon_url').value = config.favicon_url || '';
-                    document.getElementById('allowed_file_types').value = config.allowed_file_types || 'jpg,jpeg,png,gif,mp4,mp3,pdf,doc,docx,xls,xlsx';
-                    document.getElementById('max_file_size_mb').value = config.max_file_size_mb || 10;
-                } catch (err) {
-                    console.error(err);
-                    document.getElementById('error-msg').innerText = '加载配置失败: ' + err.message;
-                    document.getElementById('error-msg').classList.remove('hidden');
-                }
+            try {
+                const config = await apiCall('GET', '/api/admin/config');
+                document.getElementById('site_name').value = config.site_name || '';
+                document.getElementById('default_per_page').value = config.default_per_page || 20;
+                document.getElementById('theme_color').value = config.theme_color || 'blue';
+                document.getElementById('seo_title').value = config.seo_title || '';
+                document.getElementById('seo_description').value = config.seo_description || '';
+                document.getElementById('seo_keywords').value = config.seo_keywords || '';
+                document.getElementById('logo_url').value = config.logo_url || '';
+                document.getElementById('favicon_url').value = config.favicon_url || '';
+                document.getElementById('allowed_file_types').value = config.allowed_file_types || 'jpg,jpeg,png,gif,webp,mp4,mp3,pdf,doc,docx,xls,xlsx';
+                document.getElementById('max_file_size_mb').value = config.max_file_size_mb || 10;
+                document.getElementById('site_url').value = config.site_url || '';
+
+                // 产品设置 - 尺码使用英寸
+                document.getElementById('product_size_inch').checked = config.product_size_inch === 'true' || config.product_size_inch === true;
+                document.getElementById('product_allowed_image_types').value = config.product_allowed_image_types || 'jpg,jpeg,png,gif,webp';
+                document.getElementById('product_max_image_size_mb').value = config.product_max_image_size_mb || 5;
+                document.getElementById('product_max_images_count').value = config.product_max_images_count || 20;
+                document.getElementById('product_auto_thumbnail').value = config.product_auto_thumbnail ? 'true' : 'false';
+                document.getElementById('product_thumbnail_width').value = config.product_thumbnail_width || 200;
+                document.getElementById('product_thumbnail_height').value = config.product_thumbnail_height || 200;
+            } catch (err) {
+                console.error(err);
+                document.getElementById('error-msg').innerText = '加载配置失败: ' + err.message;
+                document.getElementById('error-msg').classList.remove('hidden');
             }
-            async function loadLangSettings() {
-        try {
-            const data = await apiCall('GET', '/api/admin/lang-settings');
-            const { available_langs, supported_langs, default_lang } = data;
-            
-            let html = `
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">可用语言包</label>
-                    <div class="text-sm text-gray-600 mb-2">
-                        扫描自 locales/ 目录，支持的语言包：
-                        ${available_langs.map(l => `<span class="bg-gray-200 px-2 py-1 rounded mr-1">${l.name} (${l.code})</span>`).join('')}
+        }
+
+ async function loadLangSettings() {
+    try {
+        const data = await apiCall('GET', '/api/admin/lang-settings');
+        const { available_langs, supported_langs, default_lang } = data;
+        
+        let html = `
+            <div class="space-y-4">
+                <div class="form-field">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">可用语言包</label>
+                    <div class="text-sm text-gray-600 flex flex-wrap gap-1">
+                        ${available_langs.map(l => `<span class="inline-block bg-gray-100 px-2 py-1 rounded">${l.name} (${l.code})</span>`).join('')}
                     </div>
                 </div>
                 
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">启用的语言</label>
-                    <div id="supported-langs-checkboxes">
+                <div class="form-field">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">启用的语言</label>
+                    <div class="flex flex-wrap gap-3">
                         ${available_langs.map(l => `
-                            <label class="inline-flex items-center mr-4">
+                            <label class="inline-flex items-center">
                                 <input type="checkbox" value="${l.code}" 
                                     ${supported_langs.includes(l.code) ? 'checked' : ''} 
-                                    class="lang-checkbox">
-                                <span class="ml-1">${l.name} (${l.code})</span>
+                                    class="lang-checkbox w-4 h-4 text-blue-600">
+                                <span class="ml-2">${l.name} (${l.code})</span>
                             </label>
                         `).join('')}
                     </div>
                 </div>
                 
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">默认语言</label>
-                    <select id="default-lang-select" class="border rounded p-2">
+                <div class="form-field">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">默认语言</label>
+                    <select id="default-lang-select" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                         ${available_langs.map(l => `
                             <option value="${l.code}" ${default_lang === l.code ? 'selected' : ''}>
                                 ${l.name} (${l.code})
@@ -189,29 +587,36 @@
                     </select>
                 </div>
                 
-                <button onclick="saveLangSettings()" class="bg-blue-600 text-white px-4 py-2 rounded">保存</button>
-            `;
-            document.getElementById('lang-settings-content').innerHTML = html;
-        } catch (err) {
-            document.getElementById('lang-settings-content').innerHTML = '<p class="text-red-500">加载失败</p>';
-        }
+                <div class="form-field">
+                    <button onclick="saveLangSettings()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition">
+                        <i class="fas fa-save mr-2"></i>保存语言设置
+                    </button>
+                </div>
+            </div>
+        `;
+        document.getElementById('lang-settings-content').innerHTML = html;
+    } catch (err) {
+        document.getElementById('lang-settings-content').innerHTML = '<p class="text-red-500">加载失败</p>';
     }
+}
 
-    async function saveLangSettings() {
-        const checkboxes = document.querySelectorAll('.lang-checkbox:checked');
-        const supported_langs = Array.from(checkboxes).map(cb => cb.value);
-        const default_lang = document.getElementById('default-lang-select').value;
-        
-        try {
-            await apiCall('PUT', '/api/admin/lang-settings', { supported_langs, default_lang });
-            alert('语言设置已更新');
-        } catch (err) {
-            alert('保存失败: ' + err.message);
+        async function saveLangSettings() {
+            if (!canEdit) {
+                alert('您没有权限修改设置');
+                return;
+            }
+            const checkboxes = document.querySelectorAll('.lang-checkbox:checked');
+            const supported_langs = Array.from(checkboxes).map(cb => cb.value);
+            const default_lang = document.getElementById('default-lang-select').value;
+            
+            try {
+                await apiCall('PUT', '/api/admin/lang-settings', { supported_langs, default_lang });
+                alert('语言设置已更新');
+                await loadLangSettings();
+            } catch (err) {
+                alert('保存失败: ' + err.message);
+            }
         }
-    }
-
-    // 页面初始化时调用
-    loadLangSettings();
     </script>
 </body>
 </html>

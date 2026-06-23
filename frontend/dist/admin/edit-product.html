@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑产品 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 样式不变，省略 */
+        .loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .category-checkbox { width: 16px; height: 16px; cursor: pointer; }
+        .category-label { cursor: pointer; user-select: none; }
+        .categories-container { max-height: 200px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 0.375rem; padding: 0.5rem; }
+        .category-item { padding: 0.25rem 0; }
+        .category-item:hover { background-color: #f9fafb; }
+        .progress-bar { transition: width 0.3s ease; }
+        .upload-progress-container { background: #f3f4f6; border-radius: 0.5rem; overflow: hidden; }
+        .toast { animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+    
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <!-- 头部 -->
+                <div class="border-b px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-xl font-semibold">编辑产品</h2>
+                            <p class="text-sm text-gray-500 mt-1">修改产品信息</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <span id="product-status" class="px-3 py-1 text-sm rounded-full"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 加载状态 -->
+                <div id="loading-state" class="p-12 text-center">
+                    <i class="fas fa-spinner fa-spin text-3xl text-blue-600 mb-3"></i>
+                    <p class="text-gray-500">加载产品信息...</p>
+                </div>
+
+                <!-- 编辑表单 -->
+                <form id="product-form" class="p-6" style="display: none;">
+                    <div class="space-y-4">
+                        <!-- 基础信息 -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">产品名称 *</label>
+                                <input type="text" id="name" name="name" required
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">英文名称</label>
+                                <input type="text" id="dname" name="dname"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">完整名称</label>
+                                <input type="text" id="fullname" name="fullname"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">品牌</label>
+                                <input type="text" id="brand" name="brand"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Slug (URL标识) *</label>
+                            <input type="text" id="slug" name="slug" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">示例: my-awesome-product</p>
+                        </div>
+
+                        <!-- ===== 新增 SKU 字段 ===== -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">产品SKU</label>
+                            <input type="text" id="sku" name="sku" placeholder="例如: SKU001"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">库存单位，用于唯一标识产品</p>
+                        </div>
+
+                        <!-- 多选分类 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">分类（可多选）</label>
+                            <div id="categories-container" class="categories-container">
+                                <div class="text-center text-gray-400 py-4">加载分类中...</div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">可勾选多个分类</p>
+                        </div>
+
+                        <!-- 价格与库存 -->
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">价格</label>
+                                <input type="text" id="price" name="price" placeholder="¥199.00"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">库存</label>
+                                <input type="text" id="stock" name="stock" placeholder="100"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">重量</label>
+                                <input type="text" id="weight" name="weight" placeholder="0.5kg"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+
+                        <!-- 尺寸信息 -->
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">中国尺码</label>
+                                <input type="text" id="csize" name="csize" placeholder="S,M,L,XL"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">美国尺码</label>
+                                <input type="text" id="ussize" name="ussize" placeholder="S,M,L,XL"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">亚洲尺码</label>
+                                <input type="text" id="asize" name="asize" placeholder="S,M,L,XL"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">面料类型</label>
+                            <input type="text" id="fabric_type" name="fabric_type" placeholder="棉, 涤纶, 混纺"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+
+                        <!-- 包装信息 -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">包装</label>
+                                <input type="text" id="package" name="package" placeholder="袋装, 盒装"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">封面图片URL</label>
+                                <input type="text" id="cover_image" name="cover_image" placeholder="/uploads/xxx.jpg"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+
+                        <!-- 产品描述 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">简短摘要</label>
+                            <textarea id="summary" name="summary" rows="2" placeholder="产品简短介绍"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">详细描述</label>
+                            <textarea id="description" name="description" rows="4" placeholder="产品详细描述"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">关键词</label>
+                            <input type="text" id="keywords" name="keywords" placeholder="关键词1,关键词2,关键词3"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">卖点</label>
+                            <textarea id="points" name="points" rows="3" placeholder="每行一个卖点"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">注意事项</label>
+                            <textarea id="dnote" name="dnote" rows="3" placeholder="使用注意事项"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                        </div>
+
+                        <!-- SEO 设置 -->
+                        <details class="mt-4">
+                            <summary class="cursor-pointer text-sm font-medium text-gray-700">SEO 设置</summary>
+                            <div class="mt-3 space-y-3">
+                                <input type="text" id="seo_title" placeholder="SEO标题"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                <textarea id="seo_description" rows="2" placeholder="SEO描述"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                            </div>
+                        </details>
+
+                        <!-- 发布状态 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">产品状态</label>
+                            <select id="published" name="published" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                <option value="false">草稿</option>
+                                <option value="true">发布</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 产品图片管理区域 -->
+                    <div class="mt-8 pt-6 border-t border-gray-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">产品图片</h3>
+                            <button type="button" id="upload-images-btn" 
+                                    class="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">
+                                <i class="fas fa-upload mr-1"></i>上传图片
+                            </button>
+                        </div>
+                        
+                        <div id="images-container" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="text-center text-gray-400 py-8 col-span-full" id="no-images">
+                                <i class="fas fa-images text-4xl mb-2"></i>
+                                <p>暂无产品图片，点击上传按钮添加图片</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-between">
+                        <button type="button" onclick="window.location.href='products.html'" 
+                                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                            取消
+                        </button>
+                        <div class="flex space-x-3">
+                            <button type="button" id="delete-btn"
+                                    class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                                删除
+                            </button>
+                            <button type="submit" id="save-btn"
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                保存修改
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 上传图片模态框（内容保持不变） -->
+    <div id="upload-modal" class="modal">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">上传产品图片</h3>
+                    <button type="button" id="close-modal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center" id="upload-dropzone">
+                    <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+                    <p class="text-gray-600">拖拽图片到这里或点击上传</p>
+                    <p class="text-sm text-gray-500 mt-1" id="upload-hint">加载设置中...</p>
+                    <input type="file" id="upload-file-input" multiple accept="image/*" class="hidden">
+                    <button type="button" id="select-files-btn" class="mt-3 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">选择图片</button>
+                </div>
+                <div id="progress-container" class="mt-4 hidden">
+                    <div class="flex justify-between text-sm text-gray-600 mb-1"><span>上传进度</span><span id="progress-percent">0%</span></div>
+                    <div class="upload-progress-container"><div id="progress-bar" class="progress-bar bg-blue-600 h-2 rounded-full" style="width: 0%"></div></div>
+                    <p id="upload-status" class="text-sm text-gray-500 mt-2">准备上传...</p>
+                </div>
+                <div id="upload-preview" class="mt-4 grid grid-cols-3 gap-2 max-h-60 overflow-y-auto hidden"></div>
+                <div class="mt-4 flex justify-end">
+                    <button type="button" id="start-upload" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 hidden">开始上传</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading"><div class="bg-white rounded-lg p-6 shadow-xl"><i class="fas fa-spinner fa-spin text-3xl text-blue-600"></i><p class="mt-2 text-gray-600">处理中...</p></div></div>
+    <div id="delete-modal" class="modal"><div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"><div class="p-6"><div class="flex items-center justify-center mb-4"><div class="bg-red-100 rounded-full p-3"><i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i></div></div><h3 class="text-lg font-semibold text-center mb-2">确认删除</h3><p class="text-gray-600 text-center mb-6">确定要删除产品 "<span id="delete-product-name"></span>" 吗？此操作不可恢复。</p><div class="flex justify-center space-x-3"><button id="cancel-delete" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">取消</button><button id="confirm-delete" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">确认删除</button></div></div></div></div>
+
+    <div id="footer-container"></div>
+
+    <script src="/admin/common.js"></script>
+    <script>
+        let productId = null;
+        let selectedFiles = [];
+        let productImages = [];
+        let coverMode = 'auto';
+        let manualCoverIndex = 0;
+        
+        // 产品设置
+        let productSettings = {
+            allowed_image_types: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+            max_image_size_mb: 5,
+            max_images_count: 20
+        };
+
+        // 从文件名提取颜色代码
+        function extractColorCodeFromFilename(filename) {
+            if (!filename) return '';
+            var nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
+            if (nameWithoutExt === filename) nameWithoutExt = filename;
+            var parts = nameWithoutExt.split('_');
+            var code = parts[0];
+            var alphaPart = '';
+            for (var i = 0; i < code.length; i++) {
+                var c = code[i];
+                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+                    alphaPart += c;
+                }
+            }
+            var result = alphaPart.toUpperCase() || code.toUpperCase();
+            if (result.length > 4) result = result.substring(0, 4);
+            return result;
+        }
+
+        // 获取颜色名称
+        function getColorNameFromCode(code) {
+            var colorMap = {
+                'BL': 'Black', 'BK': 'Black', 'BE': 'Blue', 'RD': 'Red',
+                'WH': 'White', 'GR': 'Green', 'YE': 'Yellow', 'OR': 'Orange',
+                'PI': 'Pink', 'PR': 'Purple', 'GY': 'Grey', 'BR': 'Brown',
+                'GD': 'Gold', 'SL': 'Silver', 'KH': 'Khaki', 'BG': 'Beige'
+            };
+            return colorMap[code] || code;
+        }
+
+        // 加载产品设置
+        async function loadProductSettings() {
+            try {
+                const cached = localStorage.getItem('product_settings');
+                if (cached) {
+                    const settings = JSON.parse(cached);
+                    productSettings.allowed_image_types = settings.allowed_image_types ? settings.allowed_image_types.split(',') : productSettings.allowed_image_types;
+                    productSettings.max_image_size_mb = settings.max_image_size_mb || 5;
+                    productSettings.max_images_count = settings.max_images_count || 20;
+                }
+                
+                const config = await apiCall('GET', '/api/admin/config');
+                if (config.product_allowed_image_types) {
+                    productSettings.allowed_image_types = config.product_allowed_image_types.split(',');
+                }
+                if (config.product_max_image_size_mb) {
+                    productSettings.max_image_size_mb = config.product_max_image_size_mb;
+                }
+                if (config.product_max_images_count) {
+                    productSettings.max_images_count = config.product_max_images_count;
+                }
+                
+                const hintText = `支持 ${productSettings.allowed_image_types.join(', ').toUpperCase()}，单张不超过 ${productSettings.max_image_size_mb}MB，最多 ${productSettings.max_images_count} 张`;
+                document.getElementById('upload-hint').textContent = hintText;
+            } catch (err) {
+                console.error('加载产品设置失败:', err);
+            }
+        }
+
+        function getUrlParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        async function loadCategories() {
+            try {
+                const categories = await apiCall('GET', '/api/admin/product-categories/tree');
+                const container = document.getElementById('categories-container');
+                container.innerHTML = '';
+                
+                if (!categories || categories.length === 0) {
+                    container.innerHTML = '<div class="text-center text-gray-400 py-4">暂无分类，请先添加分类</div>';
+                    return;
+                }
+                
+                function addCheckboxes(items, level = 0) {
+                    if (!items || !Array.isArray(items)) return;
+                    const indent = level * 20;
+                    for (const cat of items) {
+                        const div = document.createElement('div');
+                        div.className = 'category-item flex items-center py-1';
+                        div.style.paddingLeft = indent + 'px';
+                        div.innerHTML = `
+                            <input type="checkbox" id="cat_${cat.id}" value="${cat.id}" class="category-checkbox mr-2">
+                            <label for="cat_${cat.id}" class="category-label text-sm text-gray-700">${escapeHtml(cat.name)}</label>
+                        `;
+                        container.appendChild(div);
+                        if (cat.children && cat.children.length) {
+                            addCheckboxes(cat.children, level + 1);
+                        }
+                    }
+                }
+                addCheckboxes(categories);
+            } catch (err) {
+                console.error('加载分类失败:', err);
+                document.getElementById('categories-container').innerHTML = '<div class="text-center text-red-500 py-4">加载分类失败</div>';
+            }
+        }
+
+        function setSelectedCategories(categoryIds) {
+            if (!categoryIds || categoryIds.length === 0) return;
+            const checkboxes = document.querySelectorAll('.category-checkbox');
+            checkboxes.forEach(cb => {
+                if (categoryIds.includes(parseInt(cb.value))) {
+                    cb.checked = true;
+                }
+            });
+        }
+
+        function getSelectedCategories() {
+            const checkboxes = document.querySelectorAll('.category-checkbox:checked');
+            return Array.from(checkboxes).map(cb => parseInt(cb.value));
+        }
+
+        async function loadProductImages() {
+            try {
+                const result = await apiCall('GET', `/api/admin/products/${productId}/images`);
+                productImages = result.images || [];
+                renderProductImages();
+            } catch (err) {
+                console.error('加载图片失败:', err);
+            }
+        }
+
+        function renderProductImages() {
+            const container = document.getElementById('images-container');
+            const noImages = document.getElementById('no-images');
+            
+            if (!productImages || productImages.length === 0) {
+                if (noImages) noImages.classList.remove('hidden');
+                container.innerHTML = '';
+                container.appendChild(noImages);
+                return;
+            }
+            
+            if (noImages) noImages.classList.add('hidden');
+            const coverImageUrl = document.getElementById('cover_image').value;
+            
+            container.innerHTML = productImages.map((img, index) => `
+                <div class="relative border rounded-lg overflow-hidden group ${coverImageUrl === img.url ? 'ring-2 ring-blue-500' : ''}" data-id="${img.id}" data-url="${img.url}">
+                    <img src="${img.url}" class="w-full h-32 object-cover">
+                    <div class="absolute top-2 right-2 flex space-x-1">
+                        <button type="button" class="set-cover-image bg-blue-600 text-white rounded-full w-6 h-6 text-xs hover:bg-blue-700 flex items-center justify-center" data-url="${img.url}" title="设为主图">
+                            <i class="fas ${coverImageUrl === img.url ? 'fa-star' : 'fa-star-o'} text-xs"></i>
+                        </button>
+                        <button type="button" class="delete-image bg-red-600 text-white rounded-full w-6 h-6 text-xs hover:bg-red-700 flex items-center justify-center" data-id="${img.id}" title="删除">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                    <div class="p-2 text-xs">
+                        <div class="truncate">${escapeHtml(img.original_name || img.name || '图片')}</div>
+                        ${img.color_code ? `<div class="text-gray-500 mt-1"><span class="font-medium">颜色:</span> <span class="text-blue-600">${img.color_code}</span> (${getColorNameFromCode(img.color_code)})</div>` : ''}
+                    </div>
+                    ${coverImageUrl === img.url ? '<div class="text-center text-blue-600 font-bold text-xs pb-1">⭐ 主图</div>' : ''}
+                </div>
+            `).join('');
+            
+            document.querySelectorAll('.delete-image').forEach(btn => {
+                btn.addEventListener('click', () => deleteProductImage(parseInt(btn.dataset.id)));
+            });
+            
+            document.querySelectorAll('.set-cover-image').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const imageUrl = btn.dataset.url;
+                    document.getElementById('cover_image').value = imageUrl;
+                    renderProductImages();
+                    showNotification('主图已更新', 'success');
+                });
+            });
+        }
+
+        async function deleteProductImage(imageId) {
+            if (!confirm('确定要删除这张图片吗？')) return;
+            showLoading(true);
+            try {
+                await apiCall('DELETE', `/api/admin/products/${productId}/images/${imageId}`);
+                showNotification('图片删除成功', 'success');
+                await loadProductImages();
+            } catch (err) {
+                showNotification('删除失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function loadProduct() {
+            productId = getUrlParam('id');
+            if (!productId) {
+                showNotification('缺少产品ID参数', 'error');
+                setTimeout(() => window.location.href = 'products.html', 1500);
+                return;
+            }
+
+            try {
+                const product = await apiCall('GET', `/api/admin/products/${productId}`);
+                displayProductData(product);
+                await loadProductImages();
+            } catch (err) {
+                console.error('加载产品失败:', err);
+                showNotification('加载产品失败: ' + err.message, 'error');
+            }
+        }
+
+        function displayProductData(product) {
+            document.getElementById('name').value = product.name || '';
+            document.getElementById('dname').value = product.dname || '';
+            document.getElementById('fullname').value = product.fullname || '';
+            document.getElementById('brand').value = product.brand || '';
+            document.getElementById('slug').value = product.slug || '';
+            // 回显 SKU（如果后端返回）
+            document.getElementById('sku').value = product.sku || '';
+            document.getElementById('price').value = product.price || '';
+            document.getElementById('stock').value = product.stock || '';
+            document.getElementById('weight').value = product.weight || '';
+            document.getElementById('csize').value = product.csize || '';
+            document.getElementById('ussize').value = product.ussize || '';
+            document.getElementById('asize').value = product.asize || '';
+            document.getElementById('fabric_type').value = product.fabric_type || '';
+            document.getElementById('package').value = product.package || '';
+            document.getElementById('cover_image').value = product.cover_image || '';
+            document.getElementById('summary').value = product.summary || '';
+            document.getElementById('description').value = product.description || '';
+            document.getElementById('keywords').value = product.keywords || '';
+            document.getElementById('points').value = product.points || '';
+            document.getElementById('dnote').value = product.dnote || '';
+            document.getElementById('seo_title').value = product.seo_title || '';
+            document.getElementById('seo_description').value = product.seo_description || '';
+            document.getElementById('published').value = product.published ? 'true' : 'false';
+            
+            const statusEl = document.getElementById('product-status');
+            if (product.published) {
+                statusEl.innerHTML = '<i class="fas fa-check-circle mr-1"></i>已发布';
+                statusEl.className = 'px-3 py-1 text-sm rounded-full bg-green-100 text-green-800';
+            } else {
+                statusEl.innerHTML = '<i class="fas fa-edit mr-1"></i>草稿';
+                statusEl.className = 'px-3 py-1 text-sm rounded-full bg-yellow-100 text-yellow-800';
+            }
+            
+            if (product.categories && product.categories.length > 0) {
+                const categoryIds = product.categories.map(c => c.id);
+                setSelectedCategories(categoryIds);
+            }
+            
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('product-form').style.display = 'block';
+        }
+
+        async function saveProduct() {
+            const selectedCategories = getSelectedCategories();
+            const formData = {
+                name: document.getElementById('name').value,
+                dname: document.getElementById('dname').value || null,
+                fullname: document.getElementById('fullname').value || null,
+                brand: document.getElementById('brand').value || null,
+                slug: document.getElementById('slug').value,
+                sku: document.getElementById('sku').value || null,      // 新增 SKU
+                price: document.getElementById('price').value || null,
+                stock: document.getElementById('stock').value || null,
+                weight: document.getElementById('weight').value || null,
+                csize: document.getElementById('csize').value || null,
+                ussize: document.getElementById('ussize').value || null,
+                asize: document.getElementById('asize').value || null,
+                fabric_type: document.getElementById('fabric_type').value || null,
+                package: document.getElementById('package').value || null,
+                cover_image: document.getElementById('cover_image').value || null,
+                summary: document.getElementById('summary').value || null,
+                description: document.getElementById('description').value || null,
+                keywords: document.getElementById('keywords').value || null,
+                points: document.getElementById('points').value || null,
+                dnote: document.getElementById('dnote').value || null,
+                seo_title: document.getElementById('seo_title').value || null,
+                seo_description: document.getElementById('seo_description').value || null,
+                published: document.getElementById('published').value === 'true',
+                category_ids: selectedCategories
+            };
+
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>保存中...';
+
+            try {
+                await apiCall('PUT', `/api/admin/products/${productId}`, formData);
+                showNotification('产品保存成功', 'success');
+                setTimeout(() => window.location.href = 'products.html', 1500);
+            } catch (err) {
+                console.error('保存失败:', err);
+                showNotification('保存失败: ' + err.message, 'error');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '保存修改';
+            }
+        }
+
+        // 图片上传模态框逻辑（保持原样）
+        const uploadModal = document.getElementById('upload-modal');
+        const uploadBtn = document.getElementById('upload-images-btn');
+        const closeModalBtn = document.getElementById('close-modal');
+        const uploadDropzone = document.getElementById('upload-dropzone');
+        const uploadFileInput = document.getElementById('upload-file-input');
+        const selectFilesBtn = document.getElementById('select-files-btn');
+        const uploadPreview = document.getElementById('upload-preview');
+        const startUploadBtn = document.getElementById('start-upload');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercent = document.getElementById('progress-percent');
+        const uploadStatus = document.getElementById('upload-status');
+
+        uploadBtn.addEventListener('click', () => {
+            uploadModal.style.display = 'flex';
+            resetUpload();
+        });
+        
+        closeModalBtn.addEventListener('click', () => uploadModal.style.display = 'none');
+        selectFilesBtn.addEventListener('click', () => uploadFileInput.click());
+        
+        uploadFileInput.addEventListener('change', (e) => {
+            selectedFiles = Array.from(e.target.files);
+            previewUploadImages();
+        });
+        
+        uploadDropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadDropzone.classList.add('border-blue-500', 'bg-blue-50');
+        });
+        
+        uploadDropzone.addEventListener('dragleave', () => uploadDropzone.classList.remove('border-blue-500', 'bg-blue-50'));
+        
+        uploadDropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadDropzone.classList.remove('border-blue-500', 'bg-blue-50');
+            selectedFiles = Array.from(e.dataTransfer.files);
+            previewUploadImages();
+        });
+        
+        function previewUploadImages() {
+            if (selectedFiles.length === 0) {
+                uploadPreview.classList.add('hidden');
+                startUploadBtn.classList.add('hidden');
+                return;
+            }
+            
+            uploadPreview.classList.remove('hidden');
+            startUploadBtn.classList.remove('hidden');
+            uploadPreview.innerHTML = '';
+            
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const colorCode = extractColorCodeFromFilename(file.name);
+                    const colorName = getColorNameFromCode(colorCode);
+                    file.colorCode = colorCode;
+                    
+                    const div = document.createElement('div');
+                    div.className = 'relative border rounded-lg p-2';
+                    div.innerHTML = `
+                        <img src="${e.target.result}" class="w-full h-20 object-cover rounded">
+                        <button type="button" class="remove-preview absolute top-4 right-4 bg-red-600 text-white rounded-full w-5 h-5 text-xs" data-index="${index}">×</button>
+                        <div class="text-xs mt-1">
+                            <div class="truncate">${escapeHtml(file.name)}</div>
+                            <div class="text-gray-500 mt-1"><span class="font-medium">颜色:</span> <span class="text-blue-600">${colorCode}</span> (${colorName})</div>
+                        </div>
+                    `;
+                    uploadPreview.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            document.querySelectorAll('.remove-preview').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const index = parseInt(btn.dataset.index);
+                    selectedFiles.splice(index, 1);
+                    previewUploadImages();
+                });
+            });
+        }
+        
+        function resetUpload() {
+            selectedFiles = [];
+            uploadFileInput.value = '';
+            uploadPreview.classList.add('hidden');
+            uploadPreview.innerHTML = '';
+            startUploadBtn.classList.add('hidden');
+            progressContainer.classList.add('hidden');
+            startUploadBtn.disabled = false;
+            startUploadBtn.innerHTML = '开始上传';
+        }
+        
+        startUploadBtn.addEventListener('click', async () => {
+            if (selectedFiles.length === 0) return;
+            
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('images', file);
+                const colorCode = file.colorCode || extractColorCodeFromFilename(file.name);
+                formData.append('color_codes', colorCode);
+            });
+            
+            startUploadBtn.disabled = true;
+            startUploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>上传中...';
+            progressContainer.classList.remove('hidden');
+            
+            const xhr = new XMLHttpRequest();
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.width = percent + '%';
+                    progressPercent.textContent = percent + '%';
+                    uploadStatus.textContent = `上传中... ${percent}%`;
+                }
+            });
+            
+            xhr.addEventListener('load', async () => {
+                if (xhr.status === 200) {
+                    const result = JSON.parse(xhr.responseText);
+                    showNotification(`成功上传 ${result.images.length} 张图片`, 'success');
+                    uploadModal.style.display = 'none';
+                    await loadProductImages();
+                    resetUpload();
+                } else {
+                    showNotification('上传失败', 'error');
+                }
+                startUploadBtn.disabled = false;
+                startUploadBtn.innerHTML = '开始上传';
+            });
+            
+            xhr.addEventListener('error', () => {
+                showNotification('网络错误', 'error');
+                startUploadBtn.disabled = false;
+                startUploadBtn.innerHTML = '开始上传';
+            });
+            
+            xhr.open('POST', `/api/admin/products/${productId}/images`);
+            xhr.withCredentials = true;
+            xhr.send(formData);
+        });
+
+        async function deleteProduct() {
+            document.getElementById('delete-modal').style.display = 'flex';
+            document.getElementById('delete-product-name').textContent = document.getElementById('name').value;
+        }
+
+        async function confirmDelete() {
+            document.getElementById('delete-modal').style.display = 'none';
+            showLoading(true);
+            try {
+                await apiCall('DELETE', `/api/admin/products/${productId}`);
+                showNotification('产品删除成功', 'success');
+                setTimeout(() => window.location.href = 'products.html', 1500);
+            } catch (err) {
+                showNotification('删除失败: ' + err.message, 'error');
+                showLoading(false);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('delete-modal').style.display = 'none';
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `toast fixed top-20 right-4 px-4 py-2 rounded shadow-lg z-50 ${type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
+            notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i>${message}`;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        document.getElementById('name').addEventListener('blur', function() {
+            const slugInput = document.getElementById('slug');
+            if (!slugInput.value || slugInput.value === document.getElementById('slug').defaultValue) {
+                slugInput.value = this.value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '');
+            }
+        });
+
+        document.getElementById('product-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveProduct();
+        });
+        
+        document.getElementById('delete-btn').addEventListener('click', deleteProduct);
+        document.getElementById('cancel-delete').addEventListener('click', closeModal);
+        document.getElementById('confirm-delete').addEventListener('click', confirmDelete);
+        document.getElementById('delete-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('delete-modal')) closeModal();
+        });
+        uploadModal.addEventListener('click', (e) => {
+            if (e.target === uploadModal) uploadModal.style.display = 'none';
+        });
+
+        requireAuth().then(async () => {
+            await loadTopbar();
+            await loadFooter();
+            await loadProductSettings();
+            await loadCategories();
+            await loadProduct();
+        }).catch(() => {});
+    </script>
+</body>
+</html>

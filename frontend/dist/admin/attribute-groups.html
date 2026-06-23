@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分组管理 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1001;
+        }
+        .toast {
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">
+                <i class="fas fa-folder-open mr-2 text-indigo-600"></i>分组管理
+            </h1>
+            <button id="createBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                <i class="fas fa-plus mr-2"></i>新建分组
+            </button>
+        </div>
+
+        <!-- 列表 -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">启用状态</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">排序</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="groups-list" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>加载中...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建/编辑分组模态框 -->
+    <div id="groupModal" class="modal">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="modalTitle" class="text-lg font-semibold">新建分组</h3>
+                    <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <input type="hidden" id="groupId">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">名称 <span class="text-red-500">*</span></label>
+                    <input type="text" id="groupName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="例如：基础属性">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">描述</label>
+                    <textarea id="groupDesc" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="可选描述信息"></textarea>
+                </div>
+                <div class="mb-4 flex items-center">
+                    <input type="checkbox" id="groupIsUsed" class="mr-2 w-4 h-4 text-blue-600" checked>
+                    <label class="text-sm text-gray-700">启用</label>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">排序</label>
+                    <input type="number" id="groupSort" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500" value="0">
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button id="cancelModalBtn" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">取消</button>
+                    <button id="saveModalBtn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理模板子模态框 -->
+    <div id="templatesModal" class="modal">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="templatesModalTitle" class="text-lg font-semibold">分组中的模版</h3>
+                    <button id="closeTemplatesModalBtn" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="templatesListContainer" class="mb-4">
+                    <!-- 动态渲染 -->
+                </div>
+                <hr class="my-4">
+                <div class="flex items-center gap-2">
+                    <select id="addTemplateSelect" class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">-- 选择要添加的模版 --</option>
+                    </select>
+                    <button id="addTemplateBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition">添加</button>
+                </div>
+                <div class="mt-4 text-right">
+                    <button id="closeTemplatesModalConfirm" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载动画 -->
+    <div id="loading" class="loading">
+        <div class="bg-white rounded-lg p-6 shadow-xl">
+            <i class="fas fa-spinner fa-spin text-3xl text-blue-600"></i>
+            <p class="mt-2 text-gray-600">处理中...</p>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script src="/admin/common.js"></script>
+    <script>
+        let currentGroupId = null;
+        let allTemplates = [];
+
+        // ---------- 加载分组列表 ----------
+        async function loadGroups() {
+            showLoading(true);
+            try {
+                const data = await apiCall('GET', '/api/admin/attribute-groups');
+                renderGroups(data);
+            } catch (err) {
+                console.error('加载分组失败:', err);
+                showNotification('加载失败: ' + err.message, 'error');
+                document.getElementById('groups-list').innerHTML = `
+                    <tr><td colspan="6" class="px-6 py-8 text-center text-red-500">加载失败，请重试</td></tr>
+                `;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function renderGroups(groups) {
+            const tbody = document.getElementById('groups-list');
+            if (!groups || groups.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">暂无分组</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = groups.map(g => `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4 text-sm">${g.id}</td>
+                    <td class="px-6 py-4 font-medium">${escapeHtml(g.name)}</td>
+                    <td class="px-6 py-4 text-sm">${escapeHtml(g.description || '-')}</td>
+                    <td class="px-6 py-4">
+                        ${g.is_used 
+                            ? '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800"><i class="fas fa-check-circle mr-1"></i>启用</span>' 
+                            : '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-500"><i class="fas fa-ban mr-1"></i>禁用</span>'}
+                    </td>
+                    <td class="px-6 py-4 text-sm">${g.sort_order}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex space-x-2">
+                            <button onclick="editGroup(${g.id})" class="text-blue-600 hover:text-blue-800" title="编辑">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="manageTemplates(${g.id})" class="text-purple-600 hover:text-purple-800" title="管理模版">
+                                <i class="fas fa-list"></i>
+                            </button>
+                            <button onclick="deleteGroup(${g.id})" class="text-red-600 hover:text-red-800" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // ---------- 加载所有模版（用于下拉选择） ----------
+        async function loadAllTemplates() {
+            try {
+                allTemplates = await apiCall('GET', '/api/admin/attribute-templates');
+            } catch (err) {
+                console.error('加载模版列表失败:', err);
+                allTemplates = [];
+            }
+        }
+
+        // ---------- 分组 CRUD ----------
+        async function editGroup(id) {
+            try {
+                const data = await apiCall('GET', `/api/admin/attribute-groups/${id}`);
+                document.getElementById('groupId').value = data.id;
+                document.getElementById('groupName').value = data.name;
+                document.getElementById('groupDesc').value = data.description || '';
+                document.getElementById('groupIsUsed').checked = data.is_used;
+                document.getElementById('groupSort').value = data.sort_order;
+                document.getElementById('modalTitle').innerText = '编辑分组';
+                document.getElementById('groupModal').classList.add('show');
+            } catch (err) {
+                showNotification('加载数据失败: ' + err.message, 'error');
+            }
+        }
+
+        async function deleteGroup(id) {
+            if (!confirm('确定要删除该分组吗？产品关联将被解除。')) return;
+            showLoading(true);
+            try {
+                await apiCall('DELETE', `/api/admin/attribute-groups/${id}`);
+                showNotification('删除成功', 'success');
+                await loadGroups();
+            } catch (err) {
+                showNotification('删除失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function saveGroup() {
+            const id = document.getElementById('groupId').value;
+            const name = document.getElementById('groupName').value.trim();
+            const description = document.getElementById('groupDesc').value.trim() || null;
+            const is_used = document.getElementById('groupIsUsed').checked;
+            const sort_order = parseInt(document.getElementById('groupSort').value) || 0;
+
+            if (!name) {
+                showNotification('请输入名称', 'error');
+                return;
+            }
+
+            const payload = { name, description, is_used, sort_order };
+            showLoading(true);
+            try {
+                if (id) {
+                    await apiCall('PUT', `/api/admin/attribute-groups/${id}`, payload);
+                    showNotification('更新成功', 'success');
+                } else {
+                    await apiCall('POST', '/api/admin/attribute-groups', payload);
+                    showNotification('创建成功', 'success');
+                }
+                closeGroupModal();
+                await loadGroups();
+            } catch (err) {
+                showNotification('保存失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function openCreateGroupModal() {
+            document.getElementById('groupId').value = '';
+            document.getElementById('groupName').value = '';
+            document.getElementById('groupDesc').value = '';
+            document.getElementById('groupIsUsed').checked = true;
+            document.getElementById('groupSort').value = 0;
+            document.getElementById('modalTitle').innerText = '新建分组';
+            document.getElementById('groupModal').classList.add('show');
+        }
+
+        function closeGroupModal() {
+            document.getElementById('groupModal').classList.remove('show');
+        }
+
+        // ---------- 管理分组内模版 ----------
+        async function manageTemplates(groupId) {
+            currentGroupId = groupId;
+            try {
+                const templates = await apiCall('GET', `/api/admin/attribute-groups/${groupId}/templates`);
+                renderTemplatesInGroup(templates);
+                // 填充下拉选择框（排除已存在的）
+                const select = document.getElementById('addTemplateSelect');
+                select.innerHTML = '<option value="">-- 选择要添加的模版 --</option>';
+                const existingIds = templates.map(t => t.id);
+                allTemplates.forEach(t => {
+                    if (!existingIds.includes(t.id)) {
+                        const opt = document.createElement('option');
+                        opt.value = t.id;
+                        opt.textContent = `${t.name}${t.title ? ' ('+t.title+')' : ''}`;
+                        select.appendChild(opt);
+                    }
+                });
+                document.getElementById('templatesModal').classList.add('show');
+            } catch (err) {
+                showNotification('加载分组模版失败: ' + err.message, 'error');
+            }
+        }
+
+        function renderTemplatesInGroup(templates) {
+            const container = document.getElementById('templatesListContainer');
+            if (!templates || templates.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">该分组暂无模版</p>';
+                return;
+            }
+            let html = '<ul class="divide-y divide-gray-200">';
+            templates.forEach(t => {
+                html += `
+                    <li class="py-2 flex justify-between items-center">
+                        <span>${escapeHtml(t.name)} ${t.title ? '('+escapeHtml(t.title)+')' : ''}</span>
+                        <button onclick="removeTemplateFromGroup(${t.id})" class="text-red-600 hover:text-red-800 text-sm">
+                            <i class="fas fa-times"></i> 移除
+                        </button>
+                    </li>
+                `;
+            });
+            html += '</ul>';
+            container.innerHTML = html;
+        }
+
+        async function removeTemplateFromGroup(templateId) {
+            if (!confirm('确定从该分组移除该模版吗？')) return;
+            showLoading(true);
+            try {
+                await apiCall('DELETE', `/api/admin/attribute-groups/${currentGroupId}/templates/${templateId}`);
+                showNotification('移除成功', 'success');
+                await manageTemplates(currentGroupId); // 刷新列表
+            } catch (err) {
+                showNotification('移除失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function addTemplateToGroup() {
+            const select = document.getElementById('addTemplateSelect');
+            const templateId = select.value;
+            if (!templateId) {
+                showNotification('请选择一个模版', 'error');
+                return;
+            }
+            showLoading(true);
+            try {
+                await apiCall('POST', `/api/admin/attribute-groups/${currentGroupId}/templates`, {
+                    template_id: parseInt(templateId),
+                    sort_order: 0
+                });
+                showNotification('添加成功', 'success');
+                await manageTemplates(currentGroupId); // 刷新
+            } catch (err) {
+                showNotification('添加失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function closeTemplatesModal() {
+            document.getElementById('templatesModal').classList.remove('show');
+            currentGroupId = null;
+        }
+
+        // ---------- 辅助函数 ----------
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            try {
+                return new Date(dateStr).toLocaleString('zh-CN');
+            } catch {
+                return dateStr;
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `toast fixed top-20 right-4 px-4 py-2 rounded shadow-lg z-50 ${type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
+            notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i>${message}`;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;' }[m] || m));
+        }
+
+        // ---------- 事件绑定 ----------
+        document.getElementById('createBtn').addEventListener('click', openCreateGroupModal);
+        document.getElementById('closeModalBtn').addEventListener('click', closeGroupModal);
+        document.getElementById('cancelModalBtn').addEventListener('click', closeGroupModal);
+        document.getElementById('saveModalBtn').addEventListener('click', saveGroup);
+        document.getElementById('groupModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('groupModal')) closeGroupModal();
+        });
+
+        document.getElementById('closeTemplatesModalBtn').addEventListener('click', closeTemplatesModal);
+        document.getElementById('closeTemplatesModalConfirm').addEventListener('click', closeTemplatesModal);
+        document.getElementById('addTemplateBtn').addEventListener('click', addTemplateToGroup);
+        document.getElementById('templatesModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('templatesModal')) closeTemplatesModal();
+        });
+
+        // ---------- 初始化 ----------
+        requireAuth().then(async () => {
+            await loadTopbar();
+            await loadFooter();
+            await loadAllTemplates(); // 预加载所有模版用于下拉
+            await loadGroups();
+        }).catch(() => {
+            // 未认证自动跳转
+        });
+    </script>
+</body>
+</html>

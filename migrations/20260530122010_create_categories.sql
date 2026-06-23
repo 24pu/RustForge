@@ -22,7 +22,7 @@ ALTER TABLE contents DROP COLUMN IF EXISTS category_id;
 
 -- 先插入顶级分类
 INSERT INTO categories (name, slug, description, parent_id) VALUES
-    ('产品', 'products', '公司产品介绍', NULL),
+    ('产品', 'pro', '公司产品介绍', NULL),
     ('新闻', 'news', '公司新闻动态', NULL),
     ('技术', 'tech', '技术文章', NULL)
 ON CONFLICT (slug) DO NOTHING;

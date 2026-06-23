@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>产品管理 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+        .loading.show { display: block; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show { display: flex; }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .category-badge {
+            display: inline-block;
+            background-color: #e5e7eb;
+            color: #374151;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            margin: 0.125rem;
+            white-space: nowrap;
+        }
+        .action-btn { transition: all 0.2s ease; }
+        .action-btn:hover { transform: scale(1.1); }
+        .thumbnail-img { cursor: pointer; transition: opacity 0.2s; }
+        .thumbnail-img:hover { opacity: 0.8; }
+        .attribute-value-display {
+            display: inline-block;
+            background-color: #e0e7ff;
+            color: #3730a3;
+            font-size: 0.8rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            margin: 0.125rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+    
+    <div class="container mx-auto px-4 py-8">
+        <div class="mb-6 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-800">
+                <i class="fas fa-boxes mr-2 text-blue-600"></i>产品管理
+            </h1>
+            <div class="flex space-x-2">
+                <button id="export-selected-btn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                    <i class="fas fa-file-excel mr-2"></i>导出选中
+                </button>
+                <a href="add-product.html" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center">
+                    <i class="fas fa-plus mr-2"></i>添加产品
+                </a>
+            </div>
+        </div>
+
+        <!-- 搜索和筛选栏 -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">关键词搜索</label>
+                    <input type="text" id="search-keyword" placeholder="产品名称、描述..." 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">产品分类</label>
+                    <select id="filter-category" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <option value="">全部分类</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">产品状态</label>
+                    <select id="filter-status" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        <option value="">全部</option>
+                        <option value="true">已发布</option>
+                        <option value="false">草稿</option>
+                    </select>
+                </div>
+                <div class="flex items-end space-x-2">
+                    <button id="search-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex-1">
+                        <i class="fas fa-search mr-2"></i>搜索
+                    </button>
+                    <button id="reset-btn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition flex-1">
+                        <i class="fas fa-redo mr-2"></i>重置
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 产品列表 -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left">
+                                <input type="checkbox" id="select-all-checkbox" class="w-4 h-4 text-blue-600">
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">产品信息</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">分类</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">价格</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">库存</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="product-table-body" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="9" class="px-6 py-8 text-center text-gray-500">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>加载中...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页 -->
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                <div class="text-sm text-gray-500">
+                    显示 <span id="page-info-start">0</span> - <span id="page-info-end">0</span> 条，共 <span id="page-info-total">0</span> 条
+                </div>
+                <div class="flex space-x-2">
+                    <button id="prev-page" class="px-3 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-chevron-left"></i> 上一页
+                    </button>
+                    <span id="current-page" class="px-3 py-1 bg-blue-600 text-white rounded-md">1</span>
+                    <button id="next-page" class="px-3 py-1 border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        下一页 <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载动画 -->
+    <div id="loading" class="loading">
+        <div class="bg-white rounded-lg p-6 shadow-xl">
+            <i class="fas fa-spinner fa-spin text-3xl text-blue-600"></i>
+            <p class="mt-2 text-gray-600">处理中...</p>
+        </div>
+    </div>
+
+    <!-- 删除确认模态框 -->
+    <div id="delete-modal" class="modal">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 fade-in">
+            <div class="p-6">
+                <div class="flex items-center justify-center mb-4">
+                    <div class="bg-red-100 rounded-full p-3">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+                    </div>
+                </div>
+                <h3 class="text-lg font-semibold text-center mb-2">确认删除</h3>
+                <p class="text-gray-600 text-center mb-6">确定要删除产品 "<span id="delete-product-name"></span>" 吗？此操作不可恢复。</p>
+                <div class="flex justify-center space-x-3">
+                    <button id="cancel-delete" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">取消</button>
+                    <button id="confirm-delete" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">确认删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 产品图片查看模态框 -->
+    <div id="images-modal" class="modal">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 fade-in">
+            <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+                <h2 class="text-xl font-bold">产品图片</h2>
+                <button onclick="closeModal('images-modal')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 max-h-[70vh] overflow-y-auto">
+                <div id="product-images-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script src="/admin/common.js"></script>
+    <script>
+        let currentPage = 1;
+        let currentFilters = {
+            keyword: '',
+            category_id: null,
+            published: null
+        };
+        let totalPages = 1;
+        let deleteProductId = null;
+        let selectedProducts = new Set();
+        let templateNameMap = {}; // 存储模板名称映射
+
+        // 加载所有属性模板名称
+        async function loadAllTemplateNames() {
+            try {
+                const templates = await apiCall('GET', '/api/admin/attribute-templates');
+                templateNameMap = {};
+                templates.forEach(t => {
+                    templateNameMap[t.id] = t.name;
+                });
+            } catch (err) {
+                console.error('加载模板名称失败:', err);
+                templateNameMap = {};
+            }
+        }
+
+        // 加载分类筛选下拉框
+        async function loadCategoryFilter() {
+            try {
+                const categories = await apiCall('GET', '/api/admin/product-categories/tree');
+                const select = document.getElementById('filter-category');
+                select.innerHTML = '<option value="">全部分类</option>';
+                function addOptions(items, prefix = '') {
+                    if (!items || !Array.isArray(items)) return;
+                    for (const cat of items) {
+                        const option = document.createElement('option');
+                        option.value = cat.id;
+                        option.textContent = prefix + cat.name;
+                        select.appendChild(option);
+                        if (cat.children && cat.children.length) {
+                            addOptions(cat.children, prefix + '　');
+                        }
+                    }
+                }
+                addOptions(categories);
+            } catch (err) {
+                console.error('加载分类失败:', err);
+            }
+        }
+
+        // 加载产品列表
+        async function loadProducts() {
+            showLoading(true);
+            try {
+                let url = `/api/admin/products?page=${currentPage}&per_page=20`;
+                if (currentFilters.keyword) url += `&keyword=${encodeURIComponent(currentFilters.keyword)}`;
+                if (currentFilters.category_id) url += `&category_id=${currentFilters.category_id}`;
+                if (currentFilters.published !== null && currentFilters.published !== '') url += `&published=${currentFilters.published}`;
+                
+                const result = await apiCall('GET', url);
+                renderProducts(result.products || result.items || []);
+                updatePagination(result);
+            } catch (err) {
+                console.error('加载产品失败:', err);
+                showNotification('加载产品失败: ' + err.message, 'error');
+                document.getElementById('product-table-body').innerHTML = `
+                    <tr><td colspan="9" class="px-6 py-8 text-center text-red-500">加载失败，请重试</td></tr>
+                `;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 渲染产品列表
+        function renderProducts(products) {
+            const tbody = document.getElementById('product-table-body');
+            if (!products || products.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-8 text-center text-gray-500">暂无产品数据</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = products.map(product => `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-4 py-4">
+                        <input type="checkbox" class="product-checkbox" data-id="${product.id}" ${selectedProducts.has(product.id) ? 'checked' : ''}>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            ${product.cover_image ? 
+                                `<img src="${product.cover_image}" class="w-12 h-12 object-cover rounded mr-3" onerror="this.src='/admin/images/no-image.png'">` : 
+                                `<div class="w-12 h-12 bg-gray-200 rounded mr-3 flex items-center justify-center"><i class="fas fa-box text-gray-400"></i></div>`
+                            }
+                            <div>
+                                <div class="font-medium text-gray-900">${escapeHtml(product.name)}</div>
+                                <div class="text-sm text-gray-500">${product.slug || ''}</div>
+                                ${product.brand ? `<div class="text-xs text-gray-400 mt-1">品牌: ${escapeHtml(product.brand)}</div>` : ''}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4"><span class="text-gray-700">${product.sku || ''}</span></td>
+                    <td class="px-6 py-4">
+                        <div class="flex flex-wrap gap-1">
+                            ${product.categories && product.categories.length > 0 ? 
+                                product.categories.map(cat => `<span class="category-badge">${escapeHtml(cat.name)}</span>`).join('') : 
+                                '<span class="text-gray-400 text-sm">未分类</span>'
+                            }
+                        </div>
+                    </td>
+                    <td class="px-6 py-4"><div class="text-lg font-semibold text-gray-900">${product.price ? '¥' + product.price : '-'}</div></td>
+                    <td class="px-6 py-4"><span class="text-gray-700">${product.stock || 0}</span></td>
+                    <td class="px-6 py-4">${product.published ? '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800"><i class="fas fa-check-circle mr-1"></i>已发布</span>' : '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800"><i class="fas fa-edit mr-1"></i>草稿</span>'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${formatDate(product.created_at)}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex space-x-2">
+                            <a href="edit-product.html?id=${product.id}" class="text-blue-600 hover:text-blue-800 action-btn" title="编辑"><i class="fas fa-edit"></i></a>
+                            <a href="variants.html?id=${product.id}" class="text-purple-600 hover:text-purple-800 action-btn" title="变体管理"><i class="fas fa-cubes"></i></a>
+                            <a href="product-attributes.html?id=${product.id}" class="text-indigo-600 hover:text-indigo-800 action-btn" title="属性管理"><i class="fas fa-cog"></i></a>
+                            <button onclick="viewProductImages('${product.id}')" class="text-pink-600 hover:text-pink-800 action-btn" title="查看图片"><i class="fas fa-images"></i></button>
+                            <button onclick="viewProduct('${product.id}')" class="text-green-600 hover:text-green-800 action-btn" title="查看"><i class="fas fa-eye"></i></button>
+                            <button onclick="confirmDelete('${product.id}', '${escapeHtml(product.name).replace(/'/g, "\\'")}')" class="text-red-600 hover:text-red-800 action-btn" title="删除"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+            // 绑定复选框事件
+            document.querySelectorAll('.product-checkbox').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    const id = cb.dataset.id;
+                    if (cb.checked) selectedProducts.add(id);
+                    else selectedProducts.delete(id);
+                    updateSelectAllCheckbox();
+                });
+            });
+            updateSelectAllCheckbox();
+        }
+
+        // 更新全选复选框状态
+        function updateSelectAllCheckbox() {
+            const all = document.querySelectorAll('.product-checkbox');
+            const checked = document.querySelectorAll('.product-checkbox:checked');
+            const selectAll = document.getElementById('select-all-checkbox');
+            if (selectAll) {
+                selectAll.checked = all.length > 0 && all.length === checked.length;
+                selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+            }
+        }
+
+        // 全选/取消全选
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('select-all-checkbox');
+            if (!selectAll) return;
+            const isChecked = selectAll.checked;
+            document.querySelectorAll('.product-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+                const id = cb.dataset.id;
+                if (isChecked) selectedProducts.add(id);
+                else selectedProducts.delete(id);
+            });
+        }
+
+        // 导出选中的产品
+        async function exportSelectedProducts() {
+            if (selectedProducts.size === 0) {
+                showNotification('请至少选择一个产品', 'error');
+                return;
+            }
+            const ids = Array.from(selectedProducts);
+            try {
+                const response = await fetch('/api/admin/products/export', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product_ids: ids })
+                });
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error || '导出失败');
+                }
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `products_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showNotification('导出成功', 'success');
+            } catch (err) {
+                showNotification('导出失败: ' + err.message, 'error');
+            }
+        }
+
+        // 查看产品图片
+        async function viewProductImages(productId) {
+            try {
+                const images = await apiCall('GET', `/api/admin/products/${productId}/images`);
+                const grid = document.getElementById('product-images-grid');
+                if (!images.images || images.images.length === 0) {
+                    grid.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8">暂无图片</div>';
+                } else {
+                    grid.innerHTML = images.images.map(img => `
+                        <div class="border rounded-lg overflow-hidden">
+                            <img src="${img.url}" class="w-full h-32 object-cover thumbnail-img" onclick="window.open('${img.url}', '_blank')">
+                            <div class="p-2 text-xs text-gray-600 truncate">${img.original_name || img.name || '图片'}</div>
+                        </div>
+                    `).join('');
+                }
+                document.getElementById('images-modal').classList.add('show');
+            } catch (err) {
+                showNotification('加载图片失败: ' + err.message, 'error');
+            }
+        }
+
+        // 更新分页
+        function updatePagination(result) {
+            const total = result.total || 0;
+            const perPage = result.per_page || 20;
+            const current = result.page || currentPage;
+            totalPages = Math.ceil(total / perPage);
+            const start = (current - 1) * perPage + 1;
+            const end = Math.min(current * perPage, total);
+            document.getElementById('page-info-start').textContent = total > 0 ? start : 0;
+            document.getElementById('page-info-end').textContent = end;
+            document.getElementById('page-info-total').textContent = total;
+            document.getElementById('current-page').textContent = current;
+            document.getElementById('prev-page').disabled = current <= 1;
+            document.getElementById('next-page').disabled = current >= totalPages;
+        }
+
+        // 查看产品详情（包含属性显示）
+        async function viewProduct(id) {
+            try {
+                const product = await apiCall('GET', `/api/admin/products/${id}`);
+                const variants = await apiCall('GET', `/api/admin/products/${id}/variants`);
+                // 获取产品属性
+                let attributes = [];
+                try {
+                    attributes = await apiCall('GET', `/api/admin/products/${id}/attribute-values`);
+                } catch (e) {
+                    console.log('该产品暂无属性');
+                }
+                showProductDetailModal(product, variants, attributes);
+            } catch (err) {
+                showNotification('获取产品详情失败: ' + err.message, 'error');
+            }
+        }
+
+        // 显示产品详情模态框（包含属性）
+        function showProductDetailModal(product, variants, attributes) {
+            // 构建属性显示 - 使用模板名称映射
+            let attributesHtml = '';
+            if (attributes && attributes.length > 0) {
+                attributesHtml = `
+                    <div class="mt-4">
+                        <h3 class="text-md font-semibold text-gray-800 mb-2">产品属性</h3>
+                        <div class="flex flex-wrap gap-2">
+                            ${attributes.map(attr => {
+                                const name = templateNameMap[attr.attribute_template_id] || '属性';
+                                return `
+                                    <span class="attribute-value-display">
+                                        ${escapeHtml(name)}: ${escapeHtml(attr.value || '-')}
+                                    </span>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            const variantsHtml = variants && variants.length > 0 ? `
+                <div class="mt-4">
+                    <h3 class="text-md font-semibold text-gray-800 mb-2">变体信息</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full border-collapse border border-gray-300 text-sm">
+                            <thead class="bg-gray-50"><tr><th class="border px-3 py-2">SKU</th><th class="border px-3 py-2">颜色</th><th class="border px-3 py-2">尺码</th><th class="border px-3 py-2">价格</th><th class="border px-3 py-2">库存</th></tr></thead>
+                            <tbody>${variants.map(v => `<tr><td class="border px-3 py-2">${escapeHtml(v.sku)}</td><td class="border px-3 py-2">${escapeHtml(v.color_name || v.color || '-')}</td><td class="border px-3 py-2">${escapeHtml(v.size || '-')}</td><td class="border px-3 py-2">¥${v.price || '-'}</td><td class="border px-3 py-2">${v.stock || 0}</td></tr>`).join('')}</tbody>
+                        </table>
+                    </div>
+                </div>
+            ` : '<div class="mt-4 text-gray-500">暂无变体</div>';
+
+            const modalHtml = `
+                <div id="detail-modal" class="modal show">
+                    <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[85vh] overflow-y-auto fade-in">
+                        <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center"><h2 class="text-xl font-bold">产品详情</h2><button onclick="closeModal('detail-modal')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button></div>
+                        <div class="p-6">
+                            <div class="flex gap-6 mb-6">
+                                ${product.cover_image ? `<img src="${product.cover_image}" class="w-32 h-32 object-cover rounded border" onerror="this.src='/admin/images/no-image.png'">` : `<div class="w-32 h-32 bg-gray-100 rounded border flex items-center justify-center"><i class="fas fa-box text-gray-400 text-3xl"></i></div>`}
+                                <div><h3 class="text-lg font-semibold mb-2">${escapeHtml(product.name)}</h3>
+                                <div class="grid grid-cols-2 gap-3 text-sm">
+                                    <div><span class="text-gray-500">Slug:</span> ${product.slug}</div>
+                                    <div><span class="text-gray-500">品牌:</span> ${product.brand || '-'}</div>
+                                    <div><span class="text-gray-500">价格:</span> <span class="text-red-600 font-bold">¥${product.price || '-'}</span></div>
+                                    <div><span class="text-gray-500">库存:</span> ${product.stock || 0}</div>
+                                    <div><span class="text-gray-500">状态:</span> ${product.published ? '<span class="text-green-600">已发布</span>' : '<span class="text-yellow-600">草稿</span>'}</div>
+                                    <div><span class="text-gray-500">创建时间:</span> ${formatDate(product.created_at)}</div>
+                                </div></div>
+                            </div>
+                            ${product.categories && product.categories.length ? `<div class="mb-3"><span class="text-gray-500 font-medium">分类:</span><div class="mt-1 flex flex-wrap gap-1">${product.categories.map(cat => `<span class="category-badge">${escapeHtml(cat.name)}</span>`).join('')}</div></div>` : ''}
+                            ${product.summary ? `<div class="mb-3"><span class="text-gray-500 font-medium">摘要:</span><p class="mt-1 text-sm">${escapeHtml(product.summary)}</p></div>` : ''}
+                            ${product.description ? `<div class="mb-3"><span class="text-gray-500 font-medium">描述:</span><p class="mt-1 text-sm">${escapeHtml(product.description)}</p></div>` : ''}
+                            ${attributesHtml}
+                            ${variantsHtml}
+                        </div>
+                        <div class="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end"><button onclick="closeModal('detail-modal')" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600">关闭</button></div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        // 删除相关
+        function confirmDelete(id, name) {
+            deleteProductId = id;
+            document.getElementById('delete-product-name').textContent = name;
+            document.getElementById('delete-modal').classList.add('show');
+        }
+        async function deleteProduct() {
+            if (!deleteProductId) return;
+            showLoading(true);
+            try {
+                await apiCall('DELETE', `/api/admin/products/${deleteProductId}`);
+                showNotification('产品删除成功', 'success');
+                closeModal('delete-modal');
+                loadProducts();
+            } catch (err) {
+                showNotification('删除失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+                deleteProductId = null;
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.remove();
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            try { return new Date(dateStr).toLocaleString('zh-CN'); } catch { return dateStr; }
+        }
+
+        function showLoading(show) {
+            const el = document.getElementById('loading');
+            if (show) el.classList.add('show');
+            else el.classList.remove('show');
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-20 right-4 px-4 py-2 rounded shadow-lg z-50 transition-opacity duration-300 ${type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
+            notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i>${message}`;
+            document.body.appendChild(notification);
+            setTimeout(() => { notification.style.opacity = '0'; setTimeout(() => notification.remove(), 300); }, 3000);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; });
+        }
+
+        // 搜索/重置
+        function search() {
+            currentFilters.keyword = document.getElementById('search-keyword').value;
+            currentFilters.category_id = document.getElementById('filter-category').value || null;
+            const sv = document.getElementById('filter-status').value;
+            currentFilters.published = sv === '' ? null : sv === 'true';
+            currentPage = 1;
+            loadProducts();
+        }
+        function resetFilters() {
+            document.getElementById('search-keyword').value = '';
+            document.getElementById('filter-category').value = '';
+            document.getElementById('filter-status').value = '';
+            currentFilters = { keyword: '', category_id: null, published: null };
+            currentPage = 1;
+            loadProducts();
+        }
+
+        // 事件绑定
+        document.getElementById('search-btn').addEventListener('click', search);
+        document.getElementById('reset-btn').addEventListener('click', resetFilters);
+        document.getElementById('prev-page').addEventListener('click', () => { if (currentPage > 1) { currentPage--; loadProducts(); } });
+        document.getElementById('next-page').addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; loadProducts(); } });
+        document.getElementById('cancel-delete').addEventListener('click', () => closeModal('delete-modal'));
+        document.getElementById('confirm-delete').addEventListener('click', deleteProduct);
+        document.getElementById('images-modal').addEventListener('click', (e) => { if (e.target === document.getElementById('images-modal')) closeModal('images-modal'); });
+        document.getElementById('export-selected-btn').addEventListener('click', exportSelectedProducts);
+        document.getElementById('select-all-checkbox').addEventListener('change', toggleSelectAll);
+        document.getElementById('search-keyword').addEventListener('keypress', (e) => { if (e.key === 'Enter') search(); });
+
+        // 初始化
+        requireAuth().then(async () => {
+            await loadTopbar();
+            await loadFooter();
+            // 先加载模板名称映射
+            await loadAllTemplateNames();
+            await loadCategoryFilter();
+            await loadProducts();
+        }).catch(() => {});
+    </script>
+</body>
+</html>

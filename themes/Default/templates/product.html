@@ -1,0 +1,636 @@
+{% extends "base.html" %}
+
+{% block title_prefix %}{{ product.name }}{% endblock %}
+{% block title_suffix %} - {{ site_config.site_name | default(value='RustForge') }}{% endblock %}
+
+{% block content %}
+<!-- 面包屑 -->
+<div class="bg-gray-100 py-3">
+    <div class="container mx-auto px-4">
+        <a href="/" class="text-gray-600 hover:text-purple-600">{{ t(key="home", lang=lang) }}</a>
+        <span class="mx-2 text-gray-400">/</span>
+        <a href="/products" class="text-gray-600 hover:text-purple-600">{{ t(key="products", lang=lang) }}</a>
+        <span class="mx-2 text-gray-400">/</span>
+        <span class="text-gray-800">{{ product.name }}</span>
+    </div>
+</div>
+
+<div class="container mx-auto px-4 py-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- 图片展示区 -->
+        <div class="bg-white rounded-lg shadow-md p-4">
+            <div class="mb-4">
+                <img id="main-image" src="{{ product.cover_image | default(value='/images/placeholder.jpg') }}" 
+                     class="w-full rounded-lg object-cover" style="height: 400px;"
+                     onerror="this.src='/images/placeholder.jpg'"
+                     alt="{{ product.name }}">
+            </div>
+            <div id="thumbnail-list" class="grid grid-cols-4 gap-2">
+                <div class="col-span-full text-center text-gray-400 py-4">加载图片中...</div>
+            </div>
+        </div>
+
+        <!-- 产品信息区 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">{{ product.fullname }}</h1>
+            {% if product.brand %}
+            <p class="text-sm text-gray-500 mb-3"><i class="fas fa-tag mr-1"></i>{{ product.brand }}</p>
+            {% endif %}
+            
+            <div class="flex items-baseline mb-4">
+                <span id="display-price" class="text-3xl font-bold text-red-600">¥{{ product.price | default(value='0') }}</span>
+            </div>
+            
+            <div class="mb-4">
+                <span id="display-stock" class="text-green-600">
+                    <i class="fas fa-check-circle mr-1"></i>{{ t(key="in_stock", lang=lang) }}
+                </span>
+            </div>
+
+            {% if variants %}
+            <div class="mb-6">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ t(key="color", lang=lang) }}</label>
+                    <div id="color-options" class="flex flex-wrap gap-3"></div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{ t(key="size", lang=lang) }}</label>
+                    <div id="size-options" class="flex flex-wrap gap-2"></div>
+                </div>
+                
+                <div class="text-sm text-gray-500 mt-2">
+                    <span id="display-sku"></span>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="flex space-x-4 mb-6">
+                <button id="buy-now" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg transition">
+                    <i class="fas fa-shopping-cart mr-2"></i>{{ t(key="buy_now", lang=lang) }}
+                </button>
+            </div>
+            
+            <!-- 卖点展示 - 每行带图标 -->
+            {% if product.points %}
+            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h3 class="text-md font-semibold text-gray-800 mb-3 flex items-center">
+                    <i class="fas fa-gem text-purple-500 mr-2"></i>{{ t(key="product_highlights", lang=lang) | default(value="产品卖点") }}
+                </h3>
+                <div class="space-y-2">
+                    {% set points_list = product.points | split(pat="\n") %}
+                    {% for point in points_list %}
+                        {% if point | trim | length > 0 %}
+                        <div class="flex items-start">
+                            <span class="w-1.5 h-1.5 bg-gray-700 rounded-full mt-1.5 mr-2 flex-shrink-0"></span>
+                            <span class="text-sm text-gray-700">{{ point | trim }}</span>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 简要摘要 -->
+            {% if product.summary %}
+            <div class="border-t pt-4">
+                <h3 class="text-md font-semibold text-gray-800 mb-2">{{ t(key="product_summary", lang=lang) | default(value="产品简介") }}</h3>
+                <p class="text-sm text-gray-600">{{ product.summary }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- 尺码表区域 -->
+    {% if product.dnote %}
+    <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <i class="fas fa-chart-simple text-purple-500 mr-2"></i>{{ t(key="size_chart", lang=lang) | default(value="尺码表") }}
+        </h3>
+        <div id="size-table-container" class="size-table-container">
+            <div class="text-center text-gray-400 py-4">加载尺码表中...</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ========== 产品属性区域（新增） ========== -->
+    <div id="product-attributes-container" class="mt-8 bg-white rounded-lg shadow-md p-6" style="display: none;">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <i class="fas fa-tags text-purple-500 mr-2"></i>{{ t(key="product_attributes", lang=lang) | default(value="产品属性") }}
+        </h3>
+        <div id="product-attributes-list" class="flex flex-wrap gap-3">
+            <!-- 动态渲染 -->
+        </div>
+    </div>
+
+    <!-- 详细描述 - 移到下方 -->
+    {% if product.description %}
+    <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <i class="fas fa-file-alt text-purple-500 mr-2"></i>{{ t(key="product_details", lang=lang) }}
+        </h3>
+        <div class="prose max-w-none text-gray-600">
+            {{ product.description | safe }}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+var productId = "{{ product.id }}";
+var variants = {{ variants | json_encode | safe }};
+var productImages = {{ product.images | default(value=[]) | json_encode | safe }};
+var selectedColor = null;
+var selectedSize = null;
+var selectedVariant = null;
+var imagesByColor = {};
+var variantColors = [];
+
+
+// 颜色映射配置
+var colorMap = {};
+var colorNameMap = {};
+// 从语言包获取部位名称翻译
+// 注意：这些 key 需要在语言包中预先定义
+var partTranslations = {
+    "Waist": "{{ t(key='size_waist', lang=lang) }}",
+    "Hip": "{{ t(key='size_hip', lang=lang) }}",
+    "Length": "{{ t(key='size_length', lang=lang) }}",
+    "Inseam": "{{ t(key='size_inseam', lang=lang) }}",
+    "Shoulder": "{{ t(key='size_shoulder', lang=lang) }}",
+    "Bust": "{{ t(key='size_bust', lang=lang) }}",
+    "Sleeve": "{{ t(key='size_sleeve', lang=lang) }}",
+    "Chest": "{{ t(key='size_chest', lang=lang) }}"
+};
+var unitCm = "{{ t(key='unit_cm', lang=lang) }}";
+var unitInch = "{{ t(key='unit_inch', lang=lang) }}";
+var sizeLabel = "{{ t(key='size', lang=lang) }}"; // 尺码列标题
+
+// 加载颜色配置文件
+async function loadColorConfig() {
+    try {
+        var response = await fetch('/config/color_codes.json');
+        if (response.ok) {
+            var config = await response.json();
+            colorMap = config.color_map || {};
+            colorNameMap = config.color_name || {};
+            console.log('颜色配置加载成功:', colorMap);
+        } else {
+            console.warn('使用默认颜色映射');
+            setDefaultColorMap();
+        }
+    } catch (err) {
+        console.error('加载颜色配置失败:', err);
+        setDefaultColorMap();
+    }
+}
+
+// 设置默认颜色映射
+function setDefaultColorMap() {
+    colorMap = {
+        'BL': 'Black', 'BK': 'Black', 'BE': 'Blue', 'RD': 'Red',
+        'WH': 'White', 'GR': 'Green', 'YE': 'Yellow', 'OR': 'Orange',
+        'PI': 'Pink', 'PR': 'Purple', 'PE': 'Purple', 'GY': 'Grey',
+        'BR': 'Brown', 'GD': 'Gold', 'SL': 'Silver', 'KH': 'Khaki', 'BG': 'Beige'
+    };
+    colorNameMap = {
+        'BL': 'Black', 'BK': 'Black', 'BE': 'Blue', 'RD': 'Red',
+        'WH': 'White', 'GR': 'Green', 'YE': 'Yellow', 'OR': 'Orange',
+        'PI': 'Pink', 'PR': 'Purple', 'PE': 'Purple', 'GY': 'Grey',
+        'BR': 'Brown', 'GD': 'Gold', 'SL': 'Silver', 'KH': 'Khaki', 'BG': 'Beige'
+    };
+}
+
+// 根据颜色代码获取颜色名称
+function getColorNameFromCode(code) {
+    if (!code) return null;
+    var upperCode = code.toUpperCase();
+    return colorNameMap[upperCode] || colorMap[upperCode] || code;
+}
+
+// 构建颜色图片映射
+function buildImagesByColor() {
+    imagesByColor = {};
+    
+    if (!productImages || productImages.length === 0) {
+        console.log('没有产品图片');
+        return;
+    }
+    
+    variantColors = [];
+    for (var i = 0; i < variants.length; i++) {
+        var colorName = variants[i].color_name;
+        if (colorName && variantColors.indexOf(colorName) === -1) {
+            variantColors.push(colorName);
+        }
+    }
+    
+    console.log('变体颜色列表:', variantColors);
+    
+    for (var i = 0; i < productImages.length; i++) {
+        var img = productImages[i];
+        var imgColorCode = img.color_code;
+        var matchedColor = null;
+        
+        if (imgColorCode) {
+            var mappedColorName = getColorNameFromCode(imgColorCode);
+            console.log('图片颜色代码:', imgColorCode, '-> 映射颜色名称:', mappedColorName);
+            
+            for (var j = 0; j < variantColors.length; j++) {
+                if (variantColors[j] === mappedColorName) {
+                    matchedColor = variantColors[j];
+                    break;
+                }
+            }
+        }
+        
+        if (!matchedColor && variantColors.length > 0) {
+            matchedColor = variantColors[0];
+        }
+        
+        if (matchedColor) {
+            if (!imagesByColor[matchedColor]) {
+                imagesByColor[matchedColor] = [];
+            }
+            imagesByColor[matchedColor].push(img);
+        }
+    }
+    
+    console.log('图片按颜色分组:', imagesByColor);
+}
+
+// 获取当前颜色对应的图片列表
+function getImagesForColor(colorName) {
+    if (!colorName) return productImages;
+    if (imagesByColor[colorName] && imagesByColor[colorName].length > 0) {
+        return imagesByColor[colorName];
+    }
+    for (var key in imagesByColor) {
+        if (key.toLowerCase() === colorName.toLowerCase()) {
+            return imagesByColor[key];
+        }
+    }
+    return productImages;
+}
+
+// 更新缩略图列表
+function updateThumbnails() {
+    var thumbnailList = document.getElementById('thumbnail-list');
+    if (!thumbnailList) return;
+    
+    var images = selectedColor ? getImagesForColor(selectedColor) : productImages;
+    
+    if (!images || images.length === 0) {
+        thumbnailList.innerHTML = '<div class="col-span-full text-center text-gray-400 py-4">暂无图片</div>';
+        return;
+    }
+    
+    var html = '';
+    for (var i = 0; i < images.length; i++) {
+        var img = images[i];
+        var isActive = i === 0 ? 'ring-2 ring-purple-500' : '';
+        html += '<img src="' + img.url + '" class="thumbnail w-full h-20 object-cover rounded cursor-pointer hover:opacity-80 transition ' + isActive + '" data-index="' + i + '" data-url="' + img.url + '">';
+    }
+    thumbnailList.innerHTML = html;
+    
+    var mainImage = document.getElementById('main-image');
+    if (mainImage && images.length > 0) {
+        mainImage.src = images[0].url;
+    }
+    
+    var thumbnails = document.querySelectorAll('.thumbnail');
+    for (var i = 0; i < thumbnails.length; i++) {
+        thumbnails[i].addEventListener('click', function() {
+            var url = this.dataset.url;
+            var mainImage = document.getElementById('main-image');
+            if (mainImage) {
+                mainImage.src = url;
+            }
+            var allThumbs = document.querySelectorAll('.thumbnail');
+            for (var j = 0; j < allThumbs.length; j++) {
+                allThumbs[j].classList.remove('ring-2', 'ring-purple-500');
+            }
+            this.classList.add('ring-2', 'ring-purple-500');
+        });
+    }
+}
+
+// 获取所有唯一的颜色
+function getUniqueColors() {
+    var colors = [];
+    for (var i = 0; i < variants.length; i++) {
+        var color = variants[i].color_name;
+        if (color && colors.indexOf(color) === -1) {
+            colors.push(color);
+        }
+    }
+    return colors;
+}
+
+// 获取所有唯一的尺码
+function getUniqueSizes() {
+    var sizes = [];
+    for (var i = 0; i < variants.length; i++) {
+        var size = variants[i].size;
+        if (size && sizes.indexOf(size) === -1) {
+            sizes.push(size);
+        }
+    }
+    return sizes;
+}
+
+// 根据选中的颜色和尺码获取变体
+function getVariantByColorAndSize(color, size) {
+    for (var i = 0; i < variants.length; i++) {
+        var v = variants[i];
+        var match = true;
+        if (color && v.color_name !== color) match = false;
+        if (size && v.size !== size) match = false;
+        if (match) return v;
+    }
+    return null;
+}
+
+// 更新显示
+function updateDisplay() {
+    var variant = getVariantByColorAndSize(selectedColor, selectedSize);
+    
+    if (variant) {
+        selectedVariant = variant;
+        var priceElement = document.getElementById('display-price');
+        if (priceElement && variant.price) {
+            priceElement.textContent = '¥' + variant.price;
+        }
+        
+        var skuElement = document.getElementById('display-sku');
+        if (skuElement && variant.sku) {
+            skuElement.textContent = 'SKU: ' + variant.sku;
+        }
+    }
+    
+    updateThumbnails();
+}
+
+// 获取颜色预览图
+function getColorPreviewImage(colorName) {
+    var images = getImagesForColor(colorName);
+    if (images && images.length > 0) {
+        return images[0].url;
+    }
+    return null;
+}
+
+// 获取颜色背景色
+function getColorBg(color) {
+    var colorMap = {
+        'Black': '#000000', 'White': '#F5F5F5', 'Red': '#FF0000',
+        'Blue': '#0000FF', 'Green': '#00FF00', 'Yellow': '#FFFF00',
+        'Purple': '#800080', 'Pink': '#FFC0CB', 'Brown': '#8B4513',
+        'Grey': '#808080', 'Orange': '#FFA500'
+    };
+    return colorMap[color] || '#CCCCCC';
+}
+
+// 初始化颜色按钮
+function initColorButtons() {
+    var colors = getUniqueColors();
+    var colorContainer = document.getElementById('color-options');
+    if (!colorContainer) return;
+    
+    if (colors.length === 0) {
+        colorContainer.innerHTML = '<span class="text-gray-500">暂无颜色选项</span>';
+        return;
+    }
+    
+    var colorHtml = '';
+    for (var i = 0; i < colors.length; i++) {
+        var color = colors[i];
+        var previewUrl = getColorPreviewImage(color);
+        
+        colorHtml += '<div class="flex flex-col items-center">';
+        if (previewUrl) {
+            colorHtml += '<button class="color-option w-12 h-12 rounded-full border-2 hover:border-purple-500 transition overflow-hidden" data-color="' + color + '">';
+            colorHtml += '<img src="' + previewUrl + '" class="w-full h-full object-cover" onerror="this.style.display=\'none\'">';
+            colorHtml += '</button>';
+        } else {
+            colorHtml += '<button class="color-option w-12 h-12 rounded-full border-2 hover:border-purple-500 transition" data-color="' + color + '" style="background-color: ' + getColorBg(color) + '"></button>';
+        }
+        colorHtml += '<span class="text-xs mt-1">' + color + '</span>';
+        colorHtml += '</div>';
+    }
+    colorContainer.innerHTML = colorHtml;
+    
+    var colorBtns = document.querySelectorAll('.color-option');
+    for (var i = 0; i < colorBtns.length; i++) {
+        colorBtns[i].addEventListener('click', function() {
+            var color = this.dataset.color;
+            var allColorBtns = document.querySelectorAll('.color-option');
+            for (var j = 0; j < allColorBtns.length; j++) {
+                allColorBtns[j].classList.remove('ring-2', 'ring-purple-500');
+            }
+            if (selectedColor === color) {
+                selectedColor = null;
+                this.classList.remove('ring-2', 'ring-purple-500');
+            } else {
+                selectedColor = color;
+                this.classList.add('ring-2', 'ring-purple-500');
+            }
+            updateDisplay();
+        });
+    }
+}
+
+// 初始化尺码按钮
+function initSizeButtons() {
+    var sizes = getUniqueSizes();
+    var sizeContainer = document.getElementById('size-options');
+    if (!sizeContainer) return;
+    
+    if (sizes.length === 0) {
+        sizeContainer.innerHTML = '<span class="text-gray-500">暂无尺码选项</span>';
+        return;
+    }
+    
+    var sizeHtml = '';
+    for (var i = 0; i < sizes.length; i++) {
+        sizeHtml += '<button class="size-option px-4 py-2 border rounded-md hover:border-purple-500 transition" data-size="' + sizes[i] + '">' + sizes[i] + '</button>';
+    }
+    sizeContainer.innerHTML = sizeHtml;
+    
+    var sizeBtns = document.querySelectorAll('.size-option');
+    for (var i = 0; i < sizeBtns.length; i++) {
+        sizeBtns[i].addEventListener('click', function() {
+            var size = this.dataset.size;
+            var allSizeBtns = document.querySelectorAll('.size-option');
+            for (var j = 0; j < allSizeBtns.length; j++) {
+                allSizeBtns[j].classList.remove('border-purple-500', 'bg-purple-50');
+            }
+            if (selectedSize === size) {
+                selectedSize = null;
+                this.classList.remove('border-purple-500', 'bg-purple-50');
+            } else {
+                selectedSize = size;
+                this.classList.add('border-purple-500', 'bg-purple-50');
+            }
+            updateDisplay();
+        });
+    }
+}
+
+// 加载尺码表
+async function loadSizeTable() {
+    try {
+        console.log('加载尺码表, productId:', productId);
+        var response = await fetch(`/api/public/products/${productId}/size-table`);
+        var data = await response.json();
+        console.log('尺码表数据:', data);
+        if (data.size_table && data.size_table.rows && data.size_table.rows.length > 0) {
+            renderSizeTable(data.size_table);
+        } else {
+            var container = document.getElementById('size-table-container');
+            if (container) {
+                container.innerHTML = '<div class="text-center text-gray-400 py-4">暂无尺码数据</div>';
+            }
+        }
+    } catch (err) {
+        console.error('加载尺码表失败:', err);
+        var container = document.getElementById('size-table-container');
+        if (container) {
+            container.innerHTML = '<div class="text-center text-gray-400 py-4">加载尺码表失败</div>';
+        }
+    }
+}
+
+// 渲染尺码表
+function renderSizeTable(sizeTable) {
+    var container = document.getElementById('size-table-container');
+    if (!container) return;
+    
+    if (!sizeTable.headers || sizeTable.headers.length === 0 || !sizeTable.rows || sizeTable.rows.length === 0) {
+        container.innerHTML = '<div class="text-center text-gray-400 py-4">暂无尺码数据</div>';
+        return;
+    }
+    
+    var unit = sizeTable.unit === 'inch' ? unitInch : unitCm;
+    var diplayunit= "("+unit+")";
+    
+    var html = '<div class="overflow-x-auto"><table class="min-w-full border-collapse border border-gray-300">';
+    html += '<thead><tr class="bg-gray-100">';
+    html += '<th class="border border-gray-300 px-4 py-2 text-center font-semibold">' + (sizeLabel || (lang === 'zh' ? '尺码' : 'Size')) + '</th>';
+    for (var i = 0; i < sizeTable.headers.length; i++) {
+        var part = sizeTable.headers[i];
+        var translated = partTranslations[part] || part;
+        html += '<th class="border border-gray-300 px-4 py-2 text-center font-semibold">' + escapeHtml(translated) + '<br><span class="text-xs text-gray-400">' + diplayunit + '</span></th>';
+    }
+    html += '</tr></thead><tbody>';
+    
+    for (var i = 0; i < sizeTable.rows.length; i++) {
+        var row = sizeTable.rows[i];
+        html += '<tr class="hover:bg-gray-50">';
+        html += '<td class="border border-gray-300 px-4 py-2 text-center font-medium">' + escapeHtml(row.size) + '</td>';
+        for (var j = 0; j < row.values.length; j++) {
+            var value = row.values[j];
+            html += '<td class="border border-gray-300 px-4 py-2 text-center">' + (value && value !== '-' ? escapeHtml(value) : '-') + '</td>';
+        }
+        html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+    
+    container.innerHTML = html;
+}
+
+// ========== 加载产品属性 ==========
+async function loadProductAttributes() {
+    try {
+        var response = await fetch(`/api/public/products/${productId}/attribute-values`);
+        if (!response.ok) {
+            console.log('产品无属性或获取失败');
+            return;
+        }
+        var attributes = await response.json();
+        console.log('产品属性数据:', attributes);
+        
+        if (attributes && attributes.length > 0) {
+            var container = document.getElementById('product-attributes-container');
+            var listContainer = document.getElementById('product-attributes-list');
+            
+            if (container && listContainer) {
+                container.style.display = 'block';
+                var html = '';
+                for (var i = 0; i < attributes.length; i++) {
+                    var attr = attributes[i];
+                    var name = attr.attribute_name || '属性';
+                    var value = attr.value || '-';
+                    html += '<span class="inline-block bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full text-sm border border-purple-200">';
+                    html += '<span class="font-medium">' + escapeHtml(name) + '</span>';
+                    html += '<span class="mx-1 text-purple-300">:</span>';
+                    html += '<span>' + escapeHtml(value) + '</span>';
+                    html += '</span>';
+                }
+                listContainer.innerHTML = html;
+            }
+        }
+    } catch (err) {
+        console.error('加载产品属性失败:', err);
+    }
+}
+
+// 初始化变体
+async function initVariants() {
+    await loadColorConfig();
+    
+    if (!variants || variants.length === 0) {
+        updateThumbnails();
+        return;
+    }
+    
+    buildImagesByColor();
+    initColorButtons();
+    initSizeButtons();
+    
+    if (variants.length > 0) {
+        var firstVariant = variants[0];
+        if (firstVariant.color_name) {
+            selectedColor = firstVariant.color_name;
+            var colorBtn = document.querySelector('.color-option[data-color="' + selectedColor + '"]');
+            if (colorBtn) colorBtn.classList.add('ring-2', 'ring-purple-500');
+        }
+        if (firstVariant.size) {
+            selectedSize = firstVariant.size;
+            var sizeBtn = document.querySelector('.size-option[data-size="' + selectedSize + '"]');
+            if (sizeBtn) sizeBtn.classList.add('border-purple-500', 'bg-purple-50');
+        }
+        updateDisplay();
+    }
+}
+
+// 购买按钮
+var buyBtn = document.getElementById('buy-now');
+if (buyBtn) {
+    buyBtn.addEventListener('click', function() {
+        if (selectedVariant) {
+            alert('购买: ' + selectedVariant.sku + '\n价格: ¥' + selectedVariant.price);
+        } else {
+            alert('购买: {{ product.name }}\n价格: ¥{{ product.price }}');
+        }
+    });
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+// DOM 加载完成后执行
+document.addEventListener('DOMContentLoaded', function() {
+    initVariants();
+    loadSizeTable();
+    loadProductAttributes(); // 加载产品属性
+});
+</script>
+{% endblock %}

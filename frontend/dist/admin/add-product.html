@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>添加产品 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .category-checkbox {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        .category-label {
+            cursor: pointer;
+            user-select: none;
+        }
+        .categories-container {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            padding: 0.5rem;
+        }
+        .category-item {
+            padding: 0.25rem 0;
+        }
+        .category-item:hover {
+            background-color: #f9fafb;
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        .upload-progress-container {
+            background: #f3f4f6;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .toast {
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .image-cover-ring {
+            ring: 2px solid #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+    
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <!-- 步骤指示器 -->
+                <div class="border-b px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="text-sm font-medium text-gray-500" id="step-label">步骤 1/2</div>
+                            <h2 class="text-xl font-semibold" id="step-title">基本信息</h2>
+                        </div>
+                        <div class="flex space-x-2">
+                            <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center" id="step1-indicator">1</div>
+                            <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center" id="step2-indicator">2</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤1：基本信息表单 -->
+                <form id="product-form" class="p-6">
+                    <div class="space-y-4">
+                        <!-- 基础信息 -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">产品名称 *</label>
+                                <input type="text" id="name" name="name" required
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">英文名称</label>
+                                <input type="text" id="dname" name="dname"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">完整名称</label>
+                                <input type="text" id="fullname" name="fullname"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">品牌</label>
+                                <input type="text" id="brand" name="brand"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Slug (URL标识) *</label>
+                            <input type="text" id="slug" name="slug" required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">示例: my-awesome-product</p>
+                        </div>
+
+                        <!-- SKU 字段 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">产品SKU</label>
+                            <input type="text" id="product_sku" name="product_sku" placeholder="例如: SKU001"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">库存单位，用于唯一标识产品</p>
+                        </div>
+
+                        <!-- 多选分类 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">分类（可多选）</label>
+                            <div id="categories-container" class="categories-container">
+                                <div class="text-center text-gray-400 py-4">加载分类中...</div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">可勾选多个分类</p>
+                        </div>
+
+                        <!-- 价格与库存 -->
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">价格</label>
+                                <input type="text" id="price" name="price" placeholder="¥199.00"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">库存</label>
+                                <input type="text" id="stock" name="stock" placeholder="100"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">重量</label>
+                                <input type="text" id="weight" name="weight" placeholder="0.5kg"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+
+                        <!-- 尺寸信息 -->
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">中国尺码</label>
+                                <input type="text" id="csize" name="csize" placeholder="XS,S,M,L,XL"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">美国尺码</label>
+                                <input type="text" id="ussize" name="ussize" placeholder="XS,S,M,L,XL"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">亚洲尺码</label>
+                                <input type="text" id="asize" name="asize" placeholder="XS,S,M,L,XL"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">面料类型</label>
+                            <input type="text" id="fabric_type" name="fabric_type" placeholder="棉, 涤纶, 混纺"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+
+                        <!-- 包装信息 -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">包装</label>
+                                <input type="text" id="package" name="package" placeholder="袋装, 盒装"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">封面图片URL</label>
+                                <input type="text" id="cover_image" name="cover_image" placeholder="/uploads/xxx.jpg"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                        </div>
+
+                        <!-- 产品描述 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">简短摘要</label>
+                            <textarea id="summary" name="summary" rows="2" placeholder="产品简短介绍"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">详细描述</label>
+                            <textarea id="description" name="description" rows="4" placeholder="产品详细描述"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">关键词</label>
+                            <input type="text" id="keywords" name="keywords" placeholder="关键词1,关键词2,关键词3"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">卖点</label>
+                            <textarea id="points" name="points" rows="3" placeholder="每行一个卖点"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">注意事项</label>
+                            <textarea id="dnote" name="dnote" rows="3" placeholder="使用注意事项"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                        </div>
+
+                       
+
+                        <!-- SEO 设置 -->
+                        <details class="mt-4">
+                            <summary class="cursor-pointer text-sm font-medium text-gray-700">SEO 设置</summary>
+                            <div class="mt-3 space-y-3">
+                                <input type="text" id="seo_title" placeholder="SEO标题"
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                <textarea id="seo_description" rows="2" placeholder="SEO描述"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-md"></textarea>
+                            </div>
+                        </details>
+
+                        <!-- 发布状态 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">产品状态</label>
+                            <select id="published" name="published" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                <option value="false">草稿</option>
+                                <option value="true">发布</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-between">
+                        <button type="button" onclick="window.location.href='products.html'" 
+                                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                            取消
+                        </button>
+                        <button type="submit" id="next-btn"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            下一步：上传图片 →
+                        </button>
+                    </div>
+                </form>
+
+                <!-- 步骤2：上传图片 -->
+                <div id="upload-section" style="display: none;" class="p-6">
+                    <!-- 封面模式选择 -->
+                    <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">封面设置</label>
+                        <div class="flex items-center space-x-6">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="radio" name="cover_mode" value="auto" checked class="mr-2 w-4 h-4">
+                                <span class="text-sm">自动（第一张图片）</span>
+                            </label>
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="radio" name="cover_mode" value="manual" class="mr-2 w-4 h-4">
+                                <span class="text-sm">手动选择</span>
+                            </label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">自动模式：第一张上传的图片自动成为封面；手动模式：可在预览中点击⭐按钮设为主图</p>
+                    </div>
+
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center" id="dropzone">
+                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+                        <p class="text-gray-600">拖拽图片到这里或点击上传</p>
+                        <p class="text-sm text-gray-500 mt-1" id="upload-hint">加载设置中...</p>
+                        <input type="file" id="file-input" multiple accept="image/*" class="hidden">
+                        <button type="button" id="select-files-btn" class="mt-3 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
+                            选择图片
+                        </button>
+                    </div>
+
+                    <!-- 进度条 -->
+                    <div id="progress-container" class="mt-4 hidden">
+                        <div class="flex justify-between text-sm text-gray-600 mb-1">
+                            <span>上传进度</span>
+                            <span id="progress-percent">0%</span>
+                        </div>
+                        <div class="upload-progress-container">
+                            <div id="progress-bar" class="progress-bar bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                        <p id="upload-status" class="text-sm text-gray-500 mt-2">准备上传...</p>
+                    </div>
+
+                    <div id="image-preview" class="mt-6 grid grid-cols-3 gap-4"></div>
+
+                    <div class="mt-6 flex justify-between">
+                        <button type="button" id="back-btn"
+                                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                            ← 上一步
+                        </button>
+                        <button type="button" id="submit-product-btn"
+                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            完成并提交
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script src="/admin/common.js"></script>
+    <script>
+        let currentProductId = null;
+        let selectedFiles = [];
+        let coverMode = 'auto'; // auto 或 manual
+        let manualCoverIndex = 0; // 手动模式选中的主图索引
+        
+        // 产品设置（从系统配置读取）
+        let productSettings = {
+            allowed_image_types: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+            max_image_size_mb: 5,
+            max_images_count: 20,
+            auto_thumbnail: true,
+            thumbnail_width: 200,
+            thumbnail_height: 200
+        };
+
+        // 加载产品设置
+        async function loadProductSettings() {
+            try {
+                // 先尝试从 localStorage 读取
+                const cached = localStorage.getItem('product_settings');
+                if (cached) {
+                    const settings = JSON.parse(cached);
+                    productSettings.allowed_image_types = settings.allowed_image_types ? settings.allowed_image_types.split(',') : productSettings.allowed_image_types;
+                    productSettings.max_image_size_mb = settings.max_image_size_mb || 5;
+                    productSettings.max_images_count = settings.max_images_count || 20;
+                    productSettings.auto_thumbnail = settings.auto_thumbnail !== undefined ? settings.auto_thumbnail : true;
+                    productSettings.thumbnail_width = settings.thumbnail_width || 200;
+                    productSettings.thumbnail_height = settings.thumbnail_height || 200;
+                }
+                
+                // 从服务器获取最新配置
+                const config = await apiCall('GET', '/api/admin/config');
+                if (config.product_allowed_image_types) {
+                    productSettings.allowed_image_types = config.product_allowed_image_types.split(',');
+                }
+                if (config.product_max_image_size_mb) {
+                    productSettings.max_image_size_mb = config.product_max_image_size_mb;
+                }
+                if (config.product_max_images_count) {
+                    productSettings.max_images_count = config.product_max_images_count;
+                }
+                if (config.product_auto_thumbnail !== undefined) {
+                    productSettings.auto_thumbnail = config.product_auto_thumbnail;
+                }
+                if (config.product_thumbnail_width) {
+                    productSettings.thumbnail_width = config.product_thumbnail_width;
+                }
+                if (config.product_thumbnail_height) {
+                    productSettings.thumbnail_height = config.product_thumbnail_height;
+                }
+                
+                // 更新页面提示
+                const hintText = `支持 ${productSettings.allowed_image_types.join(', ').toUpperCase()}，单张不超过 ${productSettings.max_image_size_mb}MB，最多 ${productSettings.max_images_count} 张`;
+                document.getElementById('upload-hint').textContent = hintText;
+                
+                console.log('产品设置已加载:', productSettings);
+            } catch (err) {
+                console.error('加载产品设置失败:', err);
+                document.getElementById('upload-hint').textContent = `支持 ${productSettings.allowed_image_types.join(', ').toUpperCase()}，单张不超过 ${productSettings.max_image_size_mb}MB，最多 ${productSettings.max_images_count} 张`;
+            }
+        }
+
+        // 监听封面模式切换
+        document.querySelectorAll('input[name="cover_mode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                coverMode = e.target.value;
+                if (coverMode === 'manual') {
+                    showNotification('请在图片预览中点击⭐按钮设置主图', 'success', 3000);
+                }
+                // 重新渲染预览以更新显示
+                previewImages();
+            });
+        });
+
+        // 验证图片
+        function validateImages(files) {
+            const maxSizeBytes = productSettings.max_image_size_mb * 1024 * 1024;
+            
+            for (const file of files) {
+                // 检查文件类型
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (!productSettings.allowed_image_types.includes(ext)) {
+                    showNotification(`不支持的文件类型: ${file.name} (支持: ${productSettings.allowed_image_types.join(', ')})`, 'error');
+                    return false;
+                }
+                
+                // 检查文件大小
+                if (file.size > maxSizeBytes) {
+                    showNotification(`文件过大: ${file.name} (最大 ${productSettings.max_image_size_mb}MB)`, 'error');
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // 加载分类树（多选复选框）
+        async function loadCategories() {
+            try {
+                const categories = await apiCall('GET', '/api/admin/product-categories/tree');
+                const container = document.getElementById('categories-container');
+                container.innerHTML = '';
+                
+                if (!categories || categories.length === 0) {
+                    container.innerHTML = '<div class="text-center text-gray-400 py-4">暂无分类，请先添加分类</div>';
+                    return;
+                }
+                
+                function addCheckboxes(items, level = 0) {
+                    if (!items || !Array.isArray(items)) return;
+                    const indent = level * 20;
+                    for (const cat of items) {
+                        const div = document.createElement('div');
+                        div.className = 'category-item flex items-center py-1';
+                        div.style.paddingLeft = indent + 'px';
+                        div.innerHTML = `
+                            <input type="checkbox" id="cat_${cat.id}" value="${cat.id}" class="category-checkbox mr-2">
+                            <label for="cat_${cat.id}" class="category-label text-sm text-gray-700">${escapeHtml(cat.name)}</label>
+                        `;
+                        container.appendChild(div);
+                        if (cat.children && cat.children.length) {
+                            addCheckboxes(cat.children, level + 1);
+                        }
+                    }
+                }
+                
+                addCheckboxes(categories);
+            } catch (err) {
+                console.error('加载分类失败:', err);
+                document.getElementById('categories-container').innerHTML = '<div class="text-center text-red-500 py-4">加载分类失败</div>';
+            }
+        }
+
+        // 获取选中的分类ID数组
+        function getSelectedCategories() {
+            const checkboxes = document.querySelectorAll('.category-checkbox:checked');
+            return Array.from(checkboxes).map(cb => parseInt(cb.value));
+        }
+
+        // 自动生成 Slug
+        document.getElementById('name').addEventListener('blur', function() {
+            const slugInput = document.getElementById('slug');
+            if (!slugInput.value) {
+                slugInput.value = this.value.toLowerCase()
+                    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
+                    .replace(/^-|-$/g, '');
+            }
+        });
+
+        // 步骤1：提交基本信息
+        document.getElementById('product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const selectedCategories = getSelectedCategories();
+            console.log('选中的分类IDs:', selectedCategories);
+            
+            const formData = {
+                name: document.getElementById('name').value,
+                dname: document.getElementById('dname').value || null,
+                fullname: document.getElementById('fullname').value || null,
+                brand: document.getElementById('brand').value || null,
+                slug: document.getElementById('slug').value,
+                sku: document.getElementById('product_sku').value || null,
+                cover_image: document.getElementById('cover_image').value || null,
+                price: document.getElementById('price').value || null,
+                stock: document.getElementById('stock').value || null,
+                weight: document.getElementById('weight').value || null,
+                package: document.getElementById('package').value || null,
+                csize: document.getElementById('csize').value || null,
+                ussize: document.getElementById('ussize').value || null,
+                asize: document.getElementById('asize').value || null,
+                fabric_type: document.getElementById('fabric_type').value || null,
+                summary: document.getElementById('summary').value || null,
+                description: document.getElementById('description').value || null,
+                keywords: document.getElementById('keywords').value || null,
+                points: document.getElementById('points').value || null,
+                dnote: document.getElementById('dnote').value || null,
+                seo_title: document.getElementById('seo_title').value || null,
+                seo_description: document.getElementById('seo_description').value || null,
+                published: document.getElementById('published').value === 'true',
+                category_ids: selectedCategories,
+                lang: 'zh'
+            };
+
+            const nextBtn = document.getElementById('next-btn');
+            nextBtn.disabled = true;
+            nextBtn.textContent = '提交中...';
+
+            try {
+                const result = await apiCall('POST', '/api/admin/products', formData);
+                currentProductId = result.id;
+                
+                document.getElementById('product-form').style.display = 'none';
+                document.getElementById('upload-section').style.display = 'block';
+                document.getElementById('step-label').textContent = '步骤 2/2';
+                document.getElementById('step-title').textContent = '上传产品图片';
+                document.getElementById('step1-indicator').classList.remove('bg-blue-600', 'text-white');
+                document.getElementById('step1-indicator').classList.add('bg-green-500', 'text-white');
+                document.getElementById('step1-indicator').innerHTML = '✓';
+                document.getElementById('step2-indicator').classList.remove('bg-gray-300', 'text-gray-600');
+                document.getElementById('step2-indicator').classList.add('bg-blue-600', 'text-white');
+                
+                showNotification('产品基本信息已保存', 'success');
+            } catch (err) {
+                console.error('保存失败:', err);
+                showNotification('保存失败: ' + err.message, 'error');
+            } finally {
+                nextBtn.disabled = false;
+                nextBtn.textContent = '下一步：上传图片 →';
+            }
+        });
+
+        // 图片上传相关逻辑
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+        const selectFilesBtn = document.getElementById('select-files-btn');
+        const imagePreview = document.getElementById('image-preview');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercent = document.getElementById('progress-percent');
+        const uploadStatus = document.getElementById('upload-status');
+
+        selectFilesBtn.addEventListener('click', () => fileInput.click());
+        
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            
+            if (selectedFiles.length + files.length > productSettings.max_images_count) {
+                showNotification(`最多只能上传 ${productSettings.max_images_count} 张图片`, 'error');
+                return;
+            }
+            
+            if (!validateImages(files)) return;
+            
+            selectedFiles = [...selectedFiles, ...files];
+            previewImages();
+        });
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('border-blue-500', 'bg-blue-50');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('border-blue-500', 'bg-blue-50');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-blue-500', 'bg-blue-50');
+            
+            const files = Array.from(e.dataTransfer.files);
+            
+            if (selectedFiles.length + files.length > productSettings.max_images_count) {
+                showNotification(`最多只能上传 ${productSettings.max_images_count} 张图片`, 'error');
+                return;
+            }
+            
+            if (!validateImages(files)) return;
+            
+            selectedFiles = [...selectedFiles, ...files];
+            previewImages();
+        });
+
+        function handleSetCover(e) {
+            const index = parseInt(e.currentTarget.dataset.index);
+            manualCoverIndex = index;
+            previewImages();
+            showNotification(`已将第 ${index + 1} 张图片设为主图`, 'success');
+        }
+
+        function handleRemove(e) {
+            const index = parseInt(e.currentTarget.dataset.index);
+            selectedFiles.splice(index, 1);
+            // 如果删除的是主图，重置主图索引
+            if (manualCoverIndex >= selectedFiles.length) {
+                manualCoverIndex = 0;
+            }
+            previewImages();
+        }
+
+        function previewImages() {
+            imagePreview.innerHTML = '';
+            if (selectedFiles.length === 0) return;
+            
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const isManualCover = (coverMode === 'manual' && manualCoverIndex === index);
+                    const isAutoCover = (coverMode === 'auto' && index === 0);
+                    const isCover = isManualCover || isAutoCover;
+                    
+                    const div = document.createElement('div');
+                    div.className = `relative border rounded-lg overflow-hidden group ${isCover ? 'ring-2 ring-blue-500' : ''}`;
+                    div.innerHTML = `
+                        <img src="${e.target.result}" class="w-full h-32 object-cover">
+                        <div class="absolute top-2 right-2 flex space-x-1">
+                            ${coverMode === 'manual' ? `
+                                <button type="button" class="set-cover bg-blue-600 text-white rounded-full w-6 h-6 text-xs hover:bg-blue-700 flex items-center justify-center" data-index="${index}" title="设为主图">
+                                    <i class="fas ${isManualCover ? 'fa-star' : 'fa-star-o'} text-xs"></i>
+                                </button>
+                            ` : ''}
+                            <button type="button" class="remove-image bg-red-600 text-white rounded-full w-6 h-6 text-xs hover:bg-red-700 flex items-center justify-center" data-index="${index}" title="删除">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                        <div class="p-2 text-xs truncate text-center">
+                            ${isCover ? '<span class="text-blue-600 font-bold">⭐ 主图</span><br>' : ''}
+                            ${escapeHtml(file.name)}<br>
+                            <span class="text-gray-400">(${(file.size / 1024).toFixed(1)}KB)</span>
+                        </div>
+                    `;
+                    imagePreview.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            setTimeout(() => {
+                document.querySelectorAll('.remove-image').forEach(btn => {
+                    btn.removeEventListener('click', handleRemove);
+                    btn.addEventListener('click', handleRemove);
+                });
+                
+                if (coverMode === 'manual') {
+                    document.querySelectorAll('.set-cover').forEach(btn => {
+                        btn.removeEventListener('click', handleSetCover);
+                        btn.addEventListener('click', handleSetCover);
+                    });
+                }
+            }, 100);
+        }
+
+        // 带进度条的上传
+        function uploadWithProgress() {
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                selectedFiles.forEach(file => {
+                    formData.append('images', file);
+                });
+
+                const xhr = new XMLHttpRequest();
+                
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        progressBar.style.width = percent + '%';
+                        progressPercent.textContent = percent + '%';
+                        uploadStatus.textContent = `上传中... ${percent}% (${formatFileSize(e.loaded)} / ${formatFileSize(e.total)})`;
+                    }
+                });
+                
+                xhr.addEventListener('loadstart', () => {
+                    progressContainer.classList.remove('hidden');
+                    progressBar.style.width = '0%';
+                    progressPercent.textContent = '0%';
+                    uploadStatus.textContent = '准备上传...';
+                });
+                
+                xhr.addEventListener('load', () => {
+                    if (xhr.status === 200) {
+                        try {
+                            const result = JSON.parse(xhr.responseText);
+                            resolve(result);
+                        } catch (e) {
+                            reject(new Error('解析响应失败'));
+                        }
+                    } else {
+                        reject(new Error(`上传失败: ${xhr.status}`));
+                    }
+                });
+                
+                xhr.addEventListener('error', () => {
+                    reject(new Error('网络错误'));
+                });
+                
+                xhr.open('POST', `/api/admin/products/${currentProductId}/images`);
+                xhr.withCredentials = true;
+                xhr.send(formData);
+            });
+        }
+
+        // 设置产品封面
+        async function setProductCover(productId, imageUrl) {
+            try {
+                await apiCall('PUT', `/api/admin/products/${productId}`, {
+                    cover_image: imageUrl
+                });
+                console.log('封面设置成功:', imageUrl);
+                return true;
+            } catch (err) {
+                console.error('设置封面失败:', err);
+                return false;
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // 批量上传图片
+        document.getElementById('submit-product-btn').addEventListener('click', async () => {
+            if (!currentProductId) {
+                showNotification('请先保存产品基本信息', 'error');
+                return;
+            }
+            
+            if (selectedFiles.length === 0) {
+                if (confirm('没有选择图片，是否直接完成？')) {
+                    window.location.href = 'products.html';
+                }
+                return;
+            }
+
+            const submitBtn = document.getElementById('submit-product-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>上传中...';
+
+            try {
+                const result = await uploadWithProgress();
+                
+                // 根据模式设置封面
+                if (result.images && result.images.length > 0) {
+                    let coverUrl;
+                    if (coverMode === 'auto') {
+                        // 自动模式：第一张图片
+                        coverUrl = result.images[0].url;
+                    } else {
+                        // 手动模式：用户选中的图片
+                        const coverIndex = Math.min(manualCoverIndex, result.images.length - 1);
+                        coverUrl = result.images[coverIndex]?.url || result.images[0].url;
+                    }
+                    
+                    await setProductCover(currentProductId, coverUrl);
+                    showNotification(`成功上传 ${result.images.length} 张图片，封面已设置`, 'success');
+                } else {
+                    showNotification(`成功上传 ${result.images.length} 张图片`, 'success');
+                }
+                
+                setTimeout(() => {
+                    window.location.href = 'products.html';
+                }, 1500);
+            } catch (err) {
+                console.error('上传失败:', err);
+                showNotification('上传失败: ' + err.message, 'error');
+                progressContainer.classList.add('hidden');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '完成并提交';
+            }
+        });
+
+        document.getElementById('back-btn').addEventListener('click', () => {
+            document.getElementById('product-form').style.display = 'block';
+            document.getElementById('upload-section').style.display = 'none';
+            progressContainer.classList.add('hidden');
+            document.getElementById('step-label').textContent = '步骤 1/2';
+            document.getElementById('step-title').textContent = '基本信息';
+            document.getElementById('step1-indicator').classList.remove('bg-green-500', 'text-white');
+            document.getElementById('step1-indicator').classList.add('bg-blue-600', 'text-white');
+            document.getElementById('step1-indicator').innerHTML = '1';
+            document.getElementById('step2-indicator').classList.remove('bg-blue-600', 'text-white');
+            document.getElementById('step2-indicator').classList.add('bg-gray-300', 'text-gray-600');
+        });
+
+        function showNotification(message, type, duration = 3000) {
+            const notification = document.createElement('div');
+            notification.className = `toast fixed top-20 right-4 px-4 py-2 rounded shadow-lg z-50 ${
+                type === 'success' ? 'bg-green-500 text-white' : type === 'error' ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'
+            }`;
+            notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-2"></i>${message}`;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, duration);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // 初始化
+        requireAuth().then(async () => {
+            await loadTopbar();
+            await loadFooter();
+            await loadProductSettings();
+            await loadCategories();
+        }).catch(() => {});
+    </script>
+</body>
+</html>

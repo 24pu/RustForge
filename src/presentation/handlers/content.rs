@@ -1,18 +1,35 @@
-use axum::{extract::{State, Path, Query}, Json, http::StatusCode, response::IntoResponse};
+use axum::{
+    extract::{State, Path, Query},
+    http::StatusCode,
+    response::IntoResponse,
+    Json,
+};
 use serde_json::json;
 use sqlx::Row;
 use std::sync::Arc;
+use uuid::Uuid;
 
 use crate::presentation::AppState;
 use crate::presentation::types::*;
 use crate::core::models::Content;
-use uuid::Uuid;
 use crate::presentation::middleware::CurrentUser;
+use crate::presentation::handlers::utils::check_permission;
+
+// ========== 后台管理接口（需要权限） ==========
 
 pub async fn list_contents_handler(
+    CurrentUser(user_id): CurrentUser,
     State(state): State<Arc<AppState>>,
     Query(params): Query<ListContentsParams>,
 ) -> impl IntoResponse {
+    let user_id = match user_id {
+        Some(id) => id,
+        None => return (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))).into_response(),
+    };
+    if let Err((status, msg)) = check_permission(Some(user_id), &state.user_repo, "content:list").await {
+        return (status, Json(json!({"error": msg}))).into_response();
+    }
+
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
     let offset = (page - 1) * per_page;
@@ -205,47 +222,23 @@ pub async fn list_contents_handler(
     (StatusCode::OK, Json(resp)).into_response()
 }
 
-pub async fn list_published_contents_handler(
-    State(state): State<Arc<AppState>>,
-    Query(params): Query<ListContentsParams>,
-) -> impl IntoResponse {
-    let page = params.page.unwrap_or(1);
-    let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
-    let offset = (page - 1) * per_page;
-    let keyword = params.keyword.as_deref();
-    let lang = params.lang.as_deref().unwrap_or("zh");
-
-    if let Some(kw) = keyword {
-        match state.content_repo.search_published(kw, lang, per_page as i64, offset as i64).await {
-            Ok((items, total)) => {
-                let total_pages = (total + per_page as i64 - 1) / per_page as i64;
-                let resp = json!({
-                    "items": items,
-                    "total": total,
-                    "total_pages": total_pages,
-                    "current_page": page,
-                });
-                (StatusCode::OK, Json(resp)).into_response()
-            }
-            Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Search failed"}))).into_response(),
-        }
-    } else {
-        // 无关键词时返回最新内容（也可以按语言过滤，但当前保持原样）
-        match state.content_repo.list_published(per_page as i64).await {
-            Ok(contents) => (StatusCode::OK, Json(contents)).into_response(),
-            Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to fetch contents"}))).into_response(),
-        }
-    }
-}
-
 pub async fn create_content_handler(
+    CurrentUser(user_id): CurrentUser,
     State(state): State<Arc<AppState>>,
     Json(payload): Json<CreateContentRequest>,
 ) -> impl IntoResponse {
+    let user_id = match user_id {
+        Some(id) => id,
+        None => return (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))).into_response(),
+    };
+    if let Err((status, msg)) = check_permission(Some(user_id), &state.user_repo, "content:create").await {
+        return (status, Json(json!({"error": msg}))).into_response();
+    }
+
     let published = payload.published.unwrap_or(false);
     let lang = payload.lang.unwrap_or_else(|| "zh".to_string());
     let translation_group = payload.translation_group.unwrap_or_else(Uuid::new_v4);
-    
+
     let content = match state.content_repo.create_content(
         &payload.slug, &payload.title, &payload.body, published,
         payload.cover_image.clone(), &lang, translation_group,
@@ -265,10 +258,19 @@ pub async fn create_content_handler(
 }
 
 pub async fn update_content_handler(
+    CurrentUser(user_id): CurrentUser,
     State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateContentRequest>,
 ) -> impl IntoResponse {
+    let user_id = match user_id {
+        Some(id) => id,
+        None => return (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))).into_response(),
+    };
+    if let Err((status, msg)) = check_permission(Some(user_id), &state.user_repo, "content:edit").await {
+        return (status, Json(json!({"error": msg}))).into_response();
+    }
+
     let existing = match state.content_repo.get_content_by_id(id).await {
         Ok(Some(c)) => c,
         _ => return (StatusCode::NOT_FOUND, Json(json!({ "error": "Content not found" }))).into_response(),
@@ -293,20 +295,41 @@ pub async fn update_content_handler(
 }
 
 pub async fn delete_content_handler(
+    CurrentUser(user_id): CurrentUser,
     State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
+    let user_id = match user_id {
+        Some(id) => id,
+        None => return (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))).into_response(),
+    };
+    if let Err((status, msg)) = check_permission(Some(user_id), &state.user_repo, "content:delete").await {
+        return (status, Json(json!({"error": msg}))).into_response();
+    }
+
     match state.content_repo.delete_content(id).await {
         Ok(true) => (StatusCode::NO_CONTENT, "").into_response(),
         Ok(false) => (StatusCode::NOT_FOUND, Json(json!({ "error": "Content not found" }))).into_response(),
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "Delete failed" }))).into_response(),
+        Err(e) => {
+            eprintln!("Failed to delete content: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "Delete failed" }))).into_response()
+        }
     }
 }
 
 pub async fn get_content_by_id_handler(
+    CurrentUser(user_id): CurrentUser,
     State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
+    let user_id = match user_id {
+        Some(id) => id,
+        None => return (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))).into_response(),
+    };
+    if let Err((status, msg)) = check_permission(Some(user_id), &state.user_repo, "content:list").await {
+        return (status, Json(json!({"error": msg}))).into_response();
+    }
+
     match state.content_repo.get_content_by_id(id).await {
         Ok(Some(mut content)) => {
             let categories = state.content_repo.get_content_categories(id).await.unwrap_or_default();
@@ -314,6 +337,49 @@ pub async fn get_content_by_id_handler(
             (StatusCode::OK, Json(content)).into_response()
         }
         Ok(None) => (StatusCode::NOT_FOUND, Json(json!({ "error": "Content not found" }))).into_response(),
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "Failed to fetch content" }))).into_response(),
+        Err(e) => {
+            eprintln!("Failed to fetch content: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "Failed to fetch content" }))).into_response()
+        }
+    }
+}
+
+// ========== 前台公开接口（无需权限） ==========
+
+pub async fn list_published_contents_handler(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<ListContentsParams>,
+) -> impl IntoResponse {
+    let page = params.page.unwrap_or(1);
+    let per_page = params.per_page.unwrap_or(20).clamp(1, 100);
+    let offset = (page - 1) * per_page;
+    let keyword = params.keyword.as_deref();
+    let lang = params.lang.as_deref().unwrap_or("zh");
+
+    if let Some(kw) = keyword {
+        match state.content_repo.search_published(kw, lang, per_page as i64, offset as i64).await {
+            Ok((items, total)) => {
+                let total_pages = (total + per_page as i64 - 1) / per_page as i64;
+                let resp = json!({
+                    "items": items,
+                    "total": total,
+                    "total_pages": total_pages,
+                    "current_page": page,
+                });
+                (StatusCode::OK, Json(resp)).into_response()
+            }
+            Err(e) => {
+                eprintln!("Search failed: {}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Search failed"}))).into_response()
+            }
+        }
+    } else {
+        match state.content_repo.list_published(per_page as i64).await {
+            Ok(contents) => (StatusCode::OK, Json(contents)).into_response(),
+            Err(e) => {
+                eprintln!("Failed to fetch published contents: {}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Failed to fetch contents"}))).into_response()
+            }
+        }
     }
 }

@@ -1,6 +1,7 @@
 mod core;
 mod infrastructure;
 mod presentation;
+use infrastructure::color_code;
 
 use infrastructure::config::Config;
 
@@ -12,6 +13,8 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::from_file_and_env()?;
     tracing::info!("Loaded config: {:?}", config);
+
+    
 
     presentation::run(config).await?;
     Ok(())

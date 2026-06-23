@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>变体管理 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .toast {
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .variant-row:hover {
+            background-color: #f9fafb;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+    
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-6xl mx-auto">
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <!-- 头部 -->
+                <div class="border-b px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-xl font-semibold">变体管理</h2>
+                            <p class="text-sm text-gray-500 mt-1" id="product-name">加载中...</p>
+                        </div>
+                        <button type="button" id="generate-variants-btn" 
+                                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                            <i class="fas fa-magic mr-2"></i>生成变体
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 加载状态 -->
+                <div id="loading-state" class="p-12 text-center">
+                    <i class="fas fa-spinner fa-spin text-3xl text-blue-600 mb-3"></i>
+                    <p class="text-gray-500">加载变体信息...</p>
+                </div>
+
+                <!-- 变体列表 -->
+                <div id="variants-content" style="display: none;">
+                    <!-- SKU生成规则配置 -->
+                    <div class="p-6 border-b border-gray-200 bg-gray-50">
+                        <h3 class="text-md font-semibold mb-3">SKU生成规则</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">SKU模板</label>
+                                <input type="text" id="sku-pattern" class="w-full px-3 py-2 border rounded-md" 
+                                       value="{product_sku}{color_code}_{size}" placeholder="{product_sku}{color_code}_{size}">
+                                <p class="text-xs text-gray-500 mt-1">可用变量: {product_sku}, {color_code}, {size}</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">颜色代码来源</label>
+                                <select id="color-source" class="w-full px-3 py-2 border rounded-md">
+                                    <option value="filename">图片文件名</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">尺码来源</label>
+                                <select id="size-source" class="w-full px-3 py-2 border rounded-md">
+                                    <option value="csize">中国尺码</option>
+                                    <option value="ussize">美国尺码</option>
+                                    <option value="asize">亚洲尺码</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mt-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">默认价格</label>
+                                <input type="number" id="default-price" class="w-full px-3 py-2 border rounded-md" step="0.01">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">默认库存</label>
+                                <input type="number" id="default-stock" class="w-full px-3 py-2 border rounded-md" value="0">
+                            </div>
+                        </div>
+                        <div class="mt-3 flex space-x-3">
+                        <button id="apply-rule-btn" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition">
+                            <i class="fas fa-sync-alt mr-2"></i>应用规则生成变体
+                        </button>
+                        <button id="delete-all-variants-btn" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition">
+                            <i class="fas fa-trash-alt mr-2"></i>删除全部变体
+                        </button>
+                    </div>
+                    </div>
+
+                    <!-- 变体表格 -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">颜色</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">尺码</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">价格</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">库存</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">默认</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="variants-table-body" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="7" class="px-6 py-8 text-center text-gray-500">暂无变体数据</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载动画 -->
+    <div id="loading" class="loading">
+        <div class="bg-white rounded-lg p-6 shadow-xl">
+            <i class="fas fa-spinner fa-spin text-3xl text-blue-600"></i>
+            <p class="mt-2 text-gray-600">处理中...</p>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script src="/admin/common.js"></script>
+    <script>
+        let productId = null;
+        let product = null;
+        let variants = [];
+
+        // 获取URL参数
+        function getUrlParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // 加载产品信息
+        async function loadProduct() {
+            productId = getUrlParam('id');
+            if (!productId) {
+                showNotification('缺少产品ID参数', 'error');
+                setTimeout(() => {
+                    window.location.href = 'products.html';
+                }, 1500);
+                return;
+            }
+
+            try {
+                product = await apiCall('GET', `/api/admin/products/${productId}`);
+                document.getElementById('product-name').innerHTML = `<i class="fas fa-box mr-1"></i>${escapeHtml(product.name)}`;
+                await loadVariants();
+            } catch (err) {
+                console.error('加载产品失败:', err);
+                showNotification('加载产品失败: ' + err.message, 'error');
+            }
+        }
+
+        // 加载变体列表
+        async function loadVariants() {
+            try {
+                variants = await apiCall('GET', `/api/admin/products/${productId}/variants`);
+                renderVariants();
+                document.getElementById('loading-state').style.display = 'none';
+                document.getElementById('variants-content').style.display = 'block';
+            } catch (err) {
+                console.error('加载变体失败:', err);
+                showNotification('加载变体失败: ' + err.message, 'error');
+            }
+        }
+
+        // 渲染变体列表
+        function renderVariants() {
+            const tbody = document.getElementById('variants-table-body');
+            
+            if (!variants || variants.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                            <i class="fas fa-cubes text-2xl mb-2"></i>
+                            <p>暂无变体，点击"生成变体"按钮创建</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = variants.map(v => `
+                <tr class="variant-row">
+                    <td class="px-6 py-4 text-sm font-mono">${escapeHtml(v.sku)}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <div class="w-4 h-4 rounded-full mr-2" style="background-color: ${v.color || '#ccc'}"></div>
+                            <span class="text-sm">${escapeHtml(v.color_name || v.color || '-')}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm">${escapeHtml(v.size || '-')}</td>
+                    <td class="px-6 py-4">
+                        <input type="number" class="variant-price w-24 px-2 py-1 border rounded text-sm" data-id="${v.id}" value="${v.price || ''}" step="0.01">
+                    </td>
+                    <td class="px-6 py-4">
+                        <input type="number" class="variant-stock w-20 px-2 py-1 border rounded text-sm" data-id="${v.id}" value="${v.stock || 0}">
+                    </td>
+                    <td class="px-6 py-4">
+                        <input type="radio" name="default_variant" class="variant-default" data-id="${v.id}" ${v.is_default ? 'checked' : ''}>
+                    </td>
+                    <td class="px-6 py-4">
+                        <button type="button" class="save-variant text-green-600 hover:text-green-800 mr-2" data-id="${v.id}" title="保存">
+                            <i class="fas fa-save"></i>
+                        </button>
+                        <button type="button" class="delete-variant text-red-600 hover:text-red-800" data-id="${v.id}" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            // 绑定保存事件
+            document.querySelectorAll('.save-variant').forEach(btn => {
+                btn.addEventListener('click', () => saveVariant(btn.dataset.id));
+            });
+            
+            // 绑定删除事件
+            document.querySelectorAll('.delete-variant').forEach(btn => {
+                btn.addEventListener('click', () => deleteVariant(btn.dataset.id));
+            });
+            
+            // 绑定默认变体事件
+            document.querySelectorAll('.variant-default').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        setDefaultVariant(e.target.dataset.id);
+                    }
+                });
+            });
+            
+            // 绑定价格/库存输入框回车保存
+            document.querySelectorAll('.variant-price, .variant-stock').forEach(input => {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        saveVariant(input.dataset.id);
+                    }
+                });
+            });
+        }
+
+        // 保存变体
+        async function saveVariant(variantId) {
+            const price = document.querySelector(`.variant-price[data-id="${variantId}"]`).value;
+            const stock = document.querySelector(`.variant-stock[data-id="${variantId}"]`).value;
+            
+            showLoading(true);
+            try {
+                await apiCall('PUT', `/api/admin/products/variants/${variantId}`, {
+                    price: price ? parseFloat(price) : null,
+                    stock: stock ? parseInt(stock) : null
+                });
+                showNotification('变体保存成功', 'success');
+                await loadVariants();
+            } catch (err) {
+                showNotification('保存失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 删除变体
+        async function deleteVariant(variantId) {
+            if (!confirm('确定要删除这个变体吗？')) return;
+            
+            showLoading(true);
+            try {
+                await apiCall('DELETE', `/api/admin/products/variants/${variantId}`);
+                showNotification('变体删除成功', 'success');
+                await loadVariants();
+            } catch (err) {
+                showNotification('删除失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        // 删除全部变体
+        async function deleteAllVariants() {
+            if (!variants || variants.length === 0) {
+                showNotification('没有变体可删除', 'error');
+                return;
+            }
+            
+            if (!confirm(`确定要删除全部 ${variants.length} 个变体吗？此操作不可恢复！`)) {
+                return;
+            }
+            
+            showLoading(true);
+            let successCount = 0;
+            let failCount = 0;
+            
+            try {
+                for (const variant of variants) {
+                    try {
+                        await apiCall('DELETE', `/api/admin/products/variants/${variant.id}`);
+                        successCount++;
+                    } catch (err) {
+                        console.error(`删除变体 ${variant.id} 失败:`, err);
+                        failCount++;
+                    }
+                }
+                
+                if (failCount === 0) {
+                    showNotification(`成功删除全部 ${successCount} 个变体`, 'success');
+                } else {
+                    showNotification(`删除完成: 成功 ${successCount} 个，失败 ${failCount} 个`, 'warning');
+                }
+                
+                await loadVariants();
+            } catch (err) {
+                console.error('删除全部变体失败:', err);
+                showNotification('删除失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+// 绑定删除全部变体按钮事件
+document.getElementById('delete-all-variants-btn').addEventListener('click', deleteAllVariants);
+
+        // 设置默认变体
+        async function setDefaultVariant(variantId) {
+            showLoading(true);
+            try {
+                // 先清除其他变体的默认状态
+                for (const v of variants) {
+                    if (v.is_default) {
+                        await apiCall('PUT', `/api/admin/products/variants/${v.id}`, { is_default: false });
+                    }
+                }
+                // 设置当前为默认
+                await apiCall('PUT', `/api/admin/products/variants/${variantId}`, { is_default: true });
+                showNotification('默认变体已更新', 'success');
+                await loadVariants();
+            } catch (err) {
+                showNotification('设置失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 生成变体
+        async function generateVariants() {
+            const skuPattern = document.getElementById('sku-pattern').value;
+            const colorSource = document.getElementById('color-source').value;
+            const sizeSource = document.getElementById('size-source').value;
+            const defaultPrice = document.getElementById('default-price').value;
+            const defaultStock = document.getElementById('default-stock').value;
+            console.log('默认价格:', defaultPrice);  // 调试输出
+    console.log('默认库存:', defaultStock);  // 调试输出
+
+            if (!skuPattern) {
+                showNotification('请填写SKU模板', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            try {
+                const result = await apiCall('POST', `/api/admin/products/${productId}/variants`, {
+                    sku_pattern: skuPattern,
+                    color_code_field: colorSource,
+                    size_field: sizeSource,
+                    default_price: defaultPrice ? parseFloat(defaultPrice) : null,
+                    default_stock: defaultStock ? parseInt(defaultStock) : 0
+                });
+                
+                showNotification(result.message, 'success');
+                await loadVariants();
+            } catch (err) {
+                showNotification('生成失败: ' + err.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 保存SKU规则到localStorage
+        function saveRuleToLocal() {
+            const rule = {
+                sku_pattern: document.getElementById('sku-pattern').value,
+                color_source: document.getElementById('color-source').value,
+                size_source: document.getElementById('size-source').value,
+                default_price: document.getElementById('default-price').value,
+                default_stock: document.getElementById('default-stock').value
+            };
+            localStorage.setItem('variant_rule', JSON.stringify(rule));
+        }
+
+        // 从localStorage加载SKU规则
+        function loadRuleFromLocal() {
+            const saved = localStorage.getItem('variant_rule');
+            if (saved) {
+                try {
+                    const rule = JSON.parse(saved);
+                    if (rule.sku_pattern) document.getElementById('sku-pattern').value = rule.sku_pattern;
+                    if (rule.color_source) document.getElementById('color-source').value = rule.color_source;
+                    if (rule.size_source) document.getElementById('size-source').value = rule.size_source;
+                    if (rule.default_price) document.getElementById('default-price').value = rule.default_price;
+                    if (rule.default_stock) document.getElementById('default-stock').value = rule.default_stock;
+                } catch (e) {}
+            }
+        }
+
+        // 监听规则变化自动保存
+        document.getElementById('sku-pattern').addEventListener('change', saveRuleToLocal);
+        document.getElementById('color-source').addEventListener('change', saveRuleToLocal);
+        document.getElementById('size-source').addEventListener('change', saveRuleToLocal);
+        document.getElementById('default-price').addEventListener('change', saveRuleToLocal);
+        document.getElementById('default-stock').addEventListener('change', saveRuleToLocal);
+        document.getElementById('apply-rule-btn').addEventListener('click', generateVariants);
+
+        function showLoading(show) {
+            const loadingEl = document.getElementById('loading');
+            loadingEl.style.display = show ? 'block' : 'none';
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `toast fixed top-20 right-4 px-4 py-2 rounded shadow-lg z-50 ${
+                type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`;
+            notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i>${message}`;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // 初始化
+        requireAuth().then(async () => {
+            await loadTopbar();
+            await loadFooter();
+            loadRuleFromLocal();
+            await loadProduct();
+        }).catch(() => {});
+    </script>
+</body>
+</html>

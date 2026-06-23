@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title_prefix %}{{ t(key="products", lang=lang) }}{% endblock %}
+{% block title_suffix %} - {{ site_config.site_name | default(value='RustForge') }}{% endblock %}
+
+{% block content %}
+<!-- 页面标题 -->
+<div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-12">
+    <div class="container mx-auto px-4">
+        <h1 class="text-3xl md:text-4xl font-bold mb-2">{{ t(key="products", lang=lang) }}</h1>
+        <p class="text-white/80">{{ t(key="hot_products_desc", lang=lang) }}</p>
+    </div>
+</div>
+
+<!-- 筛选栏 -->
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-md p-4 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t(key="search_products", lang=lang) }}</label>
+                <input type="text" id="search-keyword" placeholder="{{ t(key="search_placeholder", lang=lang) }}" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t(key="filter_by_category", lang=lang) }}</label>
+                <select id="filter-category" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="">{{ t(key="all_content", lang=lang) }}</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t(key="sort_by", lang=lang) }}</label>
+                <select id="sort-by" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="created_at_desc">{{ t(key="latest", lang=lang) }}</option>
+                    <option value="price_asc">{{ t(key="price_low_to_high", lang=lang) }}</option>
+                    <option value="price_desc">{{ t(key="price_high_to_low", lang=lang) }}</option>
+                    <option value="name_asc">{{ t(key="name_asc", lang=lang) }}</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button id="search-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md transition">
+                    <i class="fas fa-search mr-2"></i>{{ t(key="search", lang=lang) }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载状态 -->
+    <div id="loading-state" class="text-center py-12">
+        <i class="fas fa-spinner fa-spin text-3xl text-purple-600 mb-3"></i>
+        <p class="text-gray-500">{{ t(key="load_failed", lang=lang) }}...</p>
+    </div>
+
+    <!-- 产品列表 -->
+    <div id="products-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" style="display: none;"></div>
+
+    <!-- 分页 -->
+    <div id="pagination" class="flex justify-center mt-8 space-x-2" style="display: none;">
+        <button id="prev-page" class="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 transition">
+            <i class="fas fa-chevron-left mr-1"></i>{{ t(key="prev_page", lang=lang) }}
+        </button>
+        <span id="page-info" class="px-4 py-2 text-gray-600"></span>
+        <button id="next-page" class="px-4 py-2 border rounded-md hover:bg-gray-100 disabled:opacity-50 transition">
+            {{ t(key="next_page", lang=lang) }}<i class="fas fa-chevron-right ml-1"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let currentFilters = {
+    keyword: '',
+    category_id: null,
+    sort_by: 'created_at_desc'
+};
+let totalPages = 1;
+
+// 加载分类筛选
+async function loadCategoryFilter() {
+    try {
+        const categories = await apiCall('/api/public/categories');
+        const select = document.getElementById('filter-category');
+        
+        function addOptions(items, prefix = '') {
+            if (!items || !Array.isArray(items)) return;
+            for (const cat of items) {
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.textContent = prefix + cat.name + ' (' + (cat.product_count || 0) + ')';
+                select.appendChild(option);
+                if (cat.children && cat.children.length) {
+                    addOptions(cat.children, prefix + '　');
+                }
+            }
+        }
+        addOptions(categories);
+    } catch (err) {
+        console.error('加载分类失败:', err);
+    }
+}
+
+// 加载产品列表
+async function loadProducts() {
+    showLoading(true);
+    
+    try {
+        let url = `/api/public/products?page=${currentPage}&per_page=12`;
+        if (currentFilters.keyword) {
+            url += `&keyword=${encodeURIComponent(currentFilters.keyword)}`;
+        }
+        if (currentFilters.category_id) {
+            url += `&category_id=${currentFilters.category_id}`;
+        }
+        if (currentFilters.sort_by) {
+            url += `&sort_by=${currentFilters.sort_by}`;
+        }
+        
+        const result = await apiCall(url);
+        renderProducts(result.products || []);
+        updatePagination(result);
+        
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('products-container').style.display = 'grid';
+        document.getElementById('pagination').style.display = 'flex';
+    } catch (err) {
+        console.error('加载产品失败:', err);
+        document.getElementById('loading-state').innerHTML = `
+            <div class="text-center text-red-500">
+                <i class="fas fa-exclamation-circle text-3xl mb-2"></i>
+                <p>{{ t(key="load_failed", lang=lang) }}: ${err.message}</p>
+                <button onclick="loadProducts()" class="mt-2 text-purple-600 hover:underline">{{ t(key="learn_more", lang=lang) }}</button>
+            </div>
+        `;
+    } finally {
+        showLoading(false);
+    }
+}
+
+// 渲染产品
+function renderProducts(products) {
+    const container = document.getElementById('products-container');
+    
+    if (!products || products.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full text-center py-12 text-gray-500">
+                <i class="fas fa-box-open text-4xl mb-3"></i>
+                <p>{{ t(key="no_products", lang=lang) }}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = products.map(product => `
+        <div class="group bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition duration-300">
+            <a href="/product/${product.slug}">
+                <div class="relative overflow-hidden h-48">
+                    <img src="${product.cover_image || '/images/placeholder.jpg'}" 
+                         class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                         onerror="this.src='/images/placeholder.jpg'"
+                         alt="${escapeHtml(product.name)}">
+                    ${!product.published ? 
+                        `<span class="absolute top-2 right-2 bg-gray-500 text-white text-xs px-2 py-1 rounded">{{ t(key="draft", lang=lang) }}</span>` : 
+                        product.stock > 0 ? 
+                        `<span class="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded">{{ t(key="in_stock", lang=lang) }}</span>` :
+                        `<span class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">{{ t(key="out_of_stock", lang=lang) }}</span>`
+                    }
+                </div>
+                <div class="p-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-1 line-clamp-1">${escapeHtml(product.name)}</h3>
+                    ${product.brand ? `<p class="text-sm text-gray-500 mb-2">${escapeHtml(product.brand)}</p>` : ''}
+                    <div class="flex justify-between items-center mt-3">
+                        <span class="text-2xl font-bold text-red-600">¥${product.price || '0'}</span>
+                        <span class="text-sm text-gray-500">{{ t(key="sales_count", lang=lang) }}: ${product.sales_count || 0}</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    `).join('');
+}
+
+// 更新分页
+function updatePagination(result) {
+    const total = result.total || 0;
+    const perPage = result.per_page || 12;
+    const current = result.page || currentPage;
+    
+    totalPages = Math.ceil(total / perPage);
+    const start = (current - 1) * perPage + 1;
+    const end = Math.min(current * perPage, total);
+    
+    document.getElementById('page-info').textContent = `${start}-${end} / ${total}`;
+    document.getElementById('prev-page').disabled = current <= 1;
+    document.getElementById('next-page').disabled = current >= totalPages;
+}
+
+// 搜索
+function search() {
+    currentFilters.keyword = document.getElementById('search-keyword').value;
+    currentFilters.category_id = document.getElementById('filter-category').value || null;
+    currentFilters.sort_by = document.getElementById('sort-by').value;
+    currentPage = 1;
+    loadProducts();
+}
+
+function showLoading(show) {
+    if (show) {
+        document.getElementById('loading-state').style.display = 'block';
+        document.getElementById('products-container').style.display = 'none';
+        document.getElementById('pagination').style.display = 'none';
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
+
+// 事件绑定
+document.getElementById('search-btn').addEventListener('click', search);
+document.getElementById('prev-page').addEventListener('click', () => {
+    if (currentPage > 1) {
+        currentPage--;
+        loadProducts();
+    }
+});
+document.getElementById('next-page').addEventListener('click', () => {
+    if (currentPage < totalPages) {
+        currentPage++;
+        loadProducts();
+    }
+});
+document.getElementById('search-keyword').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') search();
+});
+
+// API 调用函数
+async function apiCall(url) {
+    const response = await fetch(url, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+    });
+    if (!response.ok) throw new Error('Request failed');
+    return response.json();
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+    loadCategoryFilter();
+    loadProducts();
+});
+</script>
+
+<style>
+.line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+</style>
+{% endblock %}

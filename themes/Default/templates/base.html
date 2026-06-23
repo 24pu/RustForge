@@ -71,7 +71,7 @@
             visibility: hidden;
             opacity: 0;
             position: absolute;
-            right: 0;
+            left: 0;
             top: 100%;
             background: white;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -112,6 +112,15 @@
             <div class="hidden md:flex items-center space-x-6">
                 <ul class="flex space-x-6">
                     <li><a href="/" class="hover:text-purple-600">{{ t(key="home", lang=lang) }}</a></li>
+                    
+                    <!-- 产品中心菜单 - 动态加载 -->
+                    <li class="relative nav-item" id="products-nav-desktop">
+                        <a href="/products" class="hover:text-purple-600">{{ t(key="products", lang=lang) }}</a>
+                        <ul class="submenu" id="products-submenu-desktop">
+                            <li><a href="#" class="block px-4 py-2 text-gray-500">加载中...</a></li>
+                        </ul>
+                    </li>
+                    
                     {% for cat in nav_categories %}
                         <li class="relative nav-item">
                             <a href="/{{ cat.slug }}" class="hover:text-purple-600">{{ cat.name }}</a>
@@ -188,6 +197,15 @@
         <div id="mobile-menu" class="md:hidden hidden bg-white border-t">
             <ul class="flex flex-col px-4 py-2 space-y-2">
                 <li><a href="/" class="block py-1 hover:text-purple-600">{{ t(key="home", lang=lang) }}</a></li>
+                
+                <!-- 移动端产品中心 - 动态加载 -->
+                <li id="products-nav-mobile">
+                    <a href="/products" class="block py-1 hover:text-purple-600">{{ t(key="products", lang=lang) }}</a>
+                    <ul class="mobile-submenu pl-4" id="products-submenu-mobile">
+                        <li><a href="#" class="block py-1 text-sm text-gray-500">加载中...</a></li>
+                    </ul>
+                </li>
+                
                 {% for cat in nav_categories %}
                     <li>
                         <a href="/{{ cat.slug }}" class="block py-1 hover:text-purple-600">{{ cat.name }}</a>
@@ -282,6 +300,61 @@
             document.cookie = 'lang=' + lang + ';path=/;max-age=31536000';
             location.reload();
         }
+        
+        // 动态加载产品分类
+        async function loadProductCategories() {
+            try {
+                const response = await fetch('/api/public/categories', {
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (!response.ok) throw new Error('加载失败');
+                const categories = await response.json();
+                
+                // 渲染桌面端下拉菜单
+                const desktopSubmenu = document.getElementById('products-submenu-desktop');
+                if (desktopSubmenu && categories.length > 0) {
+                    desktopSubmenu.innerHTML = categories.map(cat => `
+                        <li><a href="/products?category=${cat.slug}" class="block px-4 py-2 hover:bg-gray-100">${escapeHtml(cat.name)}</a></li>
+                    `).join('');
+                } else if (desktopSubmenu) {
+                    desktopSubmenu.innerHTML = '<li><a href="/products" class="block px-4 py-2 hover:bg-gray-100">所有产品</a></li>';
+                }
+                
+                // 渲染移动端下拉菜单
+                const mobileSubmenu = document.getElementById('products-submenu-mobile');
+                if (mobileSubmenu && categories.length > 0) {
+                    mobileSubmenu.innerHTML = categories.map(cat => `
+                        <li><a href="/products?category=${cat.slug}" class="block py-1 text-sm text-gray-600 hover:text-purple-600">${escapeHtml(cat.name)}</a></li>
+                    `).join('');
+                } else if (mobileSubmenu) {
+                    mobileSubmenu.innerHTML = '<li><a href="/products" class="block py-1 text-sm text-gray-600 hover:text-purple-600">所有产品</a></li>';
+                }
+            } catch (err) {
+                console.error('加载产品分类失败:', err);
+                const desktopSubmenu = document.getElementById('products-submenu-desktop');
+                if (desktopSubmenu) {
+                    desktopSubmenu.innerHTML = '<li><a href="/products" class="block px-4 py-2 hover:bg-gray-100">所有产品</a></li>';
+                }
+                const mobileSubmenu = document.getElementById('products-submenu-mobile');
+                if (mobileSubmenu) {
+                    mobileSubmenu.innerHTML = '<li><a href="/products" class="block py-1 text-sm text-gray-600 hover:text-purple-600">所有产品</a></li>';
+                }
+            }
+        }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+        
+        // 页面加载完成后加载产品分类
+        document.addEventListener('DOMContentLoaded', loadProductCategories);
     </script>
 
     <!-- 退出登录脚本（仅登录用户可见） -->

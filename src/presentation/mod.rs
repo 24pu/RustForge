@@ -1,17 +1,18 @@
-//RustForge mod.rs
-
+// RustForge mod.rs
 
 mod middleware;
 mod handlers;
 mod types;
-use sqlx::PgPool;  // 添加 PgPool 导入
+
+
+use sqlx::PgPool;
 use crate::presentation::handlers::lang_settings::{get_lang_settings_handler, update_lang_settings_handler};
 use crate::presentation::middleware::lang_middleware;
 use axum::{
     Router, routing::{get, post, put, delete},
     extract::State,
     http::StatusCode,
-    response::{IntoResponse,Redirect}
+    response::{IntoResponse, Redirect}
 };
 use crate::infrastructure::i18n::I18n;
 use tower_http::services::ServeDir;
@@ -19,23 +20,31 @@ use tower_cookies::CookieManagerLayer;
 use std::sync::Arc;
 use std::net::SocketAddr;
 
+use crate::presentation::handlers::product_admin::*;
 use crate::presentation::handlers::install_handler;
 use crate::presentation::middleware::check_installed;
 use crate::infrastructure::config::Config;
 use crate::infrastructure::theme::manager::TeraThemeManager;
 use crate::infrastructure::db::create_pool;
-use crate::infrastructure::db::{PostgresUserRepo, PostgresContentRepo, PostgresMediaRepo, PostgresMediaFolderRepo,PostgresPluginRepo,PostgresPluginSettingsRepo};
-use crate::core::{UserRepository, ContentRepository, MediaRepository, MediaFolderRepository,PluginRepository,PluginSettingsRepository};
+use crate::infrastructure::db::{PostgresUserRepo, PostgresContentRepo, PostgresMediaRepo, PostgresMediaFolderRepo, PostgresPluginRepo, PostgresPluginSettingsRepo};
+use crate::infrastructure::db::product_category_repo::PostgresProductCategoryRepo;
+use crate::infrastructure::db::product_repo::PostgresProductRepo;  // 取消注释
+
+use crate::core::{UserRepository, ContentRepository, MediaRepository, MediaFolderRepository, PluginRepository, PluginSettingsRepository, ProductRepository, ProductCategoryRepository};
 use crate::presentation::middleware::auth_middleware;
 use crate::presentation::handlers::*;
 use crate::presentation::middleware::admin_auth_middleware;
 use crate::presentation::middleware::inject_user_info;
 use crate::presentation::handlers::sitemap::sitemap_handler;
-use crate::presentation::handlers::plugin_settings::{get_plugin_settings, update_plugin_settings,plugin_settings_view_handler,get_public_plugin_settings};
+use crate::presentation::handlers::plugin_settings::{get_plugin_settings, update_plugin_settings, plugin_settings_view_handler, get_public_plugin_settings};
 use crate::presentation::handlers::auth::logout_handler;
 use crate::presentation::handlers::plugin_admin::scan_available_plugins_handler;
 use crate::presentation::handlers::server_status::server_status_handler;
 use crate::presentation::search::search_page_handler;
+use crate::presentation::handlers::{home_handler, products_page_handler, product_detail_page_handler_by_slug};
+use crate::core::AmaTemplateRepository;
+use crate::infrastructure::db::PostgresAmaTemplateRepo;
+use crate::presentation::handlers::attribute::*;
 
 pub struct AppState {
     pub theme_manager: Arc<tokio::sync::RwLock<TeraThemeManager>>,
@@ -48,6 +57,9 @@ pub struct AppState {
     pub plugin_repo: Arc<dyn PluginRepository>,
     pub plugin_settings_repo: Arc<dyn PluginSettingsRepository>,
     pub i18n: Arc<I18n>,
+    pub amatemplate_repo: Arc<dyn AmaTemplateRepository>,
+    pub product_repo: Arc<dyn ProductRepository>,  // 改为非 Option
+    pub product_category_repo: Arc<dyn ProductCategoryRepository>,  // 改为非 Option
 }
 
 // 辅助函数
@@ -61,7 +73,6 @@ async fn get_config_value_from_db(pool: &PgPool, key: &str) -> Result<String, an
     Ok(row.map(|r| r.value).unwrap_or_default())
 }
 
-
 pub async fn run(config: Config) -> anyhow::Result<()> {
     let pool = create_pool(&config.database.url, config.database.max_connections).await?;
     let user_repo = Arc::new(PostgresUserRepo::new(pool.clone()));
@@ -71,6 +82,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
 
     let plugin_repo = Arc::new(PostgresPluginRepo::new(pool.clone()));
     let plugin_settings_repo = Arc::new(PostgresPluginSettingsRepo::new(pool.clone()));
+    let amatemplate_repo = Arc::new(PostgresAmaTemplateRepo::new(pool.clone()));
 
     // ---- 初始化 i18n（支持插件语言包） ----
     let i18n = Arc::new(I18n::new("locales", "plugins"));
@@ -90,16 +102,18 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     i18n.reload_with_plugins(supported_langs, default_lang, &pool).await;
 
     // ---- 初始化主题管理器 ----
-  
-
     let theme_manager = Arc::new(tokio::sync::RwLock::new(
         TeraThemeManager::scan_and_load(
             &config.theme.themes_dir,
             i18n.clone(),
-            &config.theme.default_theme,   // 读取配置中的默认主题
+            &config.theme.default_theme,
         ).await?
     ));
 
+    // ---- 初始化产品相关仓库 ----
+    let product_category_repo = Arc::new(PostgresProductCategoryRepo::new(pool.clone()));
+    let product_repo = Arc::new(PostgresProductRepo::new(pool.clone()));  // 取消注释并初始化
+    
     // ---- 创建 state ----
     let state = Arc::new(AppState {
         theme_manager,
@@ -112,6 +126,10 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         plugin_repo,
         plugin_settings_repo,
         i18n: i18n.clone(),
+        product_repo,  // 现在是 Arc<dyn ProductRepository>
+        product_category_repo,  // 现在是 Arc<dyn ProductCategoryRepository>
+        amatemplate_repo,
+        
     });
 
     let protected_api = Router::new()
@@ -161,6 +179,41 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .route("/api/admin/plugins/available", get(scan_available_plugins_handler))
         .route("/api/admin/lang-settings", get(get_lang_settings_handler).put(update_lang_settings_handler))
         .route("/api/admin/plugins/:name/settings", get(get_plugin_settings).put(update_plugin_settings))
+        // ---- 属性模板管理 ----
+        .route("/api/admin/attribute-templates", get(list_templates).post(create_template))
+        .route("/api/admin/attribute-templates/:id", get(get_template).put(update_template).delete(delete_template))
+        // ---- 属性分组管理 ----
+        .route("/api/admin/attribute-groups", get(list_groups).post(create_group))
+        .route("/api/admin/attribute-groups/:id", get(get_group).put(update_group).delete(delete_group))
+        // ---- 分组与模板关联 ----
+        .route("/api/admin/attribute-groups/:group_id/templates", get(get_group_templates).post(add_template_to_group))
+        .route("/api/admin/attribute-groups/:group_id/templates/:template_id", delete(remove_template_from_group).put(update_template_sort))
+        // ---- 产品属性值 ----
+        .route("/api/admin/products/:product_id/attribute-values", get(get_product_attribute_values).put(set_product_attribute_values))
+        // 导出模版
+        .route("/api/admin/amatemplates", get(list_amatemplates_handler).post(create_amatemplate_handler))
+        .route("/api/admin/amatemplates/:id", get(get_amatemplate_handler).put(update_amatemplate_handler).delete(delete_amatemplate_handler))
+        // 产品分类路由
+        .route("/api/admin/product-categories/tree", get(list_product_categories_handler))
+        .route("/api/admin/product-categories", post(create_product_category_handler))
+        .route("/api/admin/product-categories/:id", get(get_product_category_handler))
+        .route("/api/admin/product-categories/:id", put(update_product_category_handler))
+        .route("/api/admin/product-categories/:id", delete(delete_product_category_handler))
+        // 产品路由
+        .route("/api/admin/products", get(list_products_handler).post(create_product_handler))
+        .route("/api/admin/products/:id", get(get_product_handler).put(update_product_handler).delete(delete_product_handler))
+       // mod.rs - 在 protected_api Router 中添加
+        .route("/api/admin/products/:id/variants", get(list_variants_handler).post(generate_variants_by_rule_handler))
+        .route("/api/admin/products/variants/:variant_id", put(update_variant_handler).delete(delete_variant_handler))
+        .route("/admin/product-attributes.html", get(|| async { 
+    axum::response::Html(include_str!("../../frontend/dist/admin/product-attributes.html"))
+}))
+        // 在 protected_api 中添加
+        .route("/api/admin/products/export", post(export_selected_products_handler))
+        // 图片
+        .route("/api/admin/products/:id/images", get(get_product_images_handler).post(upload_product_images_handler))
+        .route("/api/admin/products/:product_id/images/:image_id", delete(delete_product_image_handler))
+        .route("/api/admin/products/:id/images/reorder", post(reorder_product_images_handler))
         .layer(axum::middleware::from_fn(auth_middleware));
 
     let admin_assets = ServeDir::new("frontend/dist/admin");
@@ -178,6 +231,16 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     let app = Router::new()
         .route("/", get(home_handler))
         .route("/search", get(search_page_handler))
+        // 前台产品路由
+        .route("/api/public/products/hot", get(get_hot_products_handler))
+        .route("/api/public/products", get(get_public_products_handler))
+        .route("/api/public/products/:id", get(get_public_product_handler))
+        .route("/api/public/categories", get(get_product_categories_with_count_handler))
+        .route("/products", get(products_page_handler))
+        // 公开产品属性 API
+        .route("/api/public/products/:id/attribute-values", get(get_public_product_attributes))
+        .route("/product/:slug", get(product_detail_page_handler_by_slug))
+        
         .route("/api/server-status", get(server_status_handler))
         .route("/health", get(health_handler))
         .route("/api/public/plugin/:name/settings", get(get_public_plugin_settings))
@@ -194,10 +257,12 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .merge(admin_router)
         .merge(plugin_settings_router)
         .nest_service("/uploads", ServeDir::new("uploads"))
+        .nest_service("/config", ServeDir::new("config"))  // 添加这一行
         .route("/content/:slug", get(content_detail_handler))
         .route("/:slug", get(category_page_handler))
         .route("/plugins/:plugin_name/static/*file", get(plugin_static_handler))
         .route("/plugins/:plugin_name/:page", get(plugin_page_handler))
+        .route("/api/public/products/:id/size-table", get(get_product_size_table_handler))
         .layer(axum::middleware::from_fn_with_state(state.clone(), lang_middleware))
         .layer(axum::middleware::from_fn_with_state(state.clone(), check_installed))
         .layer(CookieManagerLayer::new())

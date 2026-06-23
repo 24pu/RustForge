@@ -1,0 +1,303 @@
+<!-- 产品图片管理组件 -->
+<div id="product-images" class="mt-6">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">产品图片</h3>
+        <button type="button" id="upload-images-btn" 
+                class="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm">
+            <i class="fas fa-upload mr-1"></i>上传图片
+        </button>
+    </div>
+    
+    <div id="images-container" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- 图片会动态加载到这里 -->
+    </div>
+    
+    <div id="no-images" class="text-center text-gray-400 py-8 hidden">
+        <i class="fas fa-images text-4xl mb-2"></i>
+        <p>暂无产品图片，点击上传按钮添加图片</p>
+    </div>
+    
+    <!-- 上传模态框 -->
+    <div id="upload-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">上传产品图片</h3>
+                    <button type="button" id="close-modal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center" id="upload-dropzone">
+                    <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+                    <p class="text-gray-600">拖拽图片到这里或点击上传</p>
+                    <p class="text-sm text-gray-500 mt-1">支持 JPG, PNG, GIF，单张不超过 5MB</p>
+                    <input type="file" id="upload-file-input" multiple accept="image/*" class="hidden">
+                    <button type="button" id="select-files-btn" class="mt-3 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
+                        选择图片
+                    </button>
+                </div>
+                
+                <div id="upload-preview" class="mt-4 grid grid-cols-3 gap-2 max-h-60 overflow-y-auto hidden"></div>
+                
+                <div class="mt-4 flex justify-end">
+                    <button type="button" id="start-upload" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 hidden">
+                        开始上传
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let productId = null;
+
+// 加载产品图片
+async function loadProductImages() {
+    try {
+        const result = await apiCall('GET', `/api/admin/products/${productId}/images`);
+        const images = result.images || [];
+        const container = document.getElementById('images-container');
+        const noImages = document.getElementById('no-images');
+        
+        if (images.length === 0) {
+            container.innerHTML = '';
+            noImages.classList.remove('hidden');
+            return;
+        }
+        
+        noImages.classList.add('hidden');
+        container.innerHTML = images.map((img, index) => `
+            <div class="relative border rounded-lg overflow-hidden group" data-id="${img.id}" data-sort="${img.sort_order}">
+                <img src="${img.url}" class="w-full h-40 object-cover">
+                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition">
+                    <button type="button" class="delete-image bg-red-600 text-white rounded-full w-6 h-6 text-sm hover:bg-red-700" data-id="${img.id}">
+                        <i class="fas fa-trash text-xs"></i>
+                    </button>
+                </div>
+                <div class="p-2 text-xs truncate">${img.original_name || img.name}</div>
+                <div class="absolute inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center drag-overlay">
+                    <i class="fas fa-arrows-alt text-white text-2xl"></i>
+                </div>
+            </div>
+        `).join('');
+        
+        // 绑定删除事件
+        document.querySelectorAll('.delete-image').forEach(btn => {
+            btn.addEventListener('click', () => deleteProductImage(parseInt(btn.dataset.id)));
+        });
+        
+        // 初始化拖拽排序
+        initDragSort();
+    } catch (err) {
+        console.error('加载图片失败:', err);
+    }
+}
+
+// 删除图片
+async function deleteProductImage(imageId) {
+    if (!confirm('确定要删除这张图片吗？')) return;
+    
+    try {
+        await apiCall('DELETE', `/api/admin/products/${productId}/images/${imageId}`);
+        showNotification('图片删除成功', 'success');
+        loadProductImages();
+    } catch (err) {
+        showNotification('删除失败: ' + err.message, 'error');
+    }
+}
+
+// 初始化拖拽排序
+function initDragSort() {
+    const container = document.getElementById('images-container');
+    let dragSrc = null;
+    
+    container.querySelectorAll('.group').forEach(item => {
+        item.setAttribute('draggable', 'true');
+        
+        item.addEventListener('dragstart', (e) => {
+            dragSrc = item;
+            e.dataTransfer.effectAllowed = 'move';
+            item.classList.add('opacity-50');
+        });
+        
+        item.addEventListener('dragend', () => {
+            item.classList.remove('opacity-50');
+        });
+        
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+        
+        item.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            if (dragSrc !== item) {
+                const items = Array.from(container.children);
+                const fromIndex = items.indexOf(dragSrc);
+                const toIndex = items.indexOf(item);
+                
+                if (fromIndex < toIndex) {
+                    item.parentNode.insertBefore(dragSrc, item.nextSibling);
+                } else {
+                    item.parentNode.insertBefore(dragSrc, item);
+                }
+                
+                // 更新排序
+                const newOrder = Array.from(container.children).map((el, idx) => ({
+                    id: parseInt(el.dataset.id),
+                    sort_order: idx
+                }));
+                
+                await apiCall('POST', `/api/admin/products/${productId}/images/reorder`, newOrder);
+                showNotification('排序已更新', 'success');
+            }
+        });
+    });
+}
+
+// 上传图片相关
+const uploadBtn = document.getElementById('upload-images-btn');
+const uploadModal = document.getElementById('upload-modal');
+const closeModal = document.getElementById('close-modal');
+const uploadDropzone = document.getElementById('upload-dropzone');
+const fileInput = document.getElementById('upload-file-input');
+const selectFilesBtn = document.getElementById('select-files-btn');
+const uploadPreview = document.getElementById('upload-preview');
+const startUploadBtn = document.getElementById('start-upload');
+
+let selectedFiles = [];
+
+uploadBtn.addEventListener('click', () => {
+    uploadModal.classList.remove('hidden');
+    uploadModal.classList.add('flex');
+});
+
+closeModal.addEventListener('click', () => {
+    uploadModal.classList.add('hidden');
+    uploadModal.classList.remove('flex');
+    resetUpload();
+});
+
+selectFilesBtn.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', (e) => {
+    selectedFiles = Array.from(e.target.files);
+    previewUploadImages();
+});
+
+uploadDropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadDropzone.classList.add('border-blue-500', 'bg-blue-50');
+});
+
+uploadDropzone.addEventListener('dragleave', () => {
+    uploadDropzone.classList.remove('border-blue-500', 'bg-blue-50');
+});
+
+uploadDropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadDropzone.classList.remove('border-blue-500', 'bg-blue-50');
+    selectedFiles = Array.from(e.dataTransfer.files);
+    previewUploadImages();
+});
+
+function previewUploadImages() {
+    if (selectedFiles.length === 0) {
+        uploadPreview.classList.add('hidden');
+        startUploadBtn.classList.add('hidden');
+        return;
+    }
+    
+    uploadPreview.classList.remove('hidden');
+    startUploadBtn.classList.remove('hidden');
+    
+    uploadPreview.innerHTML = '';
+    selectedFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const div = document.createElement('div');
+            div.className = 'relative';
+            div.innerHTML = `
+                <img src="${e.target.result}" class="w-full h-20 object-cover rounded">
+                <button type="button" class="remove-preview absolute top-0 right-0 bg-red-600 text-white rounded-full w-5 h-5 text-xs" data-index="${index}">×</button>
+            `;
+            uploadPreview.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+    });
+    
+    document.querySelectorAll('.remove-preview').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(btn.dataset.index);
+            selectedFiles.splice(index, 1);
+            previewUploadImages();
+        });
+    });
+}
+
+startUploadBtn.addEventListener('click', async () => {
+    if (selectedFiles.length === 0) return;
+    
+    const formData = new FormData();
+    selectedFiles.forEach(file => {
+        formData.append('images', file);
+    });
+    
+    startUploadBtn.disabled = true;
+    startUploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>上传中...';
+    
+    try {
+        const response = await fetch(`/api/admin/products/${productId}/images`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error('上传失败');
+        }
+        
+        const result = await response.json();
+        showNotification(`成功上传 ${result.images.length} 张图片`, 'success');
+        resetUpload();
+        uploadModal.classList.add('hidden');
+        uploadModal.classList.remove('flex');
+        loadProductImages();
+    } catch (err) {
+        showNotification('上传失败: ' + err.message, 'error');
+        startUploadBtn.disabled = false;
+        startUploadBtn.innerHTML = '开始上传';
+    }
+});
+
+function resetUpload() {
+    selectedFiles = [];
+    fileInput.value = '';
+    uploadPreview.classList.add('hidden');
+    uploadPreview.innerHTML = '';
+    startUploadBtn.classList.add('hidden');
+    startUploadBtn.disabled = false;
+    startUploadBtn.innerHTML = '开始上传';
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-20 right-4 px-4 py-2 rounded shadow-lg z-50 transition-opacity duration-300 ${
+        type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+    }`;
+    notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2"></i>${message}`;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// 初始化
+productId = getUrlParam('id');
+if (productId) {
+    loadProductImages();
+}
+</script>
