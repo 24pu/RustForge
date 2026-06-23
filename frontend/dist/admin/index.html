@@ -17,56 +17,82 @@
     <div class="container mx-auto p-6">
         <h1 class="text-3xl font-bold mb-6 text-gray-800">仪表盘</h1>
         
-        <!-- 两列布局 -->
-        <div class="flex flex-col lg:flex-row gap-6">
-            <!-- 左侧：统计卡片 + 最近内容 -->
-            <div class="flex-1 space-y-6">
-                <!-- 统计卡片 -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-white rounded-lg shadow p-5 flex items-center space-x-4">
-                        <div class="p-3 bg-blue-100 rounded-full">
-                            <i class="fas fa-file-alt text-blue-600 text-xl"></i>
+        <!-- 三块内容：内容、产品、服务器状态 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- ========== 第一块：内容管理 ========== -->
+            <div class="lg:col-span-5 space-y-6">
+                <div class="bg-white rounded-lg shadow p-5">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-file-alt text-blue-600 mr-2"></i> 内容管理
+                    </h2>
+                    
+                    <!-- 内容统计 -->
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="bg-blue-50 rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-blue-600" id="totalCount">-</div>
+                            <div class="text-xs text-gray-500">总内容</div>
                         </div>
-                        <div>
-                            <div class="text-gray-500 text-sm">总内容数</div>
-                            <div id="totalCount" class="text-2xl font-bold">-</div>
+                        <div class="bg-green-50 rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-green-600" id="publishedCount">-</div>
+                            <div class="text-xs text-gray-500">已发布</div>
                         </div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow p-5 flex items-center space-x-4">
-                        <div class="p-3 bg-green-100 rounded-full">
-                            <i class="fas fa-check-circle text-green-600 text-xl"></i>
-                        </div>
-                        <div>
-                            <div class="text-gray-500 text-sm">已发布</div>
-                            <div id="publishedCount" class="text-2xl font-bold">-</div>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow p-5 flex items-center space-x-4">
-                        <div class="p-3 bg-yellow-100 rounded-full">
-                            <i class="fas fa-edit text-yellow-600 text-xl"></i>
-                        </div>
-                        <div>
-                            <div class="text-gray-500 text-sm">草稿数</div>
-                            <div id="draftCount" class="text-2xl font-bold">-</div>
+                        <div class="bg-yellow-50 rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-yellow-600" id="draftCount">-</div>
+                            <div class="text-xs text-gray-500">草稿</div>
                         </div>
                     </div>
-                </div>
-
-                <!-- 最近内容表格 -->
-                <div class="bg-white rounded-lg shadow">
-                    <div class="p-4 border-b">
-                        <h2 class="text-lg font-semibold text-gray-800">最近内容</h2>
+                    
+                    <div class="flex justify-between items-center border-t pt-3">
+                        <span class="text-sm text-gray-500">最近内容</span>
+                        <a href="contents.html" class="text-sm text-blue-600 hover:text-blue-800">查看全部 →</a>
                     </div>
-                    <div id="recentContents" class="p-4">加载中...</div>
+                    <div id="recentContents" class="mt-2">加载中...</div>
                 </div>
             </div>
 
-            <!-- 右侧：服务器状态面板 -->
-            <div class="w-full lg:w-80 flex-shrink-0">
-                <div class="bg-white rounded-lg shadow p-5 sticky top-6">
+            <!-- ========== 第二块：产品管理 ========== -->
+            <div class="lg:col-span-5 space-y-6">
+                <div class="bg-white rounded-lg shadow p-5">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-server text-purple-600 mr-2"></i> 服务器状态
+                        <i class="fas fa-boxes text-purple-600 mr-2"></i> 产品管理
                     </h2>
+                    
+                    <!-- 产品统计 -->
+                    <div class="grid grid-cols-4 gap-2 mb-4">
+                        <div class="bg-indigo-50 rounded-lg p-2 text-center">
+                            <div class="text-xl font-bold text-indigo-600" id="productTotal">-</div>
+                            <div class="text-xs text-gray-500">总产品</div>
+                        </div>
+                        <div class="bg-emerald-50 rounded-lg p-2 text-center">
+                            <div class="text-xl font-bold text-emerald-600" id="productPublished">-</div>
+                            <div class="text-xs text-gray-500">已上架</div>
+                        </div>
+                        <div class="bg-amber-50 rounded-lg p-2 text-center">
+                            <div class="text-xl font-bold text-amber-600" id="productDraft">-</div>
+                            <div class="text-xs text-gray-500">草稿</div>
+                        </div>
+                        <div class="bg-rose-50 rounded-lg p-2 text-center">
+                            <div class="text-xl font-bold text-rose-600" id="variantTotal">-</div>
+                            <div class="text-xs text-gray-500">变体</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center border-t pt-3">
+                        <span class="text-sm text-gray-500">最近产品</span>
+                        <a href="products.html" class="text-sm text-blue-600 hover:text-blue-800">查看全部 →</a>
+                    </div>
+                    <div id="recentProducts" class="mt-2">加载中...</div>
+                </div>
+            </div>
+
+            <!-- ========== 第三块：服务器状态 ========== -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white rounded-lg shadow p-5">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-server text-green-600 mr-2"></i> 服务器状态
+                    </h2>
+                    
                     <div id="server-info" class="space-y-3 text-sm">
                         <div class="flex justify-between">
                             <span class="text-gray-600">内存总量</span>
@@ -93,6 +119,7 @@
                     <div id="server-error" class="text-red-500 text-xs mt-3 hidden"></div>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -107,35 +134,31 @@
         })();
 
         async function loadDashboard() {
+            // ===== 加载内容数据 =====
             try {
-                // 加载内容统计
-                const data = await apiCall('GET', '/api/admin/contents?page=1&per_page=100');
-                const contents = data.items || [];
-                const total = data.total || 0;
+                const contentData = await apiCall('GET', '/api/admin/contents?page=1&per_page=100');
+                const contents = contentData.items || [];
+                const total = contentData.total || 0;
                 const published = contents.filter(c => c.published).length;
 
                 document.getElementById('totalCount').innerText = total;
                 document.getElementById('publishedCount').innerText = published;
                 document.getElementById('draftCount').innerText = total - published;
 
-                // 渲染最近内容
                 const recent = contents.slice(0, 5);
                 const container = document.getElementById('recentContents');
                 if (!recent.length) {
-                    container.innerHTML = '<p class="text-gray-500">暂无内容</p>';
+                    container.innerHTML = '<p class="text-gray-400 text-sm">暂无内容</p>';
                 } else {
-                    let html = '<ul class="divide-y">';
+                    let html = '<ul class="divide-y divide-gray-100">';
                     for (const c of recent) {
                         const statusClass = c.published 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800';
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-yellow-100 text-yellow-700';
                         html += `
-                            <li class="py-3 flex justify-between items-center">
-                                <div>
-                                    <div class="font-medium text-gray-800">${escapeHtml(c.title)}</div>
-                                    <div class="text-xs text-gray-500">${escapeHtml(c.slug)}</div>
-                                </div>
-                                <span class="text-xs px-2 py-1 rounded ${statusClass}">
+                            <li class="py-2 flex justify-between items-center">
+                                <span class="text-sm text-gray-700 truncate pr-2">${escapeHtml(c.title)}</span>
+                                <span class="text-xs px-2 py-0.5 rounded ${statusClass} flex-shrink-0">
                                     ${c.published ? '已发布' : '草稿'}
                                 </span>
                             </li>
@@ -145,11 +168,72 @@
                     container.innerHTML = html;
                 }
             } catch (err) {
-                console.error('Failed to load stats', err);
-                document.getElementById('recentContents').innerHTML = '<p class="text-red-500">加载失败</p>';
+                console.error('Failed to load content stats', err);
+                document.getElementById('recentContents').innerHTML = '<p class="text-red-500 text-sm">加载失败</p>';
             }
 
-            // 加载服务器状态（独立调用，不阻塞内容显示）
+            // ===== 加载产品数据 =====
+            try {
+                const productData = await apiCall('GET', '/api/admin/products?page=1&per_page=100');
+                const products = productData.products || productData.items || [];
+                const productTotal = productData.total || products.length || 0;
+                const productPublished = products.filter(p => p.published).length;
+                const productDraft = productTotal - productPublished;
+
+                document.getElementById('productTotal').innerText = productTotal;
+                document.getElementById('productPublished').innerText = productPublished;
+                document.getElementById('productDraft').innerText = productDraft;
+
+                // 获取变体总数
+                let variantCount = 0;
+                for (const p of products.slice(0, 10)) {
+                    try {
+                        const variants = await apiCall('GET', `/api/admin/products/${p.id}/variants`);
+                        variantCount += (variants || []).length;
+                    } catch (e) {}
+                }
+                document.getElementById('variantTotal').innerText = variantCount;
+
+                // 渲染最近产品
+                const recentProducts = products.slice(0, 5);
+                const container = document.getElementById('recentProducts');
+                if (!recentProducts.length) {
+                    container.innerHTML = '<p class="text-gray-400 text-sm">暂无产品</p>';
+                } else {
+                    let html = '<ul class="divide-y divide-gray-100">';
+                    for (const p of recentProducts) {
+                        const statusClass = p.published 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-yellow-100 text-yellow-700';
+                        html += `
+                            <li class="py-2 flex items-center justify-between">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    ${p.cover_image ? 
+                                        `<img src="${p.cover_image}" class="w-6 h-6 object-cover rounded" onerror="this.style.display='none'">` : 
+                                        `<div class="w-6 h-6 bg-gray-200 rounded flex items-center justify-center flex-shrink-0"><i class="fas fa-box text-gray-400 text-xs"></i></div>`
+                                    }
+                                    <span class="text-sm text-gray-700 truncate">${escapeHtml(p.name)}</span>
+                                </div>
+                                <div class="flex items-center gap-2 flex-shrink-0">
+                                    <span class="text-xs font-medium text-gray-600">${p.price ? '¥' + p.price : '-'}</span>
+                                    <span class="text-xs px-2 py-0.5 rounded ${statusClass}">${p.published ? '已上架' : '草稿'}</span>
+                                </div>
+                            </li>
+                        `;
+                    }
+                    html += '</ul>';
+                    container.innerHTML = html;
+                }
+            } catch (err) {
+                console.error('Failed to load product stats', err);
+                document.getElementById('recentProducts').innerHTML = '<p class="text-red-500 text-sm">加载失败</p>';
+                document.getElementById('productTotal').innerText = '-';
+                document.getElementById('productPublished').innerText = '-';
+                document.getElementById('productDraft').innerText = '-';
+                document.getElementById('variantTotal').innerText = '-';
+            }
+
+            // ===== 加载服务器状态 =====
             loadServerInfo();
         }
 
@@ -179,6 +263,16 @@
                 document.getElementById('server-error').innerText = '无法获取服务器信息';
                 document.getElementById('server-error').classList.remove('hidden');
             }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
         }
     </script>
 </body>

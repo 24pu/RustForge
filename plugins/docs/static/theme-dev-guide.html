@@ -28,6 +28,16 @@
         table { border-collapse: collapse; }
         th, td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; text-align: left; }
         th { background: #f9fafb; }
+        .badge {
+            display: inline-block;
+            padding: 0.1rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .badge-purple { background: #e9d5ff; color: #6b21a8; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-green { background: #d1fae5; color: #065f46; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -35,11 +45,12 @@
     <nav class="bg-white shadow-sm sticky top-0 z-10">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center">
             <div class="text-xl font-bold text-purple-700">RustForge 主题开发指南</div>
-            <div class="space-x-4 text-sm">
+            <div class="space-x-4 text-sm flex flex-wrap">
                 <a href="#intro" class="hover:text-purple-600">介绍</a>
                 <a href="#structure" class="hover:text-purple-600">结构</a>
                 <a href="#variables" class="hover:text-purple-600">模板变量</a>
                 <a href="#templates" class="hover:text-purple-600">核心模板</a>
+                <a href="#product" class="hover:text-purple-600">产品模块</a>
                 <a href="#i18n" class="hover:text-purple-600">多语言</a>
                 <a href="#customize" class="hover:text-purple-600">开发与定制</a>
             </div>
@@ -51,10 +62,11 @@
         <div class="text-center mb-12">
             <h1 class="text-4xl font-bold text-gray-900 mb-2">RustForge 主题开发文档</h1>
             <p class="text-xl text-gray-600">基于 Tera 模板引擎，打造专属企业网站界面</p>
-            <div class="mt-4 flex justify-center space-x-2">
+            <div class="mt-4 flex justify-center space-x-2 flex-wrap">
                 <span class="bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full">Tera</span>
                 <span class="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">Tailwind CSS</span>
                 <span class="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">模板继承</span>
+                <span class="bg-pink-100 text-pink-800 text-sm px-3 py-1 rounded-full">产品模块</span>
             </div>
         </div>
 
@@ -76,7 +88,9 @@
         ├── index.html        # 首页（必须）
         ├── category.html     # 分类列表页（必须）
         ├── content.html      # 内容详情页（必须）
-        └── ...               # 可自定义更多模板</code></pre>
+        ├── products.html     # 产品列表页
+        ├── product.html      # 产品详情页
+        └── search.html       # 搜索结果页</code></pre>
 
             <h3 class="text-xl font-semibold mt-6 mb-2"><code>theme.toml</code> 示例</h3>
             <pre><code>name = "默认主题"
@@ -88,7 +102,9 @@ description = "适合企业官网的简洁主题"</code></pre>
         <!-- 模板变量 -->
         <section id="variables" class="anchor mb-10">
             <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">📊 可用模板变量</h2>
-            <table class="w-full bg-white rounded shadow mt-4">
+            
+            <h3 class="text-xl font-semibold mt-4 mb-2">通用变量</h3>
+            <table class="w-full bg-white rounded shadow mt-2">
                 <thead><tr><th>变量名</th><th>类型</th><th>说明</th></tr></thead>
                 <tbody>
                     <tr><td><code>nav_categories</code></td><td>Array</td><td>导航分类列表（含子分类）</td></tr>
@@ -102,7 +118,30 @@ description = "适合企业官网的简洁主题"</code></pre>
                     <tr><td><code>body_html</code></td><td>String</td><td>Markdown 渲染后的 HTML</td></tr>
                     <tr><td><code>latest_contents</code></td><td>Array</td><td>最新发布内容（index.html）</td></tr>
                     <tr><td><code>current_page</code> / <code>total_pages</code> / <code>pages</code></td><td>Number / Array</td><td>分页数据</td></tr>
-                    <tr><td><code>content</code> (特殊)</td><td>String</td><td>插件页面渲染片段</td></tr>
+                </tbody>
+            </table>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">产品模块变量</h3>
+            <table class="w-full bg-white rounded shadow mt-2">
+                <thead><tr><th>变量名</th><th>类型</th><th>说明</th><th>页面</th></tr></thead>
+                <tbody>
+                    <tr><td><code>product</code></td><td>Object</td><td>当前产品详情</td><td>product.html</td></tr>
+                    <tr><td><code>variants</code></td><td>Array</td><td>产品变体列表</td><td>product.html</td></tr>
+                    <tr><td><code>product.images</code></td><td>Array</td><td>产品图片列表</td><td>product.html</td></tr>
+                    <tr><td><code>product.categories</code></td><td>Array</td><td>产品分类</td><td>product.html</td></tr>
+                    <tr><td><code>product.cover_image</code></td><td>String</td><td>产品封面图</td><td>product.html</td></tr>
+                    <tr><td><code>product.fullname</code></td><td>String</td><td>产品全名</td><td>product.html</td></tr>
+                    <tr><td><code>product.brand</code></td><td>String</td><td>产品品牌</td><td>product.html</td></tr>
+                    <tr><td><code>product.price</code></td><td>String</td><td>产品价格</td><td>product.html</td></tr>
+                    <tr><td><code>product.stock</code></td><td>String</td><td>产品库存</td><td>product.html</td></tr>
+                    <tr><td><code>product.points</code></td><td>String</td><td>产品卖点（换行分隔）</td><td>product.html</td></tr>
+                    <tr><td><code>product.summary</code></td><td>String</td><td>产品简介</td><td>product.html</td></tr>
+                    <tr><td><code>product.description</code></td><td>String</td><td>产品详细描述（HTML）</td><td>product.html</td></tr>
+                    <tr><td><code>product.dnote</code></td><td>String</td><td>尺码表原始数据</td><td>product.html</td></tr>
+                    <tr><td><code>product.slug</code></td><td>String</td><td>产品 Slug</td><td>product.html</td></tr>
+                    <tr><td><code>product.sku</code></td><td>String</td><td>产品 SKU</td><td>product.html</td></tr>
+                    <tr><td><code>products</code></td><td>Array</td><td>产品列表</td><td>products.html</td></tr>
+                    <tr><td><code>categories</code></td><td>Array</td><td>产品分类列表（含计数）</td><td>products.html</td></tr>
                 </tbody>
             </table>
         </section>
@@ -125,7 +164,6 @@ description = "适合企业官网的简洁主题"</code></pre>
         {% else %}
             &lt;a href="/plugins/user-center/login"&gt;登录&lt;/a&gt;
         {% endif %}
-        &lt;!-- 语言切换 --&gt;
         {% for opt in lang_options %}
             &lt;a href="#" onclick="switchLang('{{ opt.code }}')"&gt;{{ opt.name }}&lt;/a&gt;
         {% endfor %}
@@ -155,13 +193,120 @@ description = "适合企业官网的简洁主题"</code></pre>
 {% endblock %}</code></pre>
         </section>
 
+        <!-- ========== 产品模块模板 ========== -->
+        <section id="product" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🛒 产品模块模板</h2>
+            <p class="mb-4">RustForge 提供完整的产品展示功能，包含产品列表、产品详情、尺码表、产品属性等。</p>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">1. <code>products.html</code> - 产品列表页</h3>
+            <p>展示所有产品，支持分类筛选、关键词搜索、排序和分页。</p>
+            <p><strong>可用变量：</strong></p>
+            <ul class="list-disc list-inside space-y-1 mb-2">
+                <li><code>products</code> - 产品列表数组</li>
+                <li><code>categories</code> - 产品分类列表（含产品数量）</li>
+                <li><code>current_page</code> - 当前页码</li>
+                <li><code>total_pages</code> - 总页数</li>
+                <li><code>total</code> - 总产品数</li>
+            </ul>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">2. <code>product.html</code> - 产品详情页</h3>
+            <p>展示产品完整信息，包括图片、变体选择、尺码表、产品属性等。</p>
+            <p><strong>可用变量：</strong></p>
+            <ul class="list-disc list-inside space-y-1 mb-2">
+                <li><code>product</code> - 产品对象（包含所有产品字段）</li>
+                <li><code>variants</code> - 变体列表（含颜色、尺码、价格、SKU等）</li>
+                <li><code>product.images</code> - 产品图片列表（含颜色代码）</li>
+                <li><code>product.cover_image</code> - 产品封面图</li>
+                <li><code>product.fullname</code> - 产品全名</li>
+                <li><code>product.brand</code> - 产品品牌</li>
+                <li><code>product.price</code> - 产品价格</li>
+                <li><code>product.stock</code> - 产品库存</li>
+                <li><code>product.points</code> - 产品卖点（换行分隔）</li>
+                <li><code>product.summary</code> - 产品简介</li>
+                <li><code>product.description</code> - 产品详细描述（支持 HTML）</li>
+                <li><code>product.dnote</code> - 尺码表原始数据</li>
+            </ul>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">产品详情页核心功能</h3>
+            <ul class="list-disc list-inside space-y-1">
+                <li><strong>图片展示</strong>：支持多图轮播/缩略图，按颜色分组展示</li>
+                <li><strong>变体选择</strong>：颜色和尺码按钮选择，自动更新价格、SKU 和图片</li>
+                <li><strong>尺码表</strong>：从 <code>dnote</code> 字段解析并渲染为表格，支持厘米/英寸切换</li>
+                <li><strong>产品属性</strong>：通过 <code>/api/public/products/:id/attribute-values</code> 加载并展示</li>
+                <li><strong>卖点展示</strong>：<code>points</code> 字段按换行分割逐条展示</li>
+                <li><strong>购买按钮</strong>：当前仅作演示（可对接支付系统）</li>
+            </ul>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">产品详情页 JavaScript API</h3>
+            <p>产品详情页内置以下 JS 功能：</p>
+            <ul class="list-disc list-inside space-y-1">
+                <li><code>loadColorConfig()</code> - 加载 <code>/config/color_codes.json</code> 颜色映射</li>
+                <li><code>buildImagesByColor()</code> - 按颜色代码分组产品图片</li>
+                <li><code>initColorButtons()</code> - 初始化颜色选择按钮</li>
+                <li><code>initSizeButtons()</code> - 初始化尺码选择按钮</li>
+                <li><code>updateDisplay()</code> - 更新价格、SKU 和图片</li>
+                <li><code>loadSizeTable()</code> - 从 API 加载并渲染尺码表</li>
+                <li><code>loadProductAttributes()</code> - 从 API 加载产品属性值</li>
+            </ul>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">产品详情页模板示例</h3>
+            <pre><code>{% extends "base.html" %}
+
+{% block content %}
+&lt;div class="container mx-auto px-4 py-8"&gt;
+    &lt;div class="grid grid-cols-1 md:grid-cols-2 gap-8"&gt;
+        &lt;!-- 图片展示区 --&gt;
+        &lt;div&gt;
+            &lt;img id="main-image" src="{{ product.cover_image }}"&gt;
+            &lt;div id="thumbnail-list"&gt;&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;!-- 产品信息区 --&gt;
+        &lt;div&gt;
+            &lt;h1&gt;{{ product.fullname }}&lt;/h1&gt;
+            &lt;span&gt;{{ product.brand }}&lt;/span&gt;
+            &lt;span id="display-price"&gt;¥{{ product.price }}&lt;/span&gt;
+            &lt;!-- 颜色和尺码选择 --&gt;
+            &lt;div id="color-options"&gt;&lt;/div&gt;
+            &lt;div id="size-options"&gt;&lt;/div&gt;
+            &lt;button id="buy-now"&gt;立即购买&lt;/button&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;!-- 尺码表 --&gt;
+    &lt;div id="size-table-container"&gt;&lt;/div&gt;
+    &lt;!-- 产品属性 --&gt;
+    &lt;div id="product-attributes-container"&gt;&lt;/div&gt;
+&lt;/div&gt;
+{% endblock %}</code></pre>
+        </section>
+
         <!-- 多语言 -->
         <section id="i18n" class="anchor mb-10">
             <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🌐 多语言支持</h2>
             <p>主题模板可以直接使用 <code>t()</code> 翻译函数，该函数从主程序语言包和已启用插件语言包中查找翻译。</p>
             <pre><code>{{ t(key="home", lang=lang) }}
 {{ t(key="read_more", lang=lang) }}</code></pre>
-            <p>导航栏语言切换示例：</p>
+            <p>产品模块相关翻译键：</p>
+            <table class="w-full bg-white rounded shadow mt-2">
+                <thead><tr><th>翻译键</th><th>中文</th><th>英文</th></tr></thead>
+                <tbody>
+                    <tr><td><code>products</code></td><td>产品</td><td>Products</td></tr>
+                    <tr><td><code>color</code></td><td>颜色</td><td>Color</td></tr>
+                    <tr><td><code>size</code></td><td>尺码</td><td>Size</td></tr>
+                    <tr><td><code>buy_now</code></td><td>立即购买</td><td>Buy Now</td></tr>
+                    <tr><td><code>in_stock</code></td><td>有货</td><td>In Stock</td></tr>
+                    <tr><td><code>out_of_stock</code></td><td>缺货</td><td>Out of Stock</td></tr>
+                    <tr><td><code>size_chart</code></td><td>尺码表</td><td>Size Chart</td></tr>
+                    <tr><td><code>product_attributes</code></td><td>产品属性</td><td>Product Attributes</td></tr>
+                    <tr><td><code>product_highlights</code></td><td>产品卖点</td><td>Highlights</td></tr>
+                    <tr><td><code>product_summary</code></td><td>产品简介</td><td>Summary</td></tr>
+                    <tr><td><code>product_details</code></td><td>产品详情</td><td>Details</td></tr>
+                    <tr><td><code>price_low_to_high</code></td><td>价格低到高</td><td>Price Low to High</td></tr>
+                    <tr><td><code>price_high_to_low</code></td><td>价格高到低</td><td>Price High to Low</td></tr>
+                    <tr><td><code>unit_cm</code></td><td>厘米</td><td>cm</td></tr>
+                    <tr><td><code>unit_inch</code></td><td>英寸</td><td>inch</td></tr>
+                </tbody>
+            </table>
+            <p class="mt-2">导航栏语言切换示例：</p>
             <pre><code>&lt;div&gt;
     {% for opt in lang_options %}
         &lt;a href="#" onclick="switchLang('{{ opt.code }}'); return false;"&gt;{{ opt.name }}&lt;/a&gt;
@@ -182,15 +327,36 @@ function switchLang(lang) {
             <ol class="list-decimal list-inside space-y-2">
                 <li>在 <code>themes/</code> 下新建目录，创建 <code>theme.toml</code> 和 <code>templates/</code></li>
                 <li>至少包含 <code>base.html</code>、<code>index.html</code>、<code>category.html</code>、<code>content.html</code></li>
+                <li>产品模块需要 <code>products.html</code> 和 <code>product.html</code></li>
                 <li>在后台主题管理页面激活新主题</li>
             </ol>
             <h3 class="text-xl font-semibold mt-6 mb-2">注意事项</h3>
-            <ul class="list-disc list-inside">
+            <ul class="list-disc list-inside space-y-1">
                 <li>必须保留 <code>{% block content %}</code> 和 <code>{% block title %}</code></li>
-                <li>使用 <code>|safe</code> 过滤器输出 HTML</li>
+                <li>使用 <code>|safe</code> 过滤器输出 HTML（如 product.description）</li>
                 <li>日期格式化：<code>|date(format="%Y-%m-%d")</code></li>
                 <li>翻译函数：<code>{{ t(key="xxx", lang=lang) }}</code></li>
+                <li>产品图片按颜色分组需要 <code>color_code</code> 字段匹配</li>
+                <li>尺码表需要后端 API <code>/api/public/products/:id/size-table</code> 支持</li>
+                <li>产品属性需要后端 API <code>/api/public/products/:id/attribute-values</code> 支持</li>
             </ul>
+            <h3 class="text-xl font-semibold mt-6 mb-2">颜色代码映射</h3>
+            <p>产品图片按颜色分组需要颜色代码映射文件 <code>/config/color_codes.json</code>：</p>
+            <pre><code>{
+    "color_map": {
+        "BL": "Black",
+        "RD": "Red",
+        "BLUE": "Blue",
+        "PR": "Purple"
+    },
+    "color_name": {
+        "BL": "Black",
+        "RD": "Red",
+        "BLUE": "Blue",
+        "PR": "Purple"
+    }
+}</code></pre>
+            <p>变体颜色名称与图片颜色代码通过此映射关联，实现颜色分组展示。</p>
         </section>
 
         <footer class="border-t pt-6 text-center text-gray-500 text-sm">

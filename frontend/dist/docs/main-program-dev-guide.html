@@ -42,6 +42,17 @@
         th {
             background: #f9fafb;
         }
+        .badge {
+            display: inline-block;
+            padding: 0.1rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .badge-green { background: #d1fae5; color: #065f46; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-purple { background: #e9d5ff; color: #6b21a8; }
+        .badge-yellow { background: #fef3c7; color: #92400e; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -52,6 +63,7 @@
             <div class="space-x-4 text-sm flex flex-wrap">
                 <a href="#overview" class="hover:text-purple-600">概述</a>
                 <a href="#structure" class="hover:text-purple-600">项目结构</a>
+                <a href="#product" class="hover:text-purple-600">产品模块</a>
                 <a href="#config" class="hover:text-purple-600">配置</a>
                 <a href="#routing" class="hover:text-purple-600">路由与处理器</a>
                 <a href="#middleware" class="hover:text-purple-600">中间件</a>
@@ -69,11 +81,12 @@
         <div class="text-center mb-12">
             <h1 class="text-4xl font-bold text-gray-900 mb-2">RustForge 主程序开发文档</h1>
             <p class="text-xl text-gray-600">基于 Rust + Axum 的企业级网站核心架构详解</p>
-            <div class="mt-4 flex justify-center space-x-2">
+            <div class="mt-4 flex justify-center space-x-2 flex-wrap">
                 <span class="bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full">Rust</span>
                 <span class="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">Axum</span>
                 <span class="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">SQLx</span>
                 <span class="bg-yellow-100 text-yellow-800 text-sm px-3 py-1 rounded-full">Wasmtime</span>
+                <span class="bg-pink-100 text-pink-800 text-sm px-3 py-1 rounded-full">产品管理</span>
             </div>
         </div>
 
@@ -87,6 +100,7 @@
                 <li><strong>依赖注入</strong>：通过 <code>AppState</code> 共享资源</li>
                 <li><strong>可扩展</strong>：主题和插件系统支持动态扩展，插件通过 Wasm 安全隔离</li>
                 <li><strong>RBAC 权限</strong>：细粒度的用户-角色-权限管理</li>
+                <li><strong>完整的产品管理</strong>：支持产品、变体、属性、尺码表、多语言导出等</li>
             </ul>
         </section>
 
@@ -102,11 +116,21 @@
 │   ├── presentation/          # 表现层
 │   │   ├── mod.rs             # 路由组装、AppState 定义
 │   │   ├── handlers/          # 请求处理器
-│   │   ├── middleware/        # 中间件（认证、用户注入等）
+│   │   │   ├── product.rs     # 产品 CRUD
+│   │   │   ├── product_export.rs  # 产品导出
+│   │   │   ├── product_admin.rs   # 产品管理后台
+│   │   │   └── attribute.rs   # 属性模板管理
+│   │   ├── middleware/        # 中间件
 │   │   └── types.rs           # 请求/响应类型
 │   ├── core/                  # 核心业务接口（Repository trait）
+│   │   ├── mod.rs             # 所有 Repository trait 定义
+│   │   └── models.rs          # 数据模型
 │   ├── infrastructure/        # 基础设施层
 │   │   ├── db.rs              # 数据库连接池
+│   │   ├── db/                # Repository 实现
+│   │   │   ├── product_repo.rs
+│   │   │   ├── attribute_repo.rs
+│   │   │   └── amatemplate_repo.rs
 │   │   ├── auth.rs            # JWT 生成与验证
 │   │   ├── plugin.rs          # Wasm 插件运行时
 │   │   └── theme/             # 主题管理器
@@ -115,6 +139,136 @@
 ├── themes/                    # 主题存放目录
 └── frontend/dist/             # 管理后台静态文件</code></pre>
             <p class="mt-2">采用<strong>三层架构</strong>，表现层依赖核心接口，基础设施层实现具体逻辑。</p>
+        </section>
+
+        <!-- ========== 产品模块 ========== -->
+        <section id="product" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🛒 产品模块</h2>
+            <p class="mb-4">RustForge 提供完整的产品管理功能，支持产品、变体、属性、尺码表、多语言导出等。</p>
+
+            <!-- 核心数据模型 -->
+            <h3 class="text-xl font-semibold mt-6 mb-2">核心数据模型</h3>
+            <table class="w-full bg-white rounded shadow mt-2">
+                <thead><tr><th>表名</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td><code>products</code></td><td>产品主表，包含名称、SKU、品牌、价格、描述、尺码数据等</td></tr>
+                    <tr><td><code>product_variants</code></td><td>产品变体表，包含颜色、尺码、价格、库存等</td></tr>
+                    <tr><td><code>product_images</code></td><td>产品图片表，支持按颜色分组</td></tr>
+                    <tr><td><code>product_categories</code></td><td>产品分类表，支持无限级分类</td></tr>
+                    <tr><td><code>product_attribute_templates</code></td><td>属性模板表，定义可复用的属性（如颜色、材质）</td></tr>
+                    <tr><td><code>product_attribute_values</code></td><td>产品属性值表，存储产品与属性的关联值</td></tr>
+                    <tr><td><code>attribute_groups</code></td><td>属性分组表，将属性模板分组管理</td></tr>
+                </tbody>
+            </table>
+
+            <!-- 产品变体 -->
+            <h3 class="text-xl font-semibold mt-6 mb-2">产品变体</h3>
+            <p>产品变体支持多属性组合，每个变体有独立的 SKU、价格、库存。系统支持通过颜色+尺码规则批量生成变体：</p>
+            <ul class="list-disc list-inside space-y-1">
+                <li>从图片文件名提取颜色代码（如 <code>BL01</code> → <code>BL</code> → <code>Black</code>）</li>
+                <li>从产品的 <code>csize/ussize/asize</code> 字段解析尺码列表</li>
+                <li>支持自定义 SKU 生成规则，可组合 <code>{product_sku}</code>、<code>{color_code}</code>、<code>{size}</code></li>
+            </ul>
+
+            <!-- 产品属性 -->
+            <h3 class="text-xl font-semibold mt-6 mb-2">产品属性系统</h3>
+            <p>属性系统支持灵活的产品规格管理：</p>
+            <ul class="list-disc list-inside space-y-1">
+                <li>管理员可创建 <strong>属性模板</strong>（如"颜色"、"材质"、"尺寸"），每个模板可预定义可选值列表</li>
+                <li>属性模板可归入 <strong>属性分组</strong>（如"基础属性"、"销售属性"）便于管理</li>
+                <li>编辑产品时，选择属性分组后自动加载该分组下的所有属性模板，管理员为每个属性填写/选择值</li>
+                <li>属性值支持下拉选择（从模板预定义值）或自由输入</li>
+            </ul>
+
+            <!-- 尺码表 -->
+            <h3 class="text-xl font-semibold mt-6 mb-2">尺码表</h3>
+            <p>产品支持结构化尺码表，用于服装/鞋类等需要尺码规格的产品：</p>
+            <ul class="list-disc list-inside space-y-1">
+                <li>尺码数据存储在 <code>products.dnote</code> 字段，格式为文本表格（首行为部位名称，后续行为各尺码的数值）</li>
+                <li>系统解析后生成结构化数据，支持前台展示和 Excel 导出</li>
+                <li>支持 <strong>厘米/英寸</strong> 单位切换（通过系统设置 <code>product_size_inch</code> 控制）</li>
+                <li>尺码表可导出为简单 HTML 格式，用于产品描述中</li>
+            </ul>
+            <pre><code># 尺码表格式示例（存储在 dnote 字段）
+Waist Hip Length
+65 90 100
+69 94 102
+73 98 104
+77 102 106</code></pre>
+
+            <!-- 产品导出 -->
+            <h3 class="text-xl font-semibold mt-6 mb-2">产品导出功能</h3>
+            <p>支持将产品数据导出为 Excel 文件，满足电商平台数据迁移需求：</p>
+            <ul class="list-disc list-inside space-y-1">
+                <li><strong>自定义导出模板</strong>：通过 <code>ama_templates</code> 表定义导出列，支持灵活配置</li>
+                <li><strong>变体导出</strong>：每个变体一行，包含父 SKU、颜色、尺码、价格、库存等</li>
+                <li><strong>属性导出</strong>：产品属性自动匹配导出模板中的列名（如模板列"颜色"匹配属性模板标题"颜色"）</li>
+                <li><strong>尺码数据导出</strong>：从尺码表提取 <code>inseam_length</code>（内长）和 <code>waist_size</code>（腰围）</li>
+                <li><strong>包装信息导出</strong>：从 <code>package</code> 字段解析长宽高，从 <code>weight</code> 字段解析重量</li>
+                <li><strong>尺码名称标准化</strong>：自动将 <code>xs/s/m/l/xl/2xl/3xl</code> 转换为 <code>X-Small/Small/Medium/Large/X-Large/XX-Large/XXX-Large</code></li>
+                <li><strong>关系类型</strong>：主体行 <code>relationship_type</code> 为空，变体行填充 <code>Variation</code></li>
+            </ul>
+
+            <!-- 导出字段说明 -->
+            <h3 class="text-xl font-semibold mt-6 mb-2">导出字段说明</h3>
+            <table class="w-full bg-white rounded shadow mt-2">
+                <thead><tr><th>字段</th><th>说明</th><th>数据来源</th></tr></thead>
+                <tbody>
+                    <tr><td><code>item_sku</code></td><td>商品 SKU</td><td>产品/变体 SKU</td></tr>
+                    <tr><td><code>item_name</code></td><td>商品名称</td><td>产品 fullname + 颜色 + 尺码（变体）</td></tr>
+                    <tr><td><code>brand_name</code></td><td>品牌</td><td>产品 brand</td></tr>
+                    <tr><td><code>price</code></td><td>价格</td><td>产品/变体价格</td></tr>
+                    <tr><td><code>quantity</code></td><td>库存</td><td>产品/变体 stock</td></tr>
+                    <tr><td><code>product_description</code></td><td>产品描述</td><td>尺码表 HTML 或产品 description</td></tr>
+                    <tr><td><code>package_length/width/height</code></td><td>包装尺寸</td><td>产品 package（长 宽 高）</td></tr>
+                    <tr><td><code>package_weight</code></td><td>包装重量</td><td>产品 weight</td></tr>
+                    <tr><td><code>inseam_length</code></td><td>内长</td><td>尺码表解析</td></tr>
+                    <tr><td><code>waist_size</code></td><td>腰围</td><td>尺码表解析</td></tr>
+                    <tr><td><code>relationship_type</code></td><td>关系类型</td><td>主体为空，变体为 Variation</td></tr>
+                    <tr><td><code>variation_theme</code></td><td>变体主题</td><td>固定 color-size</td></tr>
+                    <tr><td><code>size_name</code></td><td>尺码名称</td><td>变体尺码（标准化）</td></tr>
+                    <tr><td><code>size_map</code></td><td>尺码映射</td><td>变体尺码（标准化）</td></tr>
+                    <tr><td><code>main_image_url</code></td><td>主图</td><td>产品 cover_image</td></tr>
+                    <tr><td><code>color_name</code></td><td>颜色名称</td><td>变体 color_name</td></tr>
+                </tbody>
+            </table>
+
+            <!-- 前台展示 -->
+            <h3 class="text-xl font-semibold mt-6 mb-2">前台产品展示</h3>
+            <ul class="list-disc list-inside space-y-1">
+                <li>产品详情页支持 <strong>颜色/尺码选择</strong>，自动切换变体价格、SKU 和图片</li>
+                <li>图片按颜色分组，选择颜色后自动切换到对应颜色的图片集</li>
+                <li>尺码表以表格形式展示，支持厘米/英寸单位切换</li>
+                <li>产品属性以标签形式展示（属性名: 属性值）</li>
+            </ul>
+
+            <!-- API 路由 -->
+            <h3 class="text-xl font-semibold mt-6 mb-2">产品 API 路由</h3>
+            <table class="w-full bg-white rounded shadow mt-2">
+                <thead><tr><th>方法</th><th>路径</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td>GET</td><td><code>/api/admin/products</code></td><td>产品列表（分页、筛选）</td></tr>
+                    <tr><td>POST</td><td><code>/api/admin/products</code></td><td>创建产品</td></tr>
+                    <tr><td>GET</td><td><code>/api/admin/products/:id</code></td><td>获取产品详情</td></tr>
+                    <tr><td>PUT</td><td><code>/api/admin/products/:id</code></td><td>更新产品</td></tr>
+                    <tr><td>DELETE</td><td><code>/api/admin/products/:id</code></td><td>删除产品</td></tr>
+                    <tr><td>GET</td><td><code>/api/admin/products/:id/variants</code></td><td>获取变体列表</td></tr>
+                    <tr><td>POST</td><td><code>/api/admin/products/:id/variants</code></td><td>生成变体（按规则）</td></tr>
+                    <tr><td>GET</td><td><code>/api/admin/products/:id/images</code></td><td>获取产品图片</td></tr>
+                    <tr><td>POST</td><td><code>/api/admin/products/:id/images</code></td><td>上传产品图片</td></tr>
+                    <tr><td>POST</td><td><code>/api/admin/products/export</code></td><td>导出产品（Excel）</td></tr>
+                    <tr><td>GET</td><td><code>/api/public/products</code></td><td>前台产品列表</td></tr>
+                    <tr><td>GET</td><td><code>/api/public/products/:id</code></td><td>前台产品详情</td></tr>
+                    <tr><td>GET</td><td><code>/api/public/products/:id/attribute-values</code></td><td>获取产品属性值</td></tr>
+                    <tr><td>GET</td><td><code>/api/public/products/:id/size-table</code></td><td>获取尺码表</td></tr>
+                    <tr><td>GET</td><td><code>/api/admin/attribute-templates</code></td><td>属性模板列表</td></tr>
+                    <tr><td>POST</td><td><code>/api/admin/attribute-templates</code></td><td>创建属性模板</td></tr>
+                    <tr><td>GET</td><td><code>/api/admin/attribute-groups</code></td><td>属性分组列表</td></tr>
+                    <tr><td>POST</td><td><code>/api/admin/attribute-groups</code></td><td>创建属性分组</td></tr>
+                    <tr><td>GET</td><td><code>/api/admin/products/:id/attribute-values</code></td><td>获取产品属性值</td></tr>
+                    <tr><td>PUT</td><td><code>/api/admin/products/:id/attribute-values</code></td><td>更新产品属性值</td></tr>
+                </tbody>
+            </table>
         </section>
 
         <!-- 配置 -->
@@ -155,6 +309,10 @@ max_connections = 10</code></pre>
                     <tr><td>GET</td><td><code>/sitemap.xml</code></td><td><code>sitemap_handler</code></td><td>站点地图</td></tr>
                     <tr><td>GET</td><td><code>/install</code></td><td>安装页面</td><td>首次安装向导</td></tr>
                     <tr><td>POST</td><td><code>/api/install</code></td><td><code>install_handler</code></td><td>执行安装</td></tr>
+                    <tr><td>GET</td><td><code>/api/public/products</code></td><td><code>get_public_products_handler</code></td><td>前台产品列表</td></tr>
+                    <tr><td>GET</td><td><code>/api/public/products/:id</code></td><td><code>get_public_product_handler</code></td><td>前台产品详情</td></tr>
+                    <tr><td>GET</td><td><code>/api/public/products/:id/size-table</code></td><td><code>get_product_size_table_handler</code></td><td>尺码表</td></tr>
+                    <tr><td>GET</td><td><code>/api/public/products/:id/attribute-values</code></td><td><code>get_public_product_attributes</code></td><td>产品属性值</td></tr>
                 </tbody>
             </table>
 
@@ -168,6 +326,11 @@ max_connections = 10</code></pre>
                     <tr><td><code>/api/admin/contents</code></td><td>内容管理 CRUD</td></tr>
                     <tr><td><code>/api/admin/plugins</code></td><td>插件管理（含扫描可用插件）</td></tr>
                     <tr><td><code>/api/admin/themes</code></td><td>主题管理</td></tr>
+                    <tr><td><code>/api/admin/products</code></td><td>产品管理 CRUD</td></tr>
+                    <tr><td><code>/api/admin/products/export</code></td><td>产品导出</td></tr>
+                    <tr><td><code>/api/admin/attribute-templates</code></td><td>属性模板管理</td></tr>
+                    <tr><td><code>/api/admin/attribute-groups</code></td><td>属性分组管理</td></tr>
+                    <tr><td><code>/api/admin/amatemplates</code></td><td>导出模板管理</td></tr>
                 </tbody>
             </table>
 
@@ -221,7 +384,7 @@ max_connections = 10</code></pre>
     async fn get_user_by_id(&self, id: Uuid) -> Result&lt;Option&lt;User&gt;&gt;;
     // ...
 }</code></pre>
-            <p>基础设施层提供 <code>PostgresUserRepo</code>、<code>PostgresContentRepo</code> 等实现。</p>
+            <p>基础设施层提供 <code>PostgresUserRepo</code>、<code>PostgresContentRepo</code>、<code>PostgresProductRepo</code>、<code>PostgresAttributeRepo</code> 等实现。</p>
             <p>数据库迁移使用 <code>sqlx migrate run</code> 或安装向导自动执行，迁移文件位于 <code>migrations/</code> 目录。</p>
         </section>
 
