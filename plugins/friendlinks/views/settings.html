@@ -7,42 +7,261 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 p-6">
-    <h3 class="text-lg font-semibold mb-2">友情链接管理</h3>
-    <p class="text-sm text-gray-500 mb-4">每行一条，格式：名称|URL</p>
-    <textarea id="links-text" rows="10" class="w-full border rounded p-2 font-mono"></textarea>
-    <div class="mt-4 flex justify-end">
-        <button id="save-btn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">保存</button>
+    <div class="max-w-3xl mx-auto">
+        <h3 class="text-lg font-semibold mb-2">友情链接管理</h3>
+        <p class="text-sm text-gray-500 mb-4">管理链接列表和侧边栏钩子内容，支持多语言版本。</p>
+
+        <!-- 语言选择 -->
+        <div class="bg-white rounded-lg shadow p-4 mb-4">
+            <div class="flex items-center gap-3">
+                <label for="lang-select" class="text-sm font-medium text-gray-700">语言版本</label>
+                <select id="lang-select" class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-purple-500">
+                    <!-- 动态填充 -->
+                </select>
+                <span id="lang-status" class="text-xs text-gray-400 italic"></span>
+            </div>
+        </div>
+
+        <!-- 链接列表区域 -->
+        <div class="bg-white rounded-lg shadow p-4 mb-4">
+            <h4 class="text-md font-medium mb-2">链接列表</h4>
+            <p class="text-xs text-gray-400 mb-2">每行一条，格式：名称|URL</p>
+            <textarea id="links-text" rows="6" class="w-full border rounded p-2 font-mono"></textarea>
+            <div class="mt-2 flex space-x-2">
+                <button id="save-settings-btn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">保存链接列表</button>
+                <button id="sync-hook-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">从链接列表生成钩子</button>
+            </div>
+        </div>
+
+        <!-- 钩子内容区域 -->
+        <div class="bg-white rounded-lg shadow p-4">
+            <h4 class="text-md font-medium mb-2">侧边栏钩子内容</h4>
+            <p class="text-xs text-gray-400 mb-2">当前钩子的 HTML 内容（支持 <code>{{ key }}</code> 多语言占位符）</p>
+            <textarea id="hook-content" rows="6" class="w-full border rounded p-2 font-mono"></textarea>
+            <div class="mt-2 flex space-x-2">
+                <button id="load-hook-btn" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">加载钩子内容</button>
+                <button id="save-hook-btn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">保存钩子内容</button>
+            </div>
+        </div>
+
+        <div id="message" class="mt-3 text-sm font-medium text-center"></div>
     </div>
-    <div id="message" class="mt-2 text-sm"></div>
 
     <script>
-        const pluginName = 'friendlinks'; // 当前插件名称，可固化
+        const pluginName = 'friendlinks';
+        const HOOK_NAME = 'sidebar_friendlinks';
+        let currentLang = '';
+        let availableLangs = [];
 
-        // 加载现有设置
-        async function loadSettings() {
-            const resp = await fetch(`/api/admin/plugins/${pluginName}/settings`);
-            const data = await resp.json();
-            const links = data.links || [];
-            document.getElementById('links-text').value = links.map(l => `${l.name}|${l.url}`).join('\n');
+        // ---- 从系统设置加载可用语言 ----
+        async function loadLanguageOptions() {
+            try {
+                const resp = await fetch('/api/admin/lang-settings', { credentials: 'include' });
+                if (!resp.ok) throw new Error('获取语言配置失败');
+                const data = await resp.json();
+                availableLangs = data.available_langs || [];
+                const select = document.getElementById('lang-select');
+                select.innerHTML = '';
+                // 添加“通用”选项（空字符串）
+                const generalOpt = document.createElement('option');
+                generalOpt.value = '';
+                generalOpt.textContent = '🌐 通用（所有语言）';
+                select.appendChild(generalOpt);
+                availableLangs.forEach(l => {
+                    const opt = document.createElement('option');
+                    opt.value = l.code;
+                    opt.textContent = `${l.name} (${l.code})`;
+                    select.appendChild(opt);
+                });
+                select.value = '';
+                currentLang = '';
+                // 更新状态
+                document.getElementById('lang-status').textContent = '当前：通用';
+            } catch (e) {
+                console.warn('加载语言配置失败，使用默认选项', e);
+                // 降级：硬编码
+                const select = document.getElementById('lang-select');
+                select.innerHTML = `
+                    <option value="">🌐 通用（所有语言）</option>
+                    <option value="zh">🇨🇳 中文</option>
+                    <option value="en">🇬🇧 英文</option>
+                    <option value="ja">🇯🇵 日文</option>
+                    <option value="ko">🇰🇷 韩文</option>
+                `;
+                select.value = '';
+                currentLang = '';
+                document.getElementById('lang-status').textContent = '当前：通用';
+            }
         }
 
-        // 保存设置
-        document.getElementById('save-btn').addEventListener('click', async () => {
-            const text = document.getElementById('links-text').value;
-            const links = text.split('\n').filter(Boolean).map(line => {
-                const [name, url] = line.split('|').map(s => s.trim());
-                return { name, url: url || '' };
-            });
+        // ---- 通用消息 ----
+        function showMessage(text, type = 'green') {
+            const msg = document.getElementById('message');
+            msg.innerText = text;
+            msg.className = 'mt-2 text-sm ' + (type === 'green' ? 'text-green-600' : 'text-red-600');
+            setTimeout(() => { msg.innerText = ''; }, 3000);
+        }
+
+        // ---- 加载设置（链接列表） ----
+        async function loadSettings(lang) {
+            try {
+                const resp = await fetch(`/api/admin/plugins/${pluginName}/settings`);
+                const data = await resp.json();
+                const links = data.links || [];
+                // 如果有语言特定的链接，可以扩展，但现在所有语言共用一份链接数据（可后续扩展）
+                document.getElementById('links-text').value = links.map(l => `${l.name}|${l.url}`).join('\n');
+            } catch (e) {
+                showMessage('加载设置失败', 'red');
+            }
+        }
+
+        // ---- 加载钩子内容（按语言） ----
+        async function loadHookContent(lang) {
+            try {
+                const url = `/api/admin/plugins/${pluginName}/hooks?hook_name=${HOOK_NAME}${lang ? '&lang=' + encodeURIComponent(lang) : ''}`;
+                const resp = await fetch(url);
+                const data = await resp.json();
+                // 查找匹配语言的钩子
+                let target = data.find(h => h.lang === lang) || null;
+                if (target) {
+                    document.getElementById('hook-content').value = target.content || '';
+                    document.getElementById('lang-status').textContent = `当前：${target.lang || '通用'}`;
+                } else {
+                    document.getElementById('hook-content').value = '';
+                    document.getElementById('lang-status').textContent = `当前：${lang || '通用'} (无内容)`;
+                }
+            } catch (e) {
+                showMessage('加载钩子内容失败', 'red');
+            }
+        }
+
+        // ---- 保存链接列表到 settings ----
+        async function saveSettings(links) {
             await fetch(`/api/admin/plugins/${pluginName}/settings`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ links })
             });
-            document.getElementById('message').innerText = '保存成功';
-            setTimeout(() => document.getElementById('message').innerText = '', 2000);
+        }
+
+        // ---- 更新钩子内容（按语言） ----
+        async function saveHookContent(content, lang) {
+            // 先查询是否存在该语言的钩子
+            const resp = await fetch(`/api/admin/plugins/${pluginName}/hooks?hook_name=${HOOK_NAME}`);
+            const existing = await resp.json();
+            let target = existing.find(h => h.lang === lang) || null;
+            let method, url;
+            if (target) {
+                method = 'PUT';
+                url = `/api/admin/plugins/${pluginName}/hooks/${target.id}`;
+            } else {
+                method = 'POST';
+                url = `/api/admin/plugins/${pluginName}/hooks`;
+            }
+            const body = JSON.stringify({
+                hook_name: HOOK_NAME,
+                content: content,
+                sort_order: 10,
+                lang: lang || '',
+                enabled: true
+            });
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body
+            });
+            if (!res.ok) throw new Error('保存钩子失败');
+            return res;
+        }
+
+        // ---- 从链接列表生成 HTML（可自定义占位符） ----
+        function generateLinksHtml(links) {
+            if (!links || links.length === 0) {
+                return `<div class="bg-white rounded-lg shadow p-4"><h3 class="text-lg font-semibold mb-3 text-gray-700">{{ friend_links }}</h3><p class="text-gray-400 text-sm">{{ no_links }}</p></div>`;
+            }
+            let items = links.map(l => `<li><a href="${l.url}" target="_blank" rel="noopener" class="text-purple-600 hover:underline">${l.name}</a></li>`).join('');
+            return `<div class="bg-white rounded-lg shadow p-4"><h3 class="text-lg font-semibold mb-3 text-gray-700">{{ friend_links }}</h3><ul class="space-y-1 text-sm">${items}</ul></div>`;
+        }
+
+        // ---- 事件绑定 ----
+
+        // 语言切换
+        document.getElementById('lang-select').addEventListener('change', function() {
+            currentLang = this.value;
+            loadHookContent(currentLang);
+            // 链接列表目前与语言无关，保持原样（可未来扩展）
         });
 
-        loadSettings();
+        // 1. 保存链接列表
+        document.getElementById('save-settings-btn').addEventListener('click', async () => {
+            const text = document.getElementById('links-text').value;
+            const links = text.split('\n').filter(Boolean).map(line => {
+                const [name, url] = line.split('|').map(s => s.trim());
+                return { name, url: url || '' };
+            });
+            try {
+                await saveSettings(links);
+                showMessage('链接列表保存成功', 'green');
+            } catch (e) {
+                showMessage('保存失败', 'red');
+            }
+        });
+
+        // 2. 从链接列表生成钩子（覆盖当前语言版本）
+        document.getElementById('sync-hook-btn').addEventListener('click', async () => {
+            const text = document.getElementById('links-text').value;
+            const links = text.split('\n').filter(Boolean).map(line => {
+                const [name, url] = line.split('|').map(s => s.trim());
+                return { name, url: url || '' };
+            });
+            if (links.length === 0) {
+                showMessage('没有友链可同步', 'red');
+                return;
+            }
+            const html = generateLinksHtml(links);
+            const lang = currentLang; // 当前选择的语言
+            try {
+                await saveHookContent(html, lang);
+                // 重新加载钩子内容以更新显示
+                await loadHookContent(lang);
+                showMessage(`已同步到侧边栏钩子（${lang || '通用'}）`, 'green');
+            } catch (e) {
+                showMessage('同步失败', 'red');
+                console.error(e);
+            }
+        });
+
+        // 3. 加载钩子内容
+        document.getElementById('load-hook-btn').addEventListener('click', () => {
+            loadHookContent(currentLang);
+        });
+
+        // 4. 保存钩子内容（手动编辑）
+        document.getElementById('save-hook-btn').addEventListener('click', async () => {
+            const content = document.getElementById('hook-content').value;
+            if (!content) {
+                showMessage('内容为空，无需保存', 'red');
+                return;
+            }
+            const lang = currentLang;
+            try {
+                await saveHookContent(content, lang);
+                showMessage(`钩子内容保存成功（${lang || '通用'}）`, 'green');
+                // 重新加载以更新状态
+                await loadHookContent(lang);
+            } catch (e) {
+                showMessage('保存失败', 'red');
+                console.error(e);
+            }
+        });
+
+        // ---- 初始化 ----
+        (async function init() {
+            await loadLanguageOptions();
+            await loadSettings('');
+            await loadHookContent('');
+            // 监听语言切换
+        })();
     </script>
 </body>
 </html>

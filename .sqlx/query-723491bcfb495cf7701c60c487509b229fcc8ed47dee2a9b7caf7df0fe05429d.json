@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE group_attribute_template_relations SET sort_order = $1 WHERE group_id = $2 AND attribute_template_id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "723491bcfb495cf7701c60c487509b229fcc8ed47dee2a9b7caf7df0fe05429d"
+}

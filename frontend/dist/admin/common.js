@@ -201,11 +201,17 @@ async function loadTopbar() {
             setElementDisplay('media-nav-mobile', true, 'block');
         }
 
-        // 插件菜单
+        
+        // ---------- 桌面端菜单控制 ----------
+        // 插件管理（下拉组）
         if (perms.includes('plugin:list')) {
-            setElementDisplay('plugins-nav', true, 'inline-block');
-            setElementDisplay('plugins-nav-mobile', true, 'block');
+            setElementDisplay('plugins-group', true, 'inline-block');
+            setElementDisplay('plugins-group-mobile', true, 'block');
+            // 钩子管理作为子项，也使用相同权限
+            setElementDisplay('hooks-nav', true, 'inline-block');
+            setElementDisplay('hooks-nav-mobile', true, 'block');
         }
+
 
         // ---------- 模版管理（下拉菜单） ----------
         if (perms.includes('template:list')) {

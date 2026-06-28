@@ -13,6 +13,8 @@ use serde_json::Value;
 use crate::core::models::{User, Content, Permission, RoleInfo, Category, MediaFile, MediaFolder, Plugin};
 use crate::core::models::{Product, ProductVariant, ProductImage, ProductCategory,AmaTemplate};
 use crate::core::models::{AttributeTemplate, AttributeGroup, GroupTemplateRelation, ProductAttributeValue,GroupDetail};
+use crate::core::models::{PluginHook,CreatePluginHookRequest,UpdatePluginHookRequest};
+
 
 // ---------- 主题相关 ----------
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -475,3 +477,23 @@ pub trait ProductAttributeValueRepository: Send + Sync {
 // 如果你不想增加新 trait，也可以直接在 ProductRepository 中添加：
 // async fn set_product_attribute_group(&self, product_id: Uuid, group_id: Option<i32>) -> Result<()>;
 // 但这里建议在具体实现中直接调用 product 表的更新字段，不需要定义新 trait，因为已有 update_product。
+
+#[async_trait]
+pub trait PluginHookRepository: Send + Sync {
+    async fn list_by_hook(
+        &self,
+        hook_name: &str,
+        lang: &str,
+        enabled: Option<bool>,
+    ) -> Result<Vec<PluginHook>>;
+    async fn get_by_id(&self, id: i32) -> Result<Option<PluginHook>>;
+    async fn create(&self, req: &CreatePluginHookRequest) -> Result<PluginHook>;
+    async fn update(&self, id: i32, req: &UpdatePluginHookRequest) -> Result<PluginHook>;
+    async fn delete(&self, id: i32) -> Result<bool>;
+    // 新增：查询所有通用钩子（lang=''）
+    async fn list_all_generic(&self, enabled: Option<bool>) -> Result<Vec<PluginHook>>;
+    async fn list_by_plugin(&self, plugin_name: &str, enabled: Option<bool>) -> Result<Vec<PluginHook>>;
+    async fn list_by_lang(&self, lang: &str, enabled: Option<bool>) -> Result<Vec<PluginHook>>;
+    /// 查询指定语言且所属插件已启用的钩子（用于前台渲染）
+    async fn list_enabled_by_lang(&self, lang: &str) -> Result<Vec<PluginHook>>;
+}

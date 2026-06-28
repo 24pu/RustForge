@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) as count FROM contents WHERE published = true AND lang = $1 AND (title ILIKE $2 OR body ILIKE $2 OR slug ILIKE $2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "b3c0a77613df392c68d41bd91011f4e87b358f9c10f5dea06ff6c154e20de1d4"
+}

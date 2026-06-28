@@ -25,6 +25,8 @@
         }
         pre code { background: transparent; padding: 0; color: inherit; }
         .anchor { scroll-margin-top: 5rem; }
+        .tip { background: #f0fdf4; border-left: 4px solid #22c55e; padding: 0.75rem 1rem; border-radius: 0.25rem; margin: 1rem 0; }
+        .info { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 0.75rem 1rem; border-radius: 0.25rem; margin: 1rem 0; }
         table { border-collapse: collapse; }
         th, td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; text-align: left; }
         th { background: #f9fafb; }
@@ -38,6 +40,7 @@
         .badge-purple { background: #e9d5ff; color: #6b21a8; }
         .badge-blue { background: #dbeafe; color: #1e40af; }
         .badge-green { background: #d1fae5; color: #065f46; }
+        .badge-orange { background: #fef3c7; color: #92400e; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -50,6 +53,7 @@
                 <a href="#structure" class="hover:text-purple-600">结构</a>
                 <a href="#variables" class="hover:text-purple-600">模板变量</a>
                 <a href="#templates" class="hover:text-purple-600">核心模板</a>
+                <a href="#hooks" class="hover:text-purple-600">钩子系统</a>
                 <a href="#product" class="hover:text-purple-600">产品模块</a>
                 <a href="#i18n" class="hover:text-purple-600">多语言</a>
                 <a href="#customize" class="hover:text-purple-600">开发与定制</a>
@@ -67,6 +71,7 @@
                 <span class="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">Tailwind CSS</span>
                 <span class="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">模板继承</span>
                 <span class="bg-pink-100 text-pink-800 text-sm px-3 py-1 rounded-full">产品模块</span>
+                <span class="bg-orange-100 text-orange-800 text-sm px-3 py-1 rounded-full">钩子系统</span>
             </div>
         </div>
 
@@ -74,7 +79,7 @@
         <section id="intro" class="anchor mb-10">
             <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">📖 主题系统介绍</h2>
             <p class="mb-2">RustForge 使用 <a href="https://tera.netlify.app/" class="text-blue-600 underline" target="_blank">Tera</a> 模板引擎渲染前端页面。一个主题就是一组模板文件，通过系统注入的变量展示网站内容。</p>
-            <p>主题支持模板继承、变量过滤器、动态加载和多语言翻译函数。</p>
+            <p>主题支持模板继承、变量过滤器、动态加载、多语言翻译函数，以及<strong>钩子系统</strong>，允许插件在主题任意位置注入内容。</p>
         </section>
 
         <!-- 主题结构 -->
@@ -102,7 +107,7 @@ description = "适合企业官网的简洁主题"</code></pre>
         <!-- 模板变量 -->
         <section id="variables" class="anchor mb-10">
             <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">📊 可用模板变量</h2>
-            
+
             <h3 class="text-xl font-semibold mt-4 mb-2">通用变量</h3>
             <table class="w-full bg-white rounded shadow mt-2">
                 <thead><tr><th>变量名</th><th>类型</th><th>说明</th></tr></thead>
@@ -112,6 +117,7 @@ description = "适合企业官网的简洁主题"</code></pre>
                     <tr><td><code>user_info</code></td><td>Object</td><td>当前登录用户信息</td></tr>
                     <tr><td><code>lang</code></td><td>String</td><td>当前语言代码（zh/en）</td></tr>
                     <tr><td><code>lang_options</code></td><td>Array</td><td>可用语言列表</td></tr>
+                    <tr><td><code>hooks</code></td><td>Object</td><td>所有钩子内容（键为钩子名，值为 HTML）</td></tr>
                     <tr><td><code>category</code></td><td>Object</td><td>当前分类对象（category.html）</td></tr>
                     <tr><td><code>contents</code></td><td>Array</td><td>当前分类内容列表（category.html）</td></tr>
                     <tr><td><code>post</code></td><td>Object</td><td>当前内容详情（content.html）</td></tr>
@@ -144,6 +150,23 @@ description = "适合企业官网的简洁主题"</code></pre>
                     <tr><td><code>categories</code></td><td>Array</td><td>产品分类列表（含计数）</td><td>products.html</td></tr>
                 </tbody>
             </table>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">钩子变量详解</h3>
+            <p><code>hooks</code> 是一个对象，包含所有已注册的钩子内容。键为钩子名称，值为插件注入的 HTML 内容（支持多语言）。</p>
+            <table class="w-full bg-white rounded shadow mt-2">
+                <thead><tr><th>钩子名</th><th>常见用途</th><th>示例位置</th></tr></thead>
+                <tbody>
+                    <tr><td><code>nav</code></td><td>导航栏链接</td><td>顶部导航菜单</td></tr>
+                    <tr><td><code>sidebar</code></td><td>侧边栏内容</td><td>文章页右侧</td></tr>
+                    <tr><td><code>footer</code></td><td>页脚内容</td><td>页面底部</td></tr>
+                    <tr><td><code>header</code></td><td>头部额外内容</td><td><code>&lt;head&gt;</code> 或顶部横幅</td></tr>
+                    <tr><td><code>body_end</code></td><td>页面底部脚本</td><td><code>&lt;/body&gt;</code> 前</td></tr>
+                    <tr><td><code>custom_xxx</code></td><td>自定义钩子</td><td>任意位置</td></tr>
+                </tbody>
+            </table>
+            <div class="info">
+                <strong>💡 自定义钩子</strong>：主题开发者可自定义任意钩子名，如 <code>sidebar_contact</code>、<code>home_banner</code>，插件通过同名钩子注入内容即可。
+            </div>
         </section>
 
         <!-- 核心模板详解 -->
@@ -156,41 +179,139 @@ description = "适合企业官网的简洁主题"</code></pre>
 &lt;html&gt;
 &lt;head&gt;
     &lt;title&gt;{% block title %}{{ site_config.seo_title | default(value='RustForge') }}{% endblock %}&lt;/title&gt;
+    {{ hooks.header | safe }}
 &lt;/head&gt;
 &lt;body&gt;
     &lt;nav&gt;
-        {% if user_info and user_info.is_logged_in %}
-            &lt;a href="/admin/"&gt;后台管理&lt;/a&gt;
-        {% else %}
-            &lt;a href="/plugins/user-center/login"&gt;登录&lt;/a&gt;
-        {% endif %}
-        {% for opt in lang_options %}
-            &lt;a href="#" onclick="switchLang('{{ opt.code }}')"&gt;{{ opt.name }}&lt;/a&gt;
-        {% endfor %}
+        &lt;ul&gt;
+            &lt;li&gt;&lt;a href="/"&gt;首页&lt;/a&gt;&lt;/li&gt;
+            {{ hooks.nav | safe }}
+        &lt;/ul&gt;
     &lt;/nav&gt;
     &lt;main&gt;{% block content %}{% endblock %}&lt;/main&gt;
+    &lt;footer&gt;{{ hooks.footer | safe }}&lt;/footer&gt;
+    {{ hooks.body_end | safe }}
 &lt;/body&gt;
 &lt;/html&gt;</code></pre>
 
             <h3 class="text-xl font-semibold mt-6 mb-2">2. <code>index.html</code></h3>
-            <p>变量：<code>latest_contents</code>、<code>nav_categories</code>、<code>site_config</code>、<code>user_info</code>。</p>
+            <p>变量：<code>latest_contents</code>、<code>nav_categories</code>、<code>site_config</code>、<code>user_info</code>、<code>hooks</code>。</p>
             <pre><code>{% extends "base.html" %}
 {% block title %}{{ t(key="home", lang=lang) }} - {{ site_config.site_name }}{% endblock %}
 {% block content %}
+    {{ hooks.home_top | safe }}
     &lt;section&gt;...&lt;/section&gt;
+    {{ hooks.home_middle | safe }}
     {% for item in latest_contents %}&lt;article&gt;{{ item.title }}&lt;/article&gt;{% endfor %}
+    {{ hooks.home_bottom | safe }}
 {% endblock %}</code></pre>
 
             <h3 class="text-xl font-semibold mt-6 mb-2">3. <code>category.html</code></h3>
             <p>根据 <code>category.display_type</code> 切换 list/gallery/page 模式，支持分页。</p>
 
             <h3 class="text-xl font-semibold mt-6 mb-2">4. <code>content.html</code></h3>
-            <p>变量：<code>post</code>（文章对象）、<code>body_html</code>。</p>
+            <p>变量：<code>post</code>（文章对象）、<code>body_html</code>、<code>hooks</code>。</p>
             <pre><code>{% extends "base.html" %}
 {% block title %}{{ post.title }}{% endblock %}
 {% block content %}
-    &lt;article&gt;&lt;h1&gt;{{ post.title }}&lt;/h1&gt;&lt;div&gt;{{ body_html|safe }}&lt;/div&gt;&lt;/article&gt;
+    &lt;div class="flex flex-col md:flex-row gap-6"&gt;
+        &lt;div class="flex-1"&gt;
+            &lt;article&gt;&lt;h1&gt;{{ post.title }}&lt;/h1&gt;&lt;div&gt;{{ body_html|safe }}&lt;/div&gt;&lt;/article&gt;
+        &lt;/div&gt;
+        &lt;div class="w-64"&gt;
+            {{ hooks.sidebar | safe }}
+        &lt;/div&gt;
+    &lt;/div&gt;
 {% endblock %}</code></pre>
+        </section>
+
+        <!-- ========== 钩子系统（新增） ========== -->
+        <section id="hooks" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🔌 钩子系统</h2>
+            <p>钩子系统允许插件在主题的任意位置注入内容，无需修改主题模板。主题开发者只需在模板中放置钩子占位符，插件即可动态填充内容。</p>
+
+            <div class="info">
+                <strong>💡 核心优势</strong>：
+                <ul class="list-disc list-inside mt-1">
+                    <li>主题与插件解耦，插件可独立更新</li>
+                    <li>支持多语言（钩子内容中的 <code>{{ key }}</code> 自动翻译）</li>
+                    <li>多个插件可向同一钩子追加内容，按顺序排列</li>
+                    <li>钩子内容支持完整 HTML，灵活扩展</li>
+                </ul>
+            </div>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">在主题模板中使用钩子</h3>
+            <p>在任意位置插入钩子占位符，使用 <code>{{ hooks.[name] | safe }}</code> 语法：</p>
+            <pre><code>&lt;!-- 导航栏钩子 --&gt;
+&lt;ul class="nav"&gt;
+    &lt;li&gt;&lt;a href="/"&gt;首页&lt;/a&gt;&lt;/li&gt;
+    {{ hooks.nav | safe }}
+    &lt;li&gt;&lt;a href="/about"&gt;关于我们&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;!-- 侧边栏钩子 --&gt;
+&lt;aside class="sidebar"&gt;
+    {{ hooks.sidebar | safe }}
+&lt;/aside&gt;
+
+&lt;!-- 页脚钩子 --&gt;
+&lt;footer&gt;
+    {{ hooks.footer | safe }}
+&lt;/footer&gt;</code></pre>
+
+            <div class="warning">
+                <strong>⚠️ 重要</strong>：钩子内容包含 HTML，必须使用 <code>| safe</code> 过滤器，否则会被转义为纯文本。
+            </div>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">钩子命名规范</h3>
+            <p>建议使用语义化的钩子名称，便于插件开发者理解和使用：</p>
+            <table class="w-full bg-white rounded shadow mt-2">
+                <thead class="bg-gray-100">
+                    <tr><th class="py-2 px-4 text-left">钩子名</th><th class="py-2 px-4 text-left">使用场景</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>nav</code></td><td>导航栏菜单项</td></tr>
+                    <tr><td><code>nav_end</code></td><td>导航栏末尾</td></tr>
+                    <tr><td><code>sidebar</code></td><td>主侧边栏</td></tr>
+                    <tr><td><code>sidebar_top</code></td><td>侧边栏顶部</td></tr>
+                    <tr><td><code>sidebar_bottom</code></td><td>侧边栏底部</td></tr>
+                    <tr><td><code>footer</code></td><td>页脚区域</td></tr>
+                    <tr><td><code>header</code></td><td>头部（<code>&lt;head&gt;</code> 内或顶部）</td></tr>
+                    <tr><td><code>body_end</code></td><td>页面底部（<code>&lt;/body&gt;</code> 前）</td></tr>
+                    <tr><td><code>home_top</code></td><td>首页顶部</td></tr>
+                    <tr><td><code>home_bottom</code></td><td>首页底部</td></tr>
+                    <tr><td><code>content_after</code></td><td>文章内容后</td></tr>
+                    <tr><td><code>product_sidebar</code></td><td>产品详情页侧边栏</td></tr>
+                </tbody>
+            </table>
+
+            <div class="tip">
+                <strong>✅ 最佳实践</strong>：
+                <ul class="list-disc list-inside mt-1">
+                    <li>在主题中预留足够的钩子位置，提升可扩展性</li>
+                    <li>命名时考虑位置和用途，如 <code>page_before_title</code>、<code>post_after_content</code></li>
+                    <li>同一页面可放置多个钩子，实现精细控制</li>
+                    <li>钩子内容支持 <code>{{ key }}</code> 多语言占位符，由插件语言包提供翻译</li>
+                </ul>
+            </div>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">钩子内容的多语言支持</h3>
+            <p>插件在钩子内容中可使用 <code>{{ key }}</code> 占位符，主程序会自动替换为对应语言的翻译：</p>
+            <pre><code>&lt;!-- 插件保存的钩子内容 --&gt;
+&lt;li&gt;&lt;a href="/plugins/wuyun/"&gt;{{ wuyun_title }}&lt;/a&gt;&lt;/li&gt;
+
+&lt;!-- 渲染后（中文） --&gt;
+&lt;li&gt;&lt;a href="/plugins/wuyun/"&gt;五运六气&lt;/a&gt;&lt;/li&gt;
+
+&lt;!-- 渲染后（英文） --&gt;
+&lt;li&gt;&lt;a href="/plugins/wuyun/"&gt;Five Yun and Six Qi&lt;/a&gt;&lt;/li&gt;</code></pre>
+            <p>翻译键（如 <code>wuyun_title</code>）由插件语言包（<code>plugins/{name}/locales/*.json</code>）提供。</p>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">调试钩子</h3>
+            <p>如需查看当前页面所有钩子的内容，可在模板中临时添加：</p>
+            <pre><code>&lt;!-- 调试所有钩子 --&gt;
+&lt;pre&gt;{{ hooks | json_encode | safe }}&lt;/pre&gt;</code></pre>
+            <p>或在浏览器控制台检查网络请求，确认钩子数据是否正确加载。</p>
         </section>
 
         <!-- ========== 产品模块模板 ========== -->
@@ -207,6 +328,8 @@ description = "适合企业官网的简洁主题"</code></pre>
                 <li><code>current_page</code> - 当前页码</li>
                 <li><code>total_pages</code> - 总页数</li>
                 <li><code>total</code> - 总产品数</li>
+                <li><code>hooks.product_list_top</code> - 列表顶部钩子</li>
+                <li><code>hooks.product_list_bottom</code> - 列表底部钩子</li>
             </ul>
 
             <h3 class="text-xl font-semibold mt-6 mb-2">2. <code>product.html</code> - 产品详情页</h3>
@@ -216,67 +339,8 @@ description = "适合企业官网的简洁主题"</code></pre>
                 <li><code>product</code> - 产品对象（包含所有产品字段）</li>
                 <li><code>variants</code> - 变体列表（含颜色、尺码、价格、SKU等）</li>
                 <li><code>product.images</code> - 产品图片列表（含颜色代码）</li>
-                <li><code>product.cover_image</code> - 产品封面图</li>
-                <li><code>product.fullname</code> - 产品全名</li>
-                <li><code>product.brand</code> - 产品品牌</li>
-                <li><code>product.price</code> - 产品价格</li>
-                <li><code>product.stock</code> - 产品库存</li>
-                <li><code>product.points</code> - 产品卖点（换行分隔）</li>
-                <li><code>product.summary</code> - 产品简介</li>
-                <li><code>product.description</code> - 产品详细描述（支持 HTML）</li>
-                <li><code>product.dnote</code> - 尺码表原始数据</li>
+                <li><code>hooks.product_sidebar</code> - 产品页侧边栏钩子</li>
             </ul>
-
-            <h3 class="text-xl font-semibold mt-6 mb-2">产品详情页核心功能</h3>
-            <ul class="list-disc list-inside space-y-1">
-                <li><strong>图片展示</strong>：支持多图轮播/缩略图，按颜色分组展示</li>
-                <li><strong>变体选择</strong>：颜色和尺码按钮选择，自动更新价格、SKU 和图片</li>
-                <li><strong>尺码表</strong>：从 <code>dnote</code> 字段解析并渲染为表格，支持厘米/英寸切换</li>
-                <li><strong>产品属性</strong>：通过 <code>/api/public/products/:id/attribute-values</code> 加载并展示</li>
-                <li><strong>卖点展示</strong>：<code>points</code> 字段按换行分割逐条展示</li>
-                <li><strong>购买按钮</strong>：当前仅作演示（可对接支付系统）</li>
-            </ul>
-
-            <h3 class="text-xl font-semibold mt-6 mb-2">产品详情页 JavaScript API</h3>
-            <p>产品详情页内置以下 JS 功能：</p>
-            <ul class="list-disc list-inside space-y-1">
-                <li><code>loadColorConfig()</code> - 加载 <code>/config/color_codes.json</code> 颜色映射</li>
-                <li><code>buildImagesByColor()</code> - 按颜色代码分组产品图片</li>
-                <li><code>initColorButtons()</code> - 初始化颜色选择按钮</li>
-                <li><code>initSizeButtons()</code> - 初始化尺码选择按钮</li>
-                <li><code>updateDisplay()</code> - 更新价格、SKU 和图片</li>
-                <li><code>loadSizeTable()</code> - 从 API 加载并渲染尺码表</li>
-                <li><code>loadProductAttributes()</code> - 从 API 加载产品属性值</li>
-            </ul>
-
-            <h3 class="text-xl font-semibold mt-6 mb-2">产品详情页模板示例</h3>
-            <pre><code>{% extends "base.html" %}
-
-{% block content %}
-&lt;div class="container mx-auto px-4 py-8"&gt;
-    &lt;div class="grid grid-cols-1 md:grid-cols-2 gap-8"&gt;
-        &lt;!-- 图片展示区 --&gt;
-        &lt;div&gt;
-            &lt;img id="main-image" src="{{ product.cover_image }}"&gt;
-            &lt;div id="thumbnail-list"&gt;&lt;/div&gt;
-        &lt;/div&gt;
-        &lt;!-- 产品信息区 --&gt;
-        &lt;div&gt;
-            &lt;h1&gt;{{ product.fullname }}&lt;/h1&gt;
-            &lt;span&gt;{{ product.brand }}&lt;/span&gt;
-            &lt;span id="display-price"&gt;¥{{ product.price }}&lt;/span&gt;
-            &lt;!-- 颜色和尺码选择 --&gt;
-            &lt;div id="color-options"&gt;&lt;/div&gt;
-            &lt;div id="size-options"&gt;&lt;/div&gt;
-            &lt;button id="buy-now"&gt;立即购买&lt;/button&gt;
-        &lt;/div&gt;
-    &lt;/div&gt;
-    &lt;!-- 尺码表 --&gt;
-    &lt;div id="size-table-container"&gt;&lt;/div&gt;
-    &lt;!-- 产品属性 --&gt;
-    &lt;div id="product-attributes-container"&gt;&lt;/div&gt;
-&lt;/div&gt;
-{% endblock %}</code></pre>
         </section>
 
         <!-- 多语言 -->
@@ -328,14 +392,16 @@ function switchLang(lang) {
                 <li>在 <code>themes/</code> 下新建目录，创建 <code>theme.toml</code> 和 <code>templates/</code></li>
                 <li>至少包含 <code>base.html</code>、<code>index.html</code>、<code>category.html</code>、<code>content.html</code></li>
                 <li>产品模块需要 <code>products.html</code> 和 <code>product.html</code></li>
+                <li><strong>建议在关键位置添加钩子</strong>（导航栏、侧边栏、页脚、首页区块等）</li>
                 <li>在后台主题管理页面激活新主题</li>
             </ol>
             <h3 class="text-xl font-semibold mt-6 mb-2">注意事项</h3>
             <ul class="list-disc list-inside space-y-1">
                 <li>必须保留 <code>{% block content %}</code> 和 <code>{% block title %}</code></li>
-                <li>使用 <code>|safe</code> 过滤器输出 HTML（如 product.description）</li>
+                <li>使用 <code>|safe</code> 过滤器输出 HTML（如 product.description、钩子内容）</li>
                 <li>日期格式化：<code>|date(format="%Y-%m-%d")</code></li>
                 <li>翻译函数：<code>{{ t(key="xxx", lang=lang) }}</code></li>
+                <li>钩子输出：<code>{{ hooks.nav | safe }}</code></li>
                 <li>产品图片按颜色分组需要 <code>color_code</code> 字段匹配</li>
                 <li>尺码表需要后端 API <code>/api/public/products/:id/size-table</code> 支持</li>
                 <li>产品属性需要后端 API <code>/api/public/products/:id/attribute-values</code> 支持</li>
@@ -357,10 +423,20 @@ function switchLang(lang) {
     }
 }</code></pre>
             <p>变体颜色名称与图片颜色代码通过此映射关联，实现颜色分组展示。</p>
+            <div class="tip">
+                <strong>✅ 钩子最佳实践总结</strong>：
+                <ul class="list-disc list-inside mt-1">
+                    <li><strong>预留钩子</strong>：在导航、侧边栏、页脚、内容前后等位置放置钩子</li>
+                    <li><strong>命名清晰</strong>：使用语义化名称，如 <code>sidebar_contact</code>、<code>home_banner</code></li>
+                    <li><strong>安全输出</strong>：始终使用 <code>| safe</code> 过滤器输出钩子内容</li>
+                    <li><strong>多语言支持</strong>：钩子中的 <code>{{ key }}</code> 会被自动翻译，无需额外处理</li>
+                </ul>
+            </div>
         </section>
 
         <footer class="border-t pt-6 text-center text-gray-500 text-sm">
             <p>现在，你可以开始创建自己的企业级主题了！</p>
+            <p>利用钩子系统，你的主题将拥有无限的可扩展性。</p>
             <p class="mt-2">© 2025 RustForge Team</p>
         </footer>
     </main>

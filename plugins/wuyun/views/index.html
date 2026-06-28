@@ -1,0 +1,134 @@
+<div class="flex flex-col md:flex-row gap-6">
+    <div id="user-center-nav" class="w-full md:w-48 flex-shrink-0"></div>
+    <div class="flex-1 bg-white rounded shadow p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold">{{ wuyun_title }}</h2>
+            <a href="/plugins/wuyun/new" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                <i class="fas fa-plus mr-1"></i>{{ add_record }}
+            </a>
+        </div>
+
+        <div id="page-message" class="mb-4 text-sm"></div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ name }}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ year }}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ tgyear }}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ wyst }}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ actions }}</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="wuyun-list">
+                    <tr><td colspan="5" class="text-center py-4 text-gray-500">{{ loading }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="pagination-info" class="mt-4 text-sm text-gray-600 text-center"></div>
+    </div>
+</div>
+
+<script src="/plugins/wuyun/static/nav-loader.js"></script>
+<script src="/plugins/wuyun/static/wuyun.js"></script>
+<script>
+    const __t = (key, fallback) => (window.__plugin_locales__ && window.__plugin_locales__[key]) || fallback || key;
+    const PLUGIN_NAME = 'wuyun';
+    let records = [];
+    let currentPage = 1;
+    const perPage = 10;
+
+    function loadRecords() {
+        fetch(`/api/admin/plugins/${PLUGIN_NAME}/settings`)
+            .then(r => r.json())
+            .then(data => {
+                records = data.records || [];
+                renderTable();
+            })
+            .catch(err => {
+                document.getElementById('page-message').innerHTML = `<span class="text-red-600">${__t('load_failed', '加载失败')}</span>`;
+                console.error(err);
+            });
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('wuyun-list');
+        const total = records.length;
+        const totalPages = Math.ceil(total / perPage);
+        const start = (currentPage - 1) * perPage;
+        const end = Math.min(start + perPage, total);
+        const pageItems = records.slice(start, end);
+
+        if (pageItems.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">${__t('no_data', '暂无数据')}</td></tr>`;
+            document.getElementById('pagination-info').textContent = '';
+            return;
+        }
+
+        let html = '';
+        pageItems.forEach(item => {
+            const qr = item.qr || '';
+            html += `
+                <tr>
+                    <td class="px-6 py-4">${escapeHtml(item.name)}</td>
+                    <td class="px-6 py-4">${item.year}</td>
+                    <td class="px-6 py-4">${item.tgyear || '-'}</td>
+                    <td class="px-6 py-4 text-sm">
+                        ${item.wyst || '-'}<br>
+                        ${item.wykq || '-'}<br>
+                        ${item.wyzhy || ''} ${qr}<br>
+                        ${item.wyzhq || '-'}<br>
+                        ${item.wyzq || '-'}
+                    </td>
+                    <td class="px-6 py-4">
+                        <a href="/plugins/wuyun/edit?id=${item.id}" class="text-blue-600 hover:text-blue-800 mr-2">${__t('edit', '编辑')}</a>
+                        <button onclick="deleteRecord('${item.id}')" class="text-red-600 hover:text-red-800">${__t('delete', '删除')}</button>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+
+        document.getElementById('pagination-info').textContent =
+            `${__t('total', '共')} ${total} ${__t('items', '条')}，${__t('page', '第')} ${currentPage}/${totalPages} ${__t('page_unit', '页')}`;
+    }
+
+    window.deleteRecord = function(id) {
+        if (!confirm(__t('confirm_delete', '确认删除？'))) return;
+        records = records.filter(r => r.id !== id);
+        saveRecords().then(() => {
+            document.getElementById('page-message').innerHTML = `<span class="text-green-600">${__t('delete_success', '删除成功')}</span>`;
+            renderTable();
+        });
+    };
+
+    function saveRecords() {
+        return fetch(`/api/admin/plugins/${PLUGIN_NAME}/settings`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ records })
+        });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m] || m);
+    }
+
+    // 分页控制（简单版）
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('[data-page]');
+        if (target) {
+            const page = parseInt(target.dataset.page);
+            if (page > 0 && page <= Math.ceil(records.length / perPage)) {
+                currentPage = page;
+                renderTable();
+            }
+        }
+    });
+
+    loadNav('index');
+    loadRecords();
+</script>

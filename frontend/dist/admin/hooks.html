@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钩子管理 - 管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="common.js"></script>
+    <style>
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; border-radius: 0.5rem; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 1.5rem; position: relative; }
+        .modal-close { position: sticky; top: 0; float: right; background: #e5e7eb; border: none; border-radius: 9999px; width: 2rem; height: 2rem; font-size: 1.2rem; cursor: pointer; }
+        .modal-close:hover { background: #d1d5db; }
+        .badge-enabled { background: #d1fae5; color: #065f46; padding: 0.1rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; }
+        .badge-disabled { background: #f3f4f6; color: #6b7280; padding: 0.1rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; }
+        .hook-content { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hook-content-full { word-break: break-all; white-space: pre-wrap; max-height: 300px; overflow-y: auto; background: #f9fafb; padding: 0.5rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.8rem; }
+        .fade-in { animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .edit-field { margin-bottom: 1rem; }
+        .edit-field label { display: block; font-weight: 500; margin-bottom: 0.25rem; color: #374151; }
+        .edit-field input[type="text"], .edit-field textarea, .edit-field select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem; }
+        .edit-field input[type="text"]:focus, .edit-field textarea:focus, .edit-field select:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+        .edit-field textarea { min-height: 80px; resize: vertical; }
+        .edit-field-checkbox { display: flex; align-items: center; gap: 0.5rem; }
+        .edit-field-checkbox input[type="checkbox"] { width: 1.1rem; height: 1.1rem; cursor: pointer; }
+        .edit-field-checkbox label { margin-bottom: 0; cursor: pointer; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="topbar-container"></div>
+
+    <div class="container mx-auto p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">🔌 钩子管理</h1>
+            <div>
+                <input type="text" id="search-input" placeholder="搜索钩子名称或插件..." class="border rounded px-3 py-2 w-64">
+                <select id="filter-plugin" class="border rounded px-3 py-2 ml-2">
+                    <option value="">所有插件</option>
+                </select>
+                <button id="refresh-btn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 ml-2">刷新</button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded shadow overflow-hidden">
+            <table class="min-w-full">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-3 text-left">钩子名</th>
+                        <th class="p-3 text-left">插件</th>
+                        <th class="p-3 text-left">内容</th>
+                        <th class="p-3 text-left">语言</th>
+                        <th class="p-3 text-left">排序</th>
+                        <th class="p-3 text-left">状态</th>
+                        <th class="p-3 text-left">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="hooks-list">
+                    <tr><td colspan="7" class="p-3 text-center">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="pagination" class="mt-4 flex justify-between items-center">
+            <span id="total-info" class="text-sm text-gray-600"></span>
+            <div>
+                <button id="prev-page" class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50">上一页</button>
+                <span id="page-info" class="px-3 py-1">1</span>
+                <button id="next-page" class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50">下一页</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 查看内容模态框 ========== -->
+    <div id="content-modal" class="modal">
+        <div class="modal-content fade-in">
+            <button class="modal-close" id="close-content-modal">&times;</button>
+            <h2 class="text-lg font-bold mb-2">钩子内容</h2>
+            <div id="content-display" class="hook-content-full"></div>
+            <div class="mt-4 text-right">
+                <button class="bg-gray-300 px-4 py-2 rounded" onclick="document.getElementById('content-modal').classList.remove('show')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 编辑钩子模态框 ========== -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content fade-in">
+            <button class="modal-close" id="close-edit-modal">&times;</button>
+            <h2 class="text-lg font-bold mb-4">编辑钩子</h2>
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
+                <input type="hidden" id="edit-plugin">
+
+                <div class="edit-field">
+                    <label for="edit-hook-name">钩子名称</label>
+                    <input type="text" id="edit-hook-name" readonly class="bg-gray-100 cursor-not-allowed">
+                </div>
+
+                <div class="edit-field">
+                    <label for="edit-content">内容</label>
+                    <textarea id="edit-content" rows="4"></textarea>
+                </div>
+
+                <div class="edit-field">
+                    <label for="edit-sort-order">排序</label>
+                    <input type="number" id="edit-sort-order" min="0">
+                </div>
+
+                <div class="edit-field">
+                    <label for="edit-lang">语言</label>
+                    <select id="edit-lang">
+                        <!-- 动态填充 -->
+                    </select>
+                </div>
+
+                <!-- 左对齐的启用复选框 -->
+                <div class="edit-field edit-field-checkbox">
+                    <input type="checkbox" id="edit-enabled">
+                    <label for="edit-enabled">启用</label>
+                </div>
+
+                <div class="flex justify-end space-x-2 mt-4 pt-3 border-t">
+                    <button type="button" class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400" onclick="document.getElementById('edit-modal').classList.remove('show')">取消</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="footer-container"></div>
+
+    <script>
+        let allHooks = [];
+        let filteredHooks = [];
+        let currentPage = 1;
+        const perPage = 15;
+        let availableLangs = []; // 可用语言列表
+
+        // 加载可用语言
+        async function loadAvailableLanguages() {
+            try {
+                const resp = await fetch('/api/admin/lang-settings', { credentials: 'include' });
+                if (!resp.ok) throw new Error('获取语言配置失败');
+                const data = await resp.json();
+                availableLangs = data.available_langs || [];
+            } catch (e) {
+                console.warn('加载语言配置失败，使用默认语言列表', e);
+                availableLangs = [
+                    { code: 'zh', name: '中文' },
+                    { code: 'en', name: '英文' },
+                    { code: 'ja', name: '日文' },
+                    { code: 'ko', name: '韩文' }
+                ];
+            }
+        }
+
+        // 填充语言下拉框
+        function populateLangSelect(selectElement, selectedValue) {
+            selectElement.innerHTML = '';
+            const generalOption = document.createElement('option');
+            generalOption.value = '';
+            generalOption.textContent = '通用（所有语言）';
+            selectElement.appendChild(generalOption);
+            availableLangs.forEach(lang => {
+                const opt = document.createElement('option');
+                opt.value = lang.code;
+                opt.textContent = `${lang.name} (${lang.code})`;
+                if (lang.code === selectedValue) {
+                    opt.selected = true;
+                }
+                selectElement.appendChild(opt);
+            });
+            // 如果 selectedValue 不在列表中，但非空（可能为旧数据），我们保留选中通用
+            if (selectedValue && !availableLangs.some(l => l.code === selectedValue)) {
+                // 但通用选项已存在，无需额外操作
+            }
+        }
+
+        (async () => {
+            if (!await requireAuth()) return;
+            await loadTopbar();
+            await loadFooter();
+
+            const perms = await fetchUserPermissions();
+            if (!perms.includes('plugin:list')) {
+                document.getElementById('hooks-list').innerHTML = '<tr><td colspan="7" class="p-3 text-red-500">您没有权限查看钩子</td></tr>';
+                return;
+            }
+
+            await loadAvailableLanguages();
+            await loadPluginsForFilter();
+            await loadAllHooks();
+
+            document.getElementById('search-input').addEventListener('input', () => { currentPage = 1; applyFilterAndRender(); });
+            document.getElementById('filter-plugin').addEventListener('change', () => { currentPage = 1; applyFilterAndRender(); });
+            document.getElementById('refresh-btn').addEventListener('click', loadAllHooks);
+
+            document.getElementById('prev-page').addEventListener('click', () => {
+                if (currentPage > 1) { currentPage--; renderTable(); }
+            });
+            document.getElementById('next-page').addEventListener('click', () => {
+                if (currentPage < Math.ceil(filteredHooks.length / perPage)) { currentPage++; renderTable(); }
+            });
+
+            document.getElementById('close-edit-modal').addEventListener('click', () => {
+                document.getElementById('edit-modal').classList.remove('show');
+            });
+
+            document.getElementById('edit-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const id = parseInt(document.getElementById('edit-id').value);
+                const plugin = document.getElementById('edit-plugin').value;
+                const content = document.getElementById('edit-content').value;
+                const sortOrder = parseInt(document.getElementById('edit-sort-order').value) || 0;
+                const lang = document.getElementById('edit-lang').value;
+                const enabled = document.getElementById('edit-enabled').checked;
+
+                try {
+                    await apiCall('PUT', `/api/admin/plugins/${plugin}/hooks/${id}`, {
+                        content,
+                        sort_order: sortOrder,
+                        lang: lang,
+                        enabled
+                    });
+                    document.getElementById('edit-modal').classList.remove('show');
+                    await loadAllHooks();
+                } catch (err) {
+                    alert('保存失败: ' + err.message);
+                }
+            });
+        })();
+
+        async function loadPluginsForFilter() {
+            try {
+                const plugins = await apiCall('GET', '/api/admin/plugins');
+                const select = document.getElementById('filter-plugin');
+                plugins.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.name;
+                    opt.textContent = p.name;
+                    select.appendChild(opt);
+                });
+            } catch (e) { console.warn('加载插件列表失败', e); }
+        }
+
+        async function loadAllHooks() {
+            try {
+                const plugins = await apiCall('GET', '/api/admin/plugins');
+                let hooks = [];
+                for (const p of plugins) {
+                    try {
+                        const h = await apiCall('GET', `/api/admin/plugins/${p.name}/hooks`);
+                        h.forEach(item => { item.plugin_name = p.name; });
+                        hooks = hooks.concat(h);
+                    } catch (e) { /* 单个插件钩子获取失败忽略 */ }
+                }
+                allHooks = hooks;
+                applyFilterAndRender();
+            } catch (err) {
+                document.getElementById('hooks-list').innerHTML = `<tr><td colspan="7" class="p-3 text-red-500">加载失败: ${err.message}</td></tr>`;
+            }
+        }
+
+        function applyFilterAndRender() {
+            const keyword = document.getElementById('search-input').value.toLowerCase();
+            const plugin = document.getElementById('filter-plugin').value;
+            filteredHooks = allHooks.filter(h => {
+                const matchKeyword = h.hook_name.toLowerCase().includes(keyword) ||
+                                    (h.content && h.content.toLowerCase().includes(keyword)) ||
+                                    h.plugin_name.toLowerCase().includes(keyword);
+                const matchPlugin = plugin === '' || h.plugin_name === plugin;
+                return matchKeyword && matchPlugin;
+            });
+            currentPage = 1;
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('hooks-list');
+            const total = filteredHooks.length;
+            const totalPages = Math.ceil(total / perPage) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            const start = (currentPage - 1) * perPage;
+            const end = Math.min(start + perPage, total);
+            const pageItems = filteredHooks.slice(start, end);
+
+            document.getElementById('total-info').textContent = `共 ${total} 个钩子`;
+            document.getElementById('page-info').textContent = `${currentPage} / ${totalPages}`;
+            document.getElementById('prev-page').disabled = currentPage <= 1;
+            document.getElementById('next-page').disabled = currentPage >= totalPages;
+
+            if (total === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-3 text-center text-gray-500">暂无钩子</td></tr>';
+                return;
+            }
+
+            let html = '';
+            for (const h of pageItems) {
+                const statusClass = h.enabled ? 'badge-enabled' : 'badge-disabled';
+                const statusText = h.enabled ? '启用' : '禁用';
+                const langDisplay = (h.lang === '' || h.lang === null) ? '通用' : escapeHtml(h.lang);
+                html += `
+                    <tr class="border-t">
+                        <td class="p-3"><code>${escapeHtml(h.hook_name)}</code></td>
+                        <td class="p-3">${escapeHtml(h.plugin_name)}</td>
+                        <td class="p-3 hook-content" title="${escapeHtml(h.content)}">
+                            ${escapeHtml(h.content)}
+                            <button onclick="viewContent('${escapeHtml(h.content)}')" class="text-blue-600 hover:underline text-sm ml-1">查看</button>
+                        </td>
+                        <td class="p-3">${escapeHtml(langDisplay)}</td>
+                        <td class="p-3">${h.sort_order}</td>
+                        <td class="p-3"><span class="${statusClass}">${statusText}</span></td>
+                        <td class="p-3">
+                            <button onclick="openEditModal('${escapeHtml(h.plugin_name)}', ${h.id})" class="text-blue-600 hover:underline text-sm">编辑</button>
+                            <button onclick="deleteHook('${escapeHtml(h.plugin_name)}', ${h.id})" class="text-red-600 hover:underline text-sm ml-2">删除</button>
+                        </td>
+                    </tr>
+                `;
+            }
+            tbody.innerHTML = html;
+        }
+
+        // 查看完整内容
+        function viewContent(content) {
+            document.getElementById('content-display').textContent = content;
+            document.getElementById('content-modal').classList.add('show');
+        }
+        document.getElementById('close-content-modal').addEventListener('click', () => {
+            document.getElementById('content-modal').classList.remove('show');
+        });
+
+        // 打开编辑模态框
+        function openEditModal(pluginName, hookId) {
+            const hook = allHooks.find(h => h.id === hookId && h.plugin_name === pluginName);
+            if (!hook) { alert('钩子不存在'); return; }
+
+            document.getElementById('edit-id').value = hook.id;
+            document.getElementById('edit-plugin').value = hook.plugin_name;
+            document.getElementById('edit-hook-name').value = hook.hook_name;
+            document.getElementById('edit-content').value = hook.content || '';
+            document.getElementById('edit-sort-order').value = hook.sort_order || 0;
+            // 填充语言下拉框
+            const langSelect = document.getElementById('edit-lang');
+            populateLangSelect(langSelect, hook.lang || '');
+            document.getElementById('edit-enabled').checked = hook.enabled !== false;
+
+            document.getElementById('edit-modal').classList.add('show');
+        }
+
+        // 删除钩子
+        async function deleteHook(pluginName, hookId) {
+            if (!confirm('确定要删除该钩子吗？')) return;
+            try {
+                await apiCall('DELETE', `/api/admin/plugins/${pluginName}/hooks/${hookId}`);
+                await loadAllHooks();
+            } catch (err) {
+                alert('删除失败: ' + err.message);
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m] || m);
+        }
+
+        // 点击模态框外部关闭
+        document.getElementById('content-modal').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('show');
+        });
+        document.getElementById('edit-modal').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('show');
+        });
+    </script>
+</body>
+</html>

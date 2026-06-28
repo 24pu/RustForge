@@ -97,36 +97,11 @@
         </div>
 
         <!-- 右侧侧边栏 -->
-        <div class="w-full lg:w-72 shrink-0">
-            <div id="friendlinks-sidebar" class="space-y-6"></div>
-        </div>
+    <div class="w-full lg:w-72 shrink-0">
+        {{ hooks.sidebar_friendlinks | default(value='') | safe }}
+    </div>
     </div>
 </div>
 
-<script>
-(function() {
-    const sidebar = document.getElementById('friendlinks-sidebar');
-    if (!sidebar) return;
-    fetch('/api/public/plugin/friendlinks/settings')
-        .then(res => res.json())
-        .then(data => {
-            const links = data.links || [];
-            let html = `<div class="bg-white rounded-lg shadow p-4"><h3 class="text-lg font-semibold mb-3 text-gray-700">{{ t(key="friend_links", lang=lang) }}</h3>`;
-            if (links.length > 0) {
-                html += '<div class="space-y-2 text-sm">';
-                links.forEach(link => {
-                    html += `<a href="${link.url}" target="_blank" rel="noopener" class="block text-black hover:text-purple-600 truncate">${link.name}</a>`;
-                });
-                html += '</div>';
-            } else {
-                html += '<p class="text-gray-400 text-sm">{{ t(key="no_links", lang=lang) }}</p>';
-            }
-            html += '</div>';
-            sidebar.innerHTML = html;
-        })
-        .catch(() => {
-            sidebar.innerHTML = '<div class="bg-white rounded-lg shadow p-4"><p class="text-gray-400 text-sm">{{ t(key="load_failed", lang=lang) }}</p></div>';
-        });
-})();
-</script>
+
 {% endblock %}

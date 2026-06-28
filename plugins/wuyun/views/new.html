@@ -1,0 +1,89 @@
+<div class="flex flex-col md:flex-row gap-6">
+    <div id="user-center-nav" class="w-full md:w-48 flex-shrink-0"></div>
+    <div class="flex-1 bg-white rounded shadow p-6">
+        <h2 class="text-2xl font-bold mb-4">{{ add_record }}</h2>
+        <div id="page-message" class="mb-4 text-sm"></div>
+
+        <form id="create-form" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium">{{ name }}</label>
+                <input type="text" id="name" required class="border rounded w-full p-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium">{{ year }}</label>
+                <input type="number" id="year" required value="{{ now_year }}" class="border rounded w-full p-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium">{{ time }}</label>
+                <input type="text" id="time" required placeholder="MM-DD" value="" class="border rounded w-full p-2">
+            </div>
+            <div class="flex space-x-2">
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{{ save }}</button>
+                <a href="/plugins/wuyun/" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">{{ cancel }}</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="/plugins/wuyun/static/nav-loader.js"></script>
+<script src="/plugins/wuyun/static/wuyun.js"></script>
+<script>
+    const __t = (key, fallback) => (window.__plugin_locales__ && window.__plugin_locales__[key]) || fallback || key;
+    const PLUGIN_NAME = 'wuyun';
+
+    function loadRecords() {
+        return fetch(`/api/admin/plugins/${PLUGIN_NAME}/settings`)
+            .then(r => r.json())
+            .then(data => data.records || []);
+    }
+
+    function saveRecords(records) {
+        return fetch(`/api/admin/plugins/${PLUGIN_NAME}/settings`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ records })
+        });
+    }
+
+    document.getElementById('create-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = document.getElementById('name').value.trim();
+        const year = parseInt(document.getElementById('year').value.trim());
+        const time = document.getElementById('time').value.trim();
+
+        if (!name || !year || !time) {
+            document.getElementById('page-message').innerHTML = `<span class="text-red-600">${__t('fill_all', '请填写完整')}</span>`;
+            return;
+        }
+
+        // 计算五运六气
+        const result = WUYUN.getWulq(year, time);
+        const qr = result.qr;
+
+        loadRecords().then(records => {
+            const newRecord = {
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                name,
+                year,
+                time,
+                wyst: result.wyst,
+                wykq: result.wykq,
+                wyzhy: result.wyzhy,
+                wyzhq: result.wyzhq,
+                wyzq: result.wyzq,
+                tgyear: result.tgyear,
+                qr: qr.symbol ? `<span class="${qr.class}">${qr.symbol}</span>` : ''
+            };
+            records.push(newRecord);
+            saveRecords(records)
+                .then(() => {
+                    window.location.href = '/plugins/wuyun/';
+                })
+                .catch(err => {
+                    document.getElementById('page-message').innerHTML = `<span class="text-red-600">${__t('save_failed', '保存失败')}: ${err.message}</span>`;
+                });
+        });
+    });
+
+    loadNav('new');
+</script>

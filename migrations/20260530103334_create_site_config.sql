@@ -1,7 +1,8 @@
--- Add migration script here
--- 1. 删除已存在的表（如果有）
-DROP TABLE IF EXISTS site_config CASCADE;
--- 1. 创建站点配置表
+-- ============================================================
+-- 站点配置表（幂等版本 - 可重复执行，不丢数据）
+-- ============================================================
+
+-- 1. 创建表（如果不存在）
 CREATE TABLE IF NOT EXISTS site_config (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
@@ -9,7 +10,7 @@ CREATE TABLE IF NOT EXISTS site_config (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. 插入默认配置
+-- 2. 插入默认配置（如果不存在）
 INSERT INTO site_config (key, value) VALUES
     -- 网站设置
     ('site_name', 'RustForge'),
@@ -40,7 +41,7 @@ INSERT INTO site_config (key, value) VALUES
     ('product_size_inch', 'false')
 ON CONFLICT (key) DO NOTHING;
 
--- 3. 创建更新时间的触发器（自动更新 updated_at）
+-- 3. 创建更新时间的触发器
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN

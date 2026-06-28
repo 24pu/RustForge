@@ -23,6 +23,7 @@ pub mod amatemplate;
 pub mod product_public;
 pub mod product_export;
 pub mod attribute;
+pub mod plugin_hook;
 
 pub use install::install_handler;
 
@@ -37,10 +38,13 @@ pub use health::*;
 pub use utils::{check_permission, get_config_value, get_nav_categories, generate_thumbnail,get_site_config_map};
 pub use home::{home_handler, products_page_handler, product_detail_page_handler_by_slug};
 
+pub use plugin_hook::{list_plugin_hooks, create_plugin_hook, update_plugin_hook,delete_plugin_hook};
+
 pub use theme_admin::*;
 pub use plugin_admin::*;
 pub use plugin_gateway::plugin_gateway_handler;
 pub use plugin_gateway::plugin_page_handler;
+pub use plugin_gateway::plugin_default_handler;
 pub use plugin_gateway::plugin_static_handler;
 pub use plugin_settings::get_public_plugin_settings;
 pub use product_public::*;

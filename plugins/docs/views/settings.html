@@ -2,38 +2,235 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文档插件设置</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-gray-50 p-6">
-    <h3 class="text-lg font-semibold mb-2">RustForge 开发文档</h3>
-    <div class="text-sm text-gray-600 space-y-3">
-        <p>本文档插件提供了 RustForge 的完整开发指南，可通过以下链接直接访问：</p>
-        <ul class="list-disc list-inside ml-4 space-y-2">
-            <li>
-                <strong>插件开发指南</strong><br>
-                <a href="/plugins/docs/static/plugin-dev-guide.html" target="_blank" class="text-blue-600 hover:underline">
-                    /plugins/docs/static/plugin-dev-guide.html
-                </a><br>
-                <span class="text-gray-500">学习如何使用 WebAssembly 开发 RustForge 插件，包括导出函数、前端集成、页面保护等。</span>
-            </li>
-            <li>
-                <strong>主题开发指南</strong><br>
-                <a href="/plugins/docs/static/theme-dev-guide.html" target="_blank" class="text-blue-600 hover:underline">
-                    /plugins/docs/static/theme-dev-guide.html
-                </a><br>
-                <span class="text-gray-500">基于 Tera 模板引擎构建企业网站主题，变量详解与核心模板开发。</span>
-            </li>
-            <li>
-                <strong>主程序开发文档</strong><br>
-                <a href="/plugins/docs/static/main-program-dev-guide.html" target="_blank" class="text-blue-600 hover:underline">
-                    /plugins/docs/static/main-program-dev-guide.html
-                </a><br>
-                <span class="text-gray-500">RustForge 核心架构、路由、中间件、插件系统与部署全解析。</span>
-            </li>
-        </ul>
-        <p><strong>文档首页：</strong> <a href="/plugins/docs/index" target="_blank" class="text-blue-600 hover:underline">/plugins/docs/index</a></p>
-        <p class="mt-4">所有文档均为静态 HTML，可随时更新。无需重启容器。</p>
+    <div class="max-w-2xl mx-auto">
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">开发文档 - 导航栏钩子设置</h3>
+        <p class="text-sm text-gray-500 mb-4">
+            为不同语言版本设置导航栏内容，保存后将自动在对应语言页面显示。
+        </p>
+
+        <div class="bg-white rounded-lg shadow p-4">
+            <!-- 语言选择 -->
+            <div class="mb-4 flex items-center gap-3 flex-wrap">
+                <label for="lang-select" class="text-sm font-medium text-gray-700">语言版本</label>
+                <select id="lang-select" class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-purple-500">
+                    <!-- 选项将动态填充 -->
+                </select>
+                <span id="lang-status" class="text-xs text-gray-400 italic ml-1"></span>
+            </div>
+
+            <!-- 一键添加按钮 -->
+            <div class="mb-3 flex flex-wrap items-center gap-2">
+                <button id="add-nav-btn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition shadow-sm text-sm">
+                    <i class="fas fa-plus mr-1"></i> 一键添加“开发文档”到导航栏
+                </button>
+                <span class="text-xs text-gray-400">（将根据当前语言版本添加）</span>
+            </div>
+
+            <label for="nav-content" class="block text-sm font-medium text-gray-700 mb-2">导航栏 HTML 内容</label>
+            <textarea id="nav-content" rows="6" class="w-full border border-gray-300 rounded-md p-3 font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"></textarea>
+
+            <div class="mt-4 flex justify-end space-x-2">
+                <button id="save-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-md transition shadow-sm">
+                    保存设置
+                </button>
+                <button id="delete-btn" class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-md transition shadow-sm">
+                    删除当前版本
+                </button>
+            </div>
+            <div id="message" class="mt-3 text-sm font-medium text-center"></div>
+        </div>
     </div>
+
+    <script>
+        // ---- 插件名称 ----
+        const pluginName = 'docs';
+        let currentHookId = null;
+        let currentLang = '';
+
+        const langSelect = document.getElementById('lang-select');
+        const langStatus = document.getElementById('lang-status');
+
+        // 从系统设置加载可用语言
+        async function loadLanguageOptions() {
+            try {
+                const resp = await fetch('/api/admin/lang-settings', { credentials: 'include' });
+                if (!resp.ok) throw new Error('获取语言配置失败');
+                const data = await resp.json();
+                const availableLangs = data.available_langs || [];
+
+                langSelect.innerHTML = '';
+                const generalOption = document.createElement('option');
+                generalOption.value = '';
+                generalOption.textContent = '🌐 通用（所有语言）';
+                langSelect.appendChild(generalOption);
+
+                availableLangs.forEach(lang => {
+                    const opt = document.createElement('option');
+                    opt.value = lang.code;
+                    opt.textContent = `${lang.name} (${lang.code})`;
+                    langSelect.appendChild(opt);
+                });
+
+                langSelect.value = '';
+                currentLang = '';
+            } catch (e) {
+                console.warn('加载语言配置失败，使用默认选项', e);
+                langSelect.innerHTML = `
+                    <option value="">🌐 通用（所有语言）</option>
+                    <option value="zh">🇨🇳 中文</option>
+                    <option value="en">🇬🇧 英文</option>
+                    <option value="ja">🇯🇵 日文</option>
+                    <option value="ko">🇰🇷 韩文</option>
+                `;
+                langSelect.value = '';
+            }
+        }
+
+        // 加载现有钩子内容（根据当前语言）
+        async function loadNavHook(lang) {
+            const url = `/api/admin/plugins/${pluginName}/hooks?hook_name=nav${lang ? '&lang=' + encodeURIComponent(lang) : ''}`;
+            try {
+                const resp = await fetch(url, { credentials: 'include' });
+                if (!resp.ok) throw new Error('加载失败');
+                const data = await resp.json();
+                // ---- 关键修复：按插件名过滤 ----
+                let target = data.find(h => h.plugin_name === pluginName && h.lang === lang) || 
+                             data.find(h => h.plugin_name === pluginName) || 
+                             null;
+                if (target) {
+                    currentHookId = target.id;
+                    document.getElementById('nav-content').value = target.content || '';
+                    langStatus.textContent = `当前编辑：${target.lang || '通用'}`;
+                } else {
+                    currentHookId = null;
+                    document.getElementById('nav-content').value = '';
+                    langStatus.textContent = '暂无内容，可新建';
+                }
+            } catch (e) {
+                showMessage('加载钩子数据失败', 'red');
+                langStatus.textContent = '加载失败';
+            }
+        }
+
+        // 保存钩子内容（创建或更新）
+        async function saveNavHook(content, lang) {
+            if (currentHookId) {
+                const resp = await fetch(`/api/admin/plugins/${pluginName}/hooks/${currentHookId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ content, lang })
+                });
+                if (!resp.ok) throw new Error('更新失败');
+            } else {
+                const resp = await fetch(`/api/admin/plugins/${pluginName}/hooks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        hook_name: 'nav',
+                        content,
+                        sort_order: 10,
+                        lang: lang || ''
+                    })
+                });
+                if (!resp.ok) throw new Error('创建失败');
+                const newData = await resp.json();
+                currentHookId = newData.id;
+            }
+        }
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'mt-3 text-sm font-medium text-center ' + (type === 'green' ? 'text-green-600' : 'text-red-600');
+            clearTimeout(window._msgTimer);
+            window._msgTimer = setTimeout(() => {
+                msg.textContent = '';
+                msg.className = 'mt-3 text-sm font-medium text-center';
+            }, 4000);
+        }
+
+        // 语言切换
+        langSelect.addEventListener('change', function() {
+            currentLang = this.value;
+            loadNavHook(currentLang);
+        });
+
+        // 一键添加
+        document.getElementById('add-nav-btn').addEventListener('click', async function() {
+            const lang = langSelect.value;
+            const navHtml = `<li><a href="/plugins/docs/">开发文档</a></li>`;
+            const current = document.getElementById('nav-content').value;
+            if (current.includes('/plugins/docs/')) {
+                showMessage('✅ 已存在于当前版本，无需重复添加', 'green');
+                return;
+            }
+            const newContent = current ? current + '\n' + navHtml : navHtml;
+            try {
+                await saveNavHook(newContent, lang);
+                await loadNavHook(lang);
+                showMessage('✅ 已添加到导航栏（' + (lang || '通用') + '）', 'green');
+            } catch (e) {
+                showMessage('❌ 添加失败', 'red');
+                console.error(e);
+            }
+        });
+
+        // 保存按钮
+        document.getElementById('save-btn').addEventListener('click', async function() {
+            const content = document.getElementById('nav-content').value.trim();
+            if (!content) {
+                showMessage('请输入内容', 'red');
+                return;
+            }
+            const lang = langSelect.value;
+            try {
+                await saveNavHook(content, lang);
+                await loadNavHook(lang);
+                showMessage('✅ 保存成功', 'green');
+            } catch (e) {
+                showMessage('❌ 保存失败', 'red');
+                console.error(e);
+            }
+        });
+
+        // 删除钩子
+        document.getElementById('delete-btn').addEventListener('click', async function() {
+            if (!currentHookId) {
+                showMessage('当前没有可删除的钩子', 'red');
+                return;
+            }
+            if (!confirm('确定要删除当前语言版本的导航钩子吗？')) return;
+            try {
+                const resp = await fetch(`/api/admin/plugins/${pluginName}/hooks/${currentHookId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                if (!resp.ok) throw new Error('删除失败');
+                currentHookId = null;
+                document.getElementById('nav-content').value = '';
+                loadNavHook(langSelect.value);
+                showMessage('✅ 已删除', 'green');
+            } catch (e) {
+                showMessage('❌ 删除失败', 'red');
+                console.error(e);
+            }
+        });
+
+        // 初始化
+        (async function init() {
+            await loadLanguageOptions();
+            langSelect.value = '';
+            currentLang = '';
+            await loadNavHook('');
+        })();
+    </script>
 </body>
 </html>

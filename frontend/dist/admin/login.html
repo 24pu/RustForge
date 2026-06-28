@@ -16,11 +16,17 @@
     </div>
     <script src="common.js"></script>
     <script>
+        // 获取 redirect 参数
+        function getRedirectParam() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('redirect');
+        }
+
         document.getElementById('loginBtn').addEventListener('click', async () => {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
+            const redirect = getRedirectParam();
             try {
-                // 直接调用 /api/login，Cookie 会自动设置
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     credentials: 'include',
@@ -28,8 +34,9 @@
                     body: JSON.stringify({ email, password })
                 });
                 if (response.ok) {
-                    // 登录成功，跳转到后台首页
-                    window.location.href = '/admin/index.html';
+                    // 登录成功，跳转到 redirect 或默认后台首页
+                    const target = redirect || '/admin/index.html';
+                    window.location.href = target;
                 } else {
                     const data = await response.json();
                     throw new Error(data.error || '登录失败');

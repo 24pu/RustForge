@@ -19,6 +19,8 @@ use tower_http::services::ServeDir;
 use tower_cookies::CookieManagerLayer;
 use std::sync::Arc;
 use std::net::SocketAddr;
+use axum::extract::Path;
+
 
 use crate::presentation::handlers::product_admin::*;
 use crate::presentation::handlers::install_handler;
@@ -29,6 +31,8 @@ use crate::infrastructure::db::create_pool;
 use crate::infrastructure::db::{PostgresUserRepo, PostgresContentRepo, PostgresMediaRepo, PostgresMediaFolderRepo, PostgresPluginRepo, PostgresPluginSettingsRepo};
 use crate::infrastructure::db::product_category_repo::PostgresProductCategoryRepo;
 use crate::infrastructure::db::product_repo::PostgresProductRepo;  // 取消注释
+
+use crate::infrastructure::db::plugin_hook_repo::PostgresPluginHookRepo;  // 
 
 use crate::core::{UserRepository, ContentRepository, MediaRepository, MediaFolderRepository, PluginRepository, PluginSettingsRepository, ProductRepository, ProductCategoryRepository};
 use crate::presentation::middleware::auth_middleware;
@@ -46,6 +50,7 @@ use crate::core::AmaTemplateRepository;
 use crate::infrastructure::db::PostgresAmaTemplateRepo;
 use crate::presentation::handlers::attribute::*;
 
+
 pub struct AppState {
     pub theme_manager: Arc<tokio::sync::RwLock<TeraThemeManager>>,
     pub user_repo: Arc<dyn UserRepository>,
@@ -61,6 +66,8 @@ pub struct AppState {
     pub product_repo: Arc<dyn ProductRepository>,  // 改为非 Option
     pub product_category_repo: Arc<dyn ProductCategoryRepository>,  // 改为非 Option
 }
+
+
 
 // 辅助函数
 async fn get_config_value_from_db(pool: &PgPool, key: &str) -> Result<String, anyhow::Error> {
@@ -102,11 +109,15 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     i18n.reload_with_plugins(supported_langs, default_lang, &pool).await;
 
     // ---- 初始化主题管理器 ----
+   
+
+    let hook_repo = Arc::new(PostgresPluginHookRepo::new(pool.clone()));
     let theme_manager = Arc::new(tokio::sync::RwLock::new(
         TeraThemeManager::scan_and_load(
             &config.theme.themes_dir,
             i18n.clone(),
             &config.theme.default_theme,
+            Some(hook_repo),  // 传入钩子仓库
         ).await?
     ));
 
@@ -193,6 +204,9 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         // 导出模版
         .route("/api/admin/amatemplates", get(list_amatemplates_handler).post(create_amatemplate_handler))
         .route("/api/admin/amatemplates/:id", get(get_amatemplate_handler).put(update_amatemplate_handler).delete(delete_amatemplate_handler))
+        // 插件钩子
+        .route("/api/admin/plugins/:plugin_name/hooks", get(list_plugin_hooks).post(create_plugin_hook))
+        .route("/api/admin/plugins/:plugin_name/hooks/:id", put(update_plugin_hook).delete(delete_plugin_hook))
         // 产品分类路由
         .route("/api/admin/product-categories/tree", get(list_product_categories_handler))
         .route("/api/admin/product-categories", post(create_product_category_handler))
@@ -260,6 +274,8 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .nest_service("/config", ServeDir::new("config"))  // 添加这一行
         .route("/content/:slug", get(content_detail_handler))
         .route("/:slug", get(category_page_handler))
+        .route("/plugins/:plugin_name", get(plugin_default_handler))      // 无斜杠
+        .route("/plugins/:plugin_name/", get(plugin_default_handler))     // 有斜杠
         .route("/plugins/:plugin_name/static/*file", get(plugin_static_handler))
         .route("/plugins/:plugin_name/:page", get(plugin_page_handler))
         .route("/api/public/products/:id/size-table", get(get_product_size_table_handler))

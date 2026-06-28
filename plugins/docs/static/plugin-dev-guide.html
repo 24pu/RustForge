@@ -29,6 +29,9 @@
             color: inherit;
         }
         .anchor { scroll-margin-top: 5rem; }
+        .tip { background: #f0fdf4; border-left: 4px solid #22c55e; padding: 0.75rem 1rem; border-radius: 0.25rem; margin: 1rem 0; }
+        .warning { background: #fef2f2; border-left: 4px solid #ef4444; padding: 0.75rem 1rem; border-radius: 0.25rem; margin: 1rem 0; }
+        .info { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 0.75rem 1rem; border-radius: 0.25rem; margin: 1rem 0; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -36,15 +39,16 @@
     <nav class="bg-white shadow-sm sticky top-0 z-10">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center">
             <div class="text-xl font-bold text-purple-700">RustForge 插件开发</div>
-            <div class="space-x-4 text-sm">
+            <div class="space-x-4 text-sm flex flex-wrap">
                 <a href="#overview" class="hover:text-purple-600">概述</a>
                 <a href="#structure" class="hover:text-purple-600">文件结构</a>
                 <a href="#rust-source" class="hover:text-purple-600">Rust 源码</a>
                 <a href="#frontend" class="hover:text-purple-600">前端实现</a>
                 <a href="#i18n" class="hover:text-purple-600">多语言支持</a>
-                <a href="#interaction" class="hover:text-purple-600">主程序交互</a>
-                <a href="#settings" class="hover:text-purple-600">插件设置</a>
-                <a href="#deploy" class="hover:text-purple-600">开发部署</a>
+                <a href="#hooks" class="hover:text-purple-600">钩子系统</a>
+                <a href="#settings" class="hover:text-purple-600">数据存储</a>
+                <a href="#routing" class="hover:text-purple-600">路由访问</a>
+                <a href="#deploy" class="hover:text-purple-600">部署流程</a>
             </div>
         </div>
     </nav>
@@ -53,202 +57,399 @@
 
         <div class="text-center mb-12">
             <h1 class="text-4xl font-bold text-gray-900 mb-2">RustForge 插件开发完全指南</h1>
-            <p class="text-xl text-gray-600">以用户中心插件为例，掌握 Wasm 插件开发全流程</p>
-            <div class="mt-4 flex justify-center space-x-2">
+            <p class="text-xl text-gray-600">基于 Wasm 的插件系统，以五运六气插件为实战案例</p>
+            <div class="mt-4 flex justify-center space-x-2 flex-wrap">
                 <span class="bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full">Rust</span>
                 <span class="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">Wasm</span>
                 <span class="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">Axum</span>
                 <span class="bg-yellow-100 text-yellow-800 text-sm px-3 py-1 rounded-full">插件系统</span>
+                <span class="bg-pink-100 text-pink-800 text-sm px-3 py-1 rounded-full">多语言</span>
+                <span class="bg-orange-100 text-orange-800 text-sm px-3 py-1 rounded-full">钩子系统</span>
             </div>
         </div>
 
         <!-- 概述 -->
         <section id="overview" class="anchor mb-10">
             <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">📖 概述</h2>
-            <p class="mb-2">RustForge 的插件系统基于 WebAssembly (Wasm)，允许您使用 Rust 或其他能编译到 Wasm 的语言安全地扩展网站功能。用户中心插件是一个完整的参考实现，演示了如何构建包含前端页面、API 调用、用户认证、页面保护和多语言支持的插件。</p>
+            <p class="mb-2">RustForge 的插件系统基于 WebAssembly (Wasm)，允许您使用 Rust 安全地扩展网站功能。本指南以<strong>五运六气插件</strong>为实战案例，演示从零到一构建一个完整插件的全流程。</p>
             <p>通过本指南，你将学习到：</p>
             <ul class="list-disc list-inside mt-2 space-y-1">
                 <li>插件的基本结构和必需的导出函数</li>
-                <li>如何通过插件网关自动获取登录用户 <code>user_id</code></li>
-                <li>编写前端视图并引用插件静态资源</li>
+                <li>如何使用 <code>plugin_settings</code> 存储插件数据（无需修改主程序）</li>
+                <li>编写前端视图并实现多语言支持（<code>{{ key }}</code> 语法）</li>
                 <li>实现 <code>is_page_protected</code> 进行登录保护</li>
-                <li>集成插件设置页面，允许管理员动态配置</li>
-                <li>利用扫描功能一键安装未启用的插件</li>
-                <li>为插件添加多语言支持（locales 目录）</li>
+                <li>插件页面路由访问规范（<code>/plugins/:name/index</code>）</li>
+                <li><strong>钩子系统</strong>：在主题任意位置注入插件内容（导航栏、侧边栏、页脚等），并支持多语言切换</li>
+                <li>利用扫描功能一键安装插件</li>
             </ul>
+            <div class="info">
+                <strong>💡 设计理念</strong>：插件仅负责前端展示和轻量逻辑，数据持久化通过主程序提供的 <code>/api/admin/plugins/{name}/settings</code> 接口以 JSON 格式存储，完全无需修改主程序。
+            </div>
         </section>
 
         <!-- 文件结构 -->
         <section id="structure" class="anchor mb-10">
             <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">📁 插件文件结构</h2>
-            <pre><code>plugins/user-center/
+            <pre><code>plugins/wuyun-plugin/
 ├── Cargo.toml                 # Rust 项目配置
 ├── src/
-│   └── lib.rs                 # 插件核心逻辑 (Wasm)
+│   └── lib.rs                 # 插件核心逻辑 (Wasm，极简)
 ├── locales/                   # 多语言翻译文件
 │   ├── zh.json                # 中文翻译
 │   └── en.json                # 英文翻译
 ├── views/                     # 前端视图片段
-│   ├── profile.html
-│   ├── password.html
-│   ├── login.html
-│   ├── register.html
-│   └── settings.html          # 后台管理设置界面
+│   ├── index.html             # 列表页
+│   ├── new.html               # 新建页
+│   ├── edit.html              # 编辑页
+│   └── settings.html          # 设置页（钩子管理 + 多语言配置）
 └── static/                    # 静态资源
     ├── nav.html               # 导航栏片段
-    └── nav-loader.js          # 导航加载与事件绑定</code></pre>
-            <p class="mt-2">最终编译产物为 <code>user-center.wasm</code>，放在 <code>plugins/user-center/</code> 目录下即可被系统扫描识别。</p>
+    ├── nav-loader.js          # 导航加载器
+    └── wuyun.js               # 业务逻辑（纯前端计算）</code></pre>
+            <p class="mt-2">最终编译产物为 <code>wuyun-plugin.wasm</code>，放在插件根目录即可被系统扫描识别。</p>
+            <div class="info">
+                <strong>📌 注意</strong>：插件数据通过 <code>plugin_hooks</code> 表和 <code>plugin_settings</code> 表存储，由主程序统一管理，插件无需关心数据库操作。
+            </div>
         </section>
 
         <!-- Rust 源码解析 -->
         <section id="rust-source" class="anchor mb-10">
             <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">⚙️ 插件 Rust 源码解析</h2>
 
-            <h3 class="text-xl font-semibold mt-4 mb-2">项目配置 (Cargo.toml)</h3>
+            <h3 class="text-xl font-semibold mt-4 mb-2">极简 lib.rs（只做元数据和页面保护）</h3>
+            <p>对于纯前端展示类插件，Rust 部分只需实现必需的 4 个导出函数，业务逻辑可在前端 JavaScript 中完成。</p>
+            <pre><code>use std::alloc::{Layout, alloc};
+
+const PLUGIN_METADATA: &str = r#"{
+    "name": "wuyun-plugin",
+    "version": "1.0.0",
+    "author": "RustForge Team",
+    "description": "五运六气管理插件"
+}"#;
+
+static mut LAST_LEN: usize = 0;
+
+#[no_mangle]
+pub extern "C" fn plugin_metadata() -> *mut u8 {
+    let bytes = PLUGIN_METADATA.as_bytes();
+    let len = bytes.len();
+    unsafe {
+        let layout = Layout::array::<u8>(len).unwrap();
+        let ptr = alloc(layout) as *mut u8;
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), ptr, len);
+        LAST_LEN = len;
+        ptr
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn get_last_result_len() -> usize {
+    unsafe { LAST_LEN }
+}
+
+#[no_mangle]
+pub extern "C" fn execute(_ptr: *const u8, _len: usize) -> *mut u8 {
+    let output = "{}".to_string();
+    let bytes = output.into_bytes();
+    let len = bytes.len();
+    unsafe {
+        let layout = Layout::array::<u8>(len).unwrap();
+        let ptr = alloc(layout) as *mut u8;
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), ptr, len);
+        LAST_LEN = len;
+        ptr
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn is_page_protected(_ptr: *const u8, _len: usize) -> *mut u8 {
+    // 所有页面都需要登录
+    let output = "true".to_string();
+    let bytes = output.into_bytes();
+    let len = bytes.len();
+    unsafe {
+        let layout = Layout::array::<u8>(len).unwrap();
+        let ptr = alloc(layout) as *mut u8;
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), ptr, len);
+        LAST_LEN = len;
+        ptr
+    }
+}</code></pre>
+
+            <div class="info">
+                <strong>💡 为什么可以如此精简？</strong> 因为数据通过 <code>/api/admin/plugins/{name}/settings</code> 读写，Wasm 不需要直接操作数据库，因此可以非常轻量。
+            </div>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">Cargo.toml 配置</h3>
             <pre><code>[package]
-name = "user-center"
-version = "0.1.0"
+name = "wuyun-plugin"
+version = "1.0.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib"]</code></pre>
+        </section>
 
-[dependencies]
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-lazy_static = "1.4"</code></pre>
+        <!-- 前端实现 -->
+        <section id="frontend" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🎨 前端实现</h2>
 
-            <h3 class="text-xl font-semibold mt-6 mb-2">导出函数一览</h3>
-            <div class="overflow-x-auto">
-                <table class="min-w-full bg-white rounded shadow mt-2">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th class="py-2 px-4 text-left">函数名</th>
-                            <th class="py-2 px-4 text-left">签名</th>
-                            <th class="py-2 px-4 text-left">作用</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td class="py-2 px-4"><code>plugin_metadata</code></td><td class="py-2 px-4"><code>() -> *mut u8</code></td><td class="py-2 px-4">返回插件元数据 JSON</td></tr>
-                        <tr><td class="py-2 px-4"><code>get_last_result_len</code></td><td class="py-2 px-4"><code>() -> usize</code></td><td class="py-2 px-4">返回最后一次输出数据长度</td></tr>
-                        <tr><td class="py-2 px-4"><code>execute</code></td><td class="py-2 px-4"><code>(ptr: *const u8, len: usize) -> *mut u8</code></td><td class="py-2 px-4">核心 API 处理函数</td></tr>
-                        <tr><td class="py-2 px-4"><code>is_page_protected</code></td><td class="py-2 px-4"><code>(ptr: *const u8, len: usize) -> *mut u8</code></td><td class="py-2 px-4">返回页面是否需要登录保护</td></tr>
-                    </tbody>
-                </table>
+            <h3 class="text-xl font-semibold mt-4 mb-2">视图模板语法（重要）</h3>
+            <div class="warning">
+                <strong>⚠️ 关键点</strong>：插件视图使用 <code>{{ key }}</code> 语法，而非 <code>{{ t(key="xxx", lang=lang) }}</code>。主程序的 <code>plugin_page_handler</code> 只会进行简单的字符串替换，不解析 Tera 函数。
             </div>
+            <pre><code>&lt;!-- ✅ 正确写法 --&gt;
+&lt;h2&gt;{{ wuyun_title }}&lt;/h2&gt;
+&lt;button&gt;{{ save }}&lt;/button&gt;
 
-            <h3 class="text-xl font-semibold mt-6 mb-2">元数据定义</h3>
-            <pre><code>const PLUGIN_METADATA: &str = r#"{
-    "name": "user-center",
-    "version": "1.0.0",
-    "author": "RustForge Team",
-    "description": "用户中心插件，提供个人资料、密码修改等功能"
-}"#;</code></pre>
-            <p>安装或扫描时，主程序会调用 <code>plugin_metadata</code> 获取这些信息并存入数据库。</p>
+&lt;!-- ❌ 错误写法（不会被解析） --&gt;
+&lt;h2&gt;{{ t(key="wuyun_title", lang=lang) }}&lt;/h2&gt;</code></pre>
 
-            <h3 class="text-xl font-semibold mt-6 mb-2">内存管理与输出</h3>
-            <p>所有返回给主程序的数据都通过 Rust 的 <code>alloc</code> 在堆上分配，并将指针返回给宿主，同时设置 <code>LAST_LEN</code> 记录数据长度。<strong>必须严格遵守此模式</strong>。</p>
-
-            <h3 class="text-xl font-semibold mt-6 mb-2"><code>execute</code> 函数详解</h3>
-            <pre><code>#[no_mangle]
-pub extern "C" fn execute(ptr: *const u8, len: usize) -> *mut u8 {
-    let input: serde_json::Value = serde_json::from_str(input_str)?;
-    let action = input["action"].as_str().unwrap_or("");
-    let user_id = input["user_id"].as_str().unwrap_or("");  // 由网关自动注入
-
-    let result = match action {
-        "get_profile" => handle_get_profile(user_id),
-        "update_profile" => handle_update_profile(user_id, &input),
-        "change_password" => handle_change_password(user_id, &input),
-        "get_orders" => handle_get_orders(user_id),
-        "logout" => json!({ "message": "Logout successful" }),
-        _ => json!({ "error": "Unknown action" }),
-    };
-    // 将 result 序列化为字符串，分配内存，返回指针
+            <h3 class="text-xl font-semibold mt-6 mb-2">导航加载器（nav-loader.js）</h3>
+            <p>支持多语言的导航加载，自动替换 <code>{{ key }}</code> 占位符。</p>
+            <pre><code>function loadNav(currentPage) {
+    return fetch('/plugins/wuyun-plugin/static/nav.html')
+        .then(res => res.text())
+        .then(html => {
+            const locales = window.__plugin_locales__ || {};
+            for (const [key, value] of Object.entries(locales)) {
+                html = html.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), value);
+            }
+            document.getElementById('user-center-nav').innerHTML = html;
+            // 高亮当前页面
+            document.querySelectorAll('[data-nav]').forEach(link => {
+                if (link.getAttribute('data-nav') === currentPage) {
+                    link.classList.add('bg-gray-100', 'font-semibold');
+                }
+            });
+        });
 }</code></pre>
 
-            <h3 class="text-xl font-semibold mt-6 mb-2">页面保护：<code>is_page_protected</code></h3>
-            <pre><code>#[no_mangle]
-pub extern "C" fn is_page_protected(ptr: *const u8, len: usize) -> *mut u8 {
-    let page_name = /* 读取字符串 */;
-    let protected = match page_name {
-        "profile" | "orders" | "password" => "true",
-        _ => "false",
-    };
-    // 返回 "true" 或 "false" 字符串
-}</code></pre>
+            <h3 class="text-xl font-semibold mt-6 mb-2">JavaScript 多语言辅助</h3>
+            <pre><code>const __t = (key, fallback) => (window.__plugin_locales__ && window.__plugin_locales__[key]) || fallback || key;</code></pre>
         </section>
 
         <!-- 多语言支持 -->
         <section id="i18n" class="anchor mb-10">
             <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🌐 多语言支持</h2>
-            <p>插件只需在根目录下创建 <code>locales/</code> 文件夹，放入对应语言的 JSON 文件即可实现多语言。系统启动时会自动加载所有已启用插件的语言包，合并到全局翻译中。</p>
+            <p>插件只需在根目录下创建 <code>locales/</code> 文件夹，放入对应语言的 JSON 文件即可实现多语言。钩子内容中的 <code>{{ key }}</code> 也会被自动翻译，并且插件设置页可以按语言版本分别管理钩子内容。</p>
 
             <h3 class="text-xl font-semibold mt-4 mb-2">语言包文件格式</h3>
             <p><strong>locales/zh.json</strong>：</p>
             <pre><code>{
-    "profile": "个人资料",
-    "nickname": "昵称",
-    "email": "邮箱",
-    "phone": "手机号",
-    "save_changes": "保存修改",
-    "login": "登录",
-    "register": "注册"
+    "wuyun_title": "五运六气",
+    "add_record": "添加记录",
+    "name": "姓名",
+    "year": "年份",
+    "time": "时间 (MM-DD)",
+    "save": "保存",
+    "cancel": "取消",
+    "edit": "编辑",
+    "delete": "删除"
 }</code></pre>
 
             <p><strong>locales/en.json</strong>：</p>
             <pre><code>{
-    "profile": "Profile",
-    "nickname": "Nickname",
-    "email": "Email",
-    "phone": "Phone",
-    "save_changes": "Save Changes",
-    "login": "Login",
-    "register": "Register"
+    "wuyun_title": "Five Yun and Six Qi",
+    "add_record": "Add Record",
+    "name": "Name",
+    "year": "Year",
+    "time": "Time (MM-DD)",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete"
 }</code></pre>
 
-            <h3 class="text-xl font-semibold mt-6 mb-2">在视图模板中使用</h3>
-            <p>插件视图使用简单变量语法 <code>{{ key }}</code>，主程序会在渲染前自动将变量替换为对应语言的翻译文本：</p>
-            <pre><code>&lt;h2&gt;{{ profile }}&lt;/h2&gt;
-&lt;label&gt;{{ nickname }}&lt;/label&gt;
-&lt;label&gt;{{ email }}&lt;/label&gt;
-&lt;button&gt;{{ save_changes }}&lt;/button&gt;</code></pre>
-
-            <h3 class="text-xl font-semibold mt-6 mb-2">在 JavaScript 中使用</h3>
-            <p>插件页面加载时，主程序会自动注入 <code>window.__plugin_locales__</code> 全局变量：</p>
-            <pre><code>const __t = (key, fallback) => (window.__plugin_locales__ && window.__plugin_locales__[key]) || fallback || key;
-alert(__t('profile_success', '保存成功'));</code></pre>
-
-            <p><strong>注意</strong>：主程序语言包和插件语言包会合并，插件键不覆盖主程序键。安装/启用/卸载插件时会自动重新加载语言包。</p>
+            <div class="info">
+                <strong>💡 自动注入</strong>：主程序在渲染插件页面时，会自动将 <code>window.__plugin_locales__</code> 注入到页面中，包含当前语言的所有翻译键值对。
+            </div>
+            <div class="tip">
+                <strong>✅ 钩子多语言</strong>：钩子内容中的 <code>{{ key }}</code> 会在服务端渲染时自动替换为翻译，无需前端 JS。同时，插件设置页支持为每个语言版本单独编辑钩子内容，实现了精细化的多语言管理。
+            </div>
         </section>
 
-        <!-- 与主程序交互 -->
-        <section id="interaction" class="anchor mb-10">
-            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🔗 插件与主程序交互</h2>
+        <!-- ========== 钩子系统（更新） ========== -->
+        <section id="hooks" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🔌 钩子系统</h2>
+            <p>钩子系统允许插件在主题的任意位置注入内容，无需修改主题模板。支持导航栏、侧边栏、页脚、头部等任何位置，并且钩子内容可以按语言版本独立设置。</p>
 
-            <h3 class="text-xl font-semibold mt-4 mb-2">页面访问</h3>
+            <h3 class="text-xl font-semibold mt-4 mb-2">工作原理</h3>
             <ul class="list-disc list-inside space-y-1">
-                <li>访问 <code>/plugins/user-center/profile</code></li>
-                <li>主程序路由 <code>GET /plugins/:plugin_name/:page</code> 触发 <code>plugin_page_handler</code></li>
-                <li>Handler 加载插件语言包，读取视图文件，替换模板变量，渲染到 <code>base.html</code></li>
+                <li>主题模板中放置钩子占位符：<code>{{ hooks.nav | safe }}</code></li>
+                <li>插件通过管理 API 创建钩子记录，指定 <code>hook_name</code> 和 <code>lang</code>（语言代码）</li>
+                <li>主程序渲染时，会根据当前语言加载对应版本的钩子；若不存在，则回退到通用（<code>lang=''</code>）钩子</li>
+                <li>钩子内容支持 <code>{{ key }}</code> 多语言占位符，由主程序自动翻译</li>
+                <li>若插件被禁用，其所有钩子将不会在前台显示</li>
             </ul>
 
-            <h3 class="text-xl font-semibold mt-6 mb-2">API 调用</h3>
-            <ul class="list-disc list-inside space-y-1">
-                <li>前端请求 <code>POST /api/plugin/user-center</code></li>
-                <li>主程序 <code>plugin_gateway_handler</code> 自动注入 <code>user_id</code></li>
-                <li>加载 Wasm 插件，调用 <code>execute</code></li>
-                <li>插件返回 JSON，网关返回给客户端</li>
-            </ul>
+            <h3 class="text-xl font-semibold mt-6 mb-2">钩子数据结构</h3>
+            <table class="w-full bg-white rounded shadow mt-2">
+                <thead class="bg-gray-100">
+                    <tr><th class="py-2 px-4 text-left">字段</th><th class="py-2 px-4 text-left">说明</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>plugin_name</code></td><td>插件名称（标识来源）</td></tr>
+                    <tr><td><code>hook_name</code></td><td>钩子名称（如 <code>nav</code>, <code>sidebar</code>, <code>footer</code>）</td></tr>
+                    <tr><td><code>content</code></td><td>HTML 内容，支持 <code>{{ key }}</code> 多语言占位符</td></tr>
+                    <tr><td><code>sort_order</code></td><td>排序（多个钩子按此顺序合并）</td></tr>
+                    <tr><td><code>lang</code></td><td>语言代码（空字符串表示通用，所有语言均显示）</td></tr>
+                    <tr><td><code>enabled</code></td><td>是否启用</td></tr>
+                </tbody>
+            </table>
 
-            <h3 class="text-xl font-semibold mt-6 mb-2">退出登录</h3>
-            <p>调用主程序 <code>POST /api/logout</code> 清除 HttpOnly Cookie。</p>
+            <h3 class="text-xl font-semibold mt-6 mb-2">钩子的多语言策略</h3>
+            <p>系统加载钩子时遵循以下优先级：</p>
+            <ol class="list-decimal list-inside space-y-1">
+                <li>优先加载当前语言（<code>lang='zh'</code>）的钩子。</li>
+                <li>若不存在，则回退到通用（<code>lang=''</code>）钩子。</li>
+                <li>若仍不存在，该钩子位置为空。</li>
+                <li>多个钩子按 <code>sort_order</code> 排序后合并输出。</li>
+                <li>若插件被禁用，其所有钩子均被忽略。</li>
+            </ol>
+            <div class="info">
+                <strong>💡 推荐做法</strong>：为常用语言（如 zh、en）分别创建钩子，同时保留一个通用版本作为 fallback，确保所有语言都有内容。
+            </div>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">在主题模板中使用</h3>
+            <p>在主题模板的任意位置添加钩子占位符，使用 <code>| safe</code> 防止转义：</p>
+            <pre><code>&lt;!-- 导航栏 --&gt;
+&lt;ul&gt;
+    &lt;li&gt;&lt;a href="/"&gt;首页&lt;/a&gt;&lt;/li&gt;
+    {{ hooks.nav | safe }}
+    &lt;li&gt;&lt;a href="/about"&gt;关于我们&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;!-- 侧边栏 --&gt;
+&lt;div class="sidebar"&gt;
+    {{ hooks.sidebar | safe }}
+&lt;/div&gt;
+
+&lt;!-- 页脚 --&gt;
+&lt;footer&gt;
+    {{ hooks.footer | safe }}
+&lt;/footer&gt;</code></pre>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">插件管理钩子</h3>
+            <p>在插件设置页面中，为不同语言版本分别创建或编辑钩子内容。建议从系统设置动态获取可用语言列表，生成下拉选择框。</p>
+            <pre><code>// 获取系统可用语言
+const resp = await fetch('/api/admin/lang-settings');
+const data = await resp.json();
+const availableLangs = data.available_langs || [];
+
+// 创建钩子时指定语言
+fetch('/api/admin/plugins/wuyun/hooks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        hook_name: 'nav',
+        content: '<li><a href="/plugins/wuyun/">{{ wuyun_title }}</a></li>',
+        sort_order: 10,
+        lang: 'zh',   // 或 '' 表示通用
+        enabled: true
+    })
+});</code></pre>
+
+            <div class="tip">
+                <strong>✅ 最佳实践</strong>：
+                <ul class="list-disc list-inside mt-1">
+                    <li>钩子名称应语义化（如 <code>nav</code>, <code>sidebar</code>, <code>footer</code>）</li>
+                    <li>多个插件可向同一钩子添加内容，按 <code>sort_order</code> 排序</li>
+                    <li>钩子内容支持 <code>{{ key }}</code> 多语言，语言包由插件提供</li>
+                    <li>在设置页提供“一键添加”功能，并为每个语言版本独立管理，方便多语言站点</li>
+                    <li>定期清理不再使用的钩子，避免数据库膨胀</li>
+                </ul>
+            </div>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">钩子 API</h3>
+            <table class="w-full bg-white rounded shadow mt-2">
+                <thead class="bg-gray-100">
+                    <tr><th class="py-2 px-4 text-left">方法</th><th class="py-2 px-4 text-left">路径</th><th class="py-2 px-4 text-left">说明</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>GET</td><td><code>/api/admin/plugins/{name}/hooks</code></td><td>获取插件钩子列表（可传 <code>?lang=zh</code> 过滤语言）</td></tr>
+                    <tr><td>POST</td><td><code>/api/admin/plugins/{name}/hooks</code></td><td>创建钩子（需指定 <code>lang</code>）</td></tr>
+                    <tr><td>PUT</td><td><code>/api/admin/plugins/{name}/hooks/:id</code></td><td>更新钩子（可更新 <code>lang</code>）</td></tr>
+                    <tr><td>DELETE</td><td><code>/api/admin/plugins/{name}/hooks/:id</code></td><td>删除钩子</td></tr>
+                </tbody>
+            </table>
         </section>
 
-        <!-- 插件设置 -->
+        <!-- 数据存储 -->
         <section id="settings" class="anchor mb-10">
-            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">⚙️ 插件设置</h2>
-            <p>在 <code>views/settings.html</code> 中创建设置界面，通过 <code>/api/admin/plugins/{name}/settings</code> 读写配置。</p>
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">💾 插件数据存储</h2>
+            <p>插件数据通过 <code>plugin_settings</code> 表以 JSON 格式存储，完全无需修改主程序。</p>
+
+            <h3 class="text-xl font-semibold mt-4 mb-2">读写接口</h3>
+            <table class="w-full bg-white rounded shadow mt-2">
+                <thead class="bg-gray-100">
+                    <tr><th class="py-2 px-4 text-left">方法</th><th class="py-2 px-4 text-left">路径</th><th class="py-2 px-4 text-left">说明</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>GET</td><td><code>/api/admin/plugins/{name}/settings</code></td><td>读取插件设置</td></tr>
+                    <tr><td>PUT</td><td><code>/api/admin/plugins/{name}/settings</code></td><td>写入插件设置</td></tr>
+                </tbody>
+            </table>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">使用示例</h3>
+            <pre><code>// 读取数据
+fetch(`/api/admin/plugins/${PLUGIN_NAME}/settings`)
+    .then(r => r.json())
+    .then(data => {
+        const records = data.records || [];
+        // 渲染列表
+    });
+
+// 写入数据
+fetch(`/api/admin/plugins/${PLUGIN_NAME}/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ records: [...] })
+});</code></pre>
+
+            <div class="tip">
+                <strong>✅ 优势</strong>：无需修改主程序，数据存储与插件绑定，卸载插件时数据自动保留（需手动清理）。
+            </div>
+            <div class="info">
+                <strong>📌 与钩子的区别</strong>：
+                <ul class="list-disc list-inside mt-1">
+                    <li><code>plugin_settings</code>：存储插件自己的配置数据（如记录列表）</li>
+                    <li><code>plugin_hooks</code>：存储注入到主题中的 HTML 内容（如导航链接），且支持按语言版本分离</li>
+                    <li>两者互补，共同构成插件的数据层</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 路由访问 -->
+        <section id="routing" class="anchor mb-10">
+            <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">🧭 插件路由访问</h2>
+
+            <h3 class="text-xl font-semibold mt-4 mb-2">访问规范</h3>
+            <table class="w-full bg-white rounded shadow mt-2">
+                <thead class="bg-gray-100">
+                    <tr><th class="py-2 px-4 text-left">URL</th><th class="py-2 px-4 text-left">说明</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>/plugins/{name}/index</code></td><td>插件默认首页（推荐）</td></tr>
+                    <tr><td><code>/plugins/{name}/new</code></td><td>新建页面</td></tr>
+                    <tr><td><code>/plugins/{name}/edit?id=xxx</code></td><td>编辑页面</td></tr>
+                    <tr><td><code>/plugins/{name}/settings</code></td><td>插件设置页面（需管理员权限，通常包含钩子管理）</td></tr>
+                    <tr><td><code>/plugins/{name}/static/*file</code></td><td>静态资源（CSS/JS/图片）</td></tr>
+                </tbody>
+            </table>
+
+            <div class="info">
+                <strong>💡 路径规则</strong>：主程序路由定义为 <code>/plugins/:plugin_name/:page</code>，因此访问时必须包含页面名。建议使用 <code>/plugins/{name}/index</code> 作为首页入口。
+            </div>
+
+            <h3 class="text-xl font-semibold mt-6 mb-2">页面保护</h3>
+            <p>在 <code>lib.rs</code> 中实现 <code>is_page_protected</code> 函数，返回 <code>"true"</code> 的页面需要登录才能访问。</p>
+            <pre><code>#[no_mangle]
+pub extern "C" fn is_page_protected(_ptr: *const u8, _len: usize) -> *mut u8 {
+    // 所有页面都需要登录
+    alloc_string("true")
+}</code></pre>
+            <p>未登录用户访问受保护页面会被重定向到 <code>/plugins/{name}/login</code>（可修改为全局后台登录页）。</p>
         </section>
 
         <!-- 开发与部署 -->
@@ -257,22 +458,36 @@ alert(__t('profile_success', '保存成功'));</code></pre>
 
             <h3 class="text-xl font-semibold mt-4 mb-2">1. 编写 Rust 插件</h3>
             <ol class="list-decimal list-inside space-y-1">
-                <li>创建项目 <code>cargo new user-center --lib</code></li>
+                <li>创建项目 <code>cargo new my-plugin --lib</code></li>
                 <li>配置 <code>Cargo.toml</code>，设置 <code>crate-type = ["cdylib"]</code></li>
+                <li>编写 <code>src/lib.rs</code>，实现 4 个导出函数</li>
                 <li>编译为 wasm：<code>cargo build --target wasm32-unknown-unknown --release</code></li>
+                <li>复制 <code>target/wasm32-unknown-unknown/release/my_plugin.wasm</code> 到插件根目录，命名为 <code>my-plugin.wasm</code></li>
             </ol>
 
-            <h3 class="text-xl font-semibold mt-6 mb-2">2. 创建前端视图和语言包</h3>
-            <p>按照文件结构创建 <code>views/</code>、<code>static/</code> 和 <code>locales/</code> 目录。</p>
+            <h3 class="text-xl font-semibold mt-6 mb-2">2. 创建前端文件</h3>
+            <ul class="list-disc list-inside space-y-1">
+                <li><code>views/</code>：存放 HTML 页面片段（如 <code>index.html</code>, <code>new.html</code>）</li>
+                <li><code>static/</code>：存放 JS、CSS 等静态资源</li>
+                <li><code>locales/</code>：存放 <code>zh.json</code> 和 <code>en.json</code> 语言包</li>
+                <li><strong>钩子支持</strong>：在设置页提供钩子管理功能，支持为不同语言版本添加/编辑钩子</li>
+            </ul>
 
             <h3 class="text-xl font-semibold mt-6 mb-2">3. 安装与启用</h3>
-            <p>将插件文件夹放入 <code>plugins/</code> 目录，后台点击"扫描可用插件"，找到对应插件并点击"安装"。</p>
+            <ol class="list-decimal list-inside space-y-1">
+                <li>将插件文件夹放入 <code>plugins/</code> 目录</li>
+                <li>登录管理后台 → 插件管理 → 点击 <strong>"扫描可用插件"</strong></li>
+                <li>在列表中找到插件，点击 <strong>"安装"</strong></li>
+                <li>安装完成后，确保插件状态为 <strong>"启用"</strong></li>
+            </ol>
 
-            <h3 class="text-xl font-semibold mt-6 mb-2">4. 测试</h3>
+            <h3 class="text-xl font-semibold mt-6 mb-2">4. 访问测试</h3>
             <ul class="list-disc list-inside space-y-1">
-                <li>访问 <code>/plugins/user-center/login</code></li>
-                <li>登录后访问 <code>/plugins/user-center/profile</code></li>
+                <li>访问 <code>/plugins/my-plugin/index</code> 查看列表页</li>
+                <li>访问 <code>/plugins/my-plugin/new</code> 测试新建功能</li>
+                <li>访问 <code>/plugins/my-plugin/settings</code> 管理钩子（测试多语言钩子切换）</li>
                 <li>切换语言验证多语言翻译是否生效</li>
+                <li>检查主题页面中钩子内容是否正确显示</li>
             </ul>
         </section>
 
@@ -280,18 +495,24 @@ alert(__t('profile_success', '保存成功'));</code></pre>
         <section class="mb-10">
             <h2 class="text-2xl font-bold border-l-4 border-purple-600 pl-3 mb-4">⚠️ 注意事项与最佳实践</h2>
             <ul class="list-disc list-inside space-y-2">
-                <li><strong>插件 Wasm 应保持轻量</strong></li>
-                <li><strong>内存安全</strong>：必须通过 <code>LAST_LEN</code> 告知数据长度</li>
+                <li><strong>视图模板</strong>：使用 <code>{{ key }}</code> 而非 <code>{{ t(...) }}</code>，后者不会被解析</li>
+                <li><strong>数据存储</strong>：优先使用 <code>plugin_settings</code> 接口存储 JSON 数据</li>
+                <li><strong>钩子内容</strong>：支持 <code>{{ key }}</code> 多语言，语言包由插件提供</li>
+                <li><strong>钩子语言</strong>：<code>lang</code> 字段留空表示通用钩子，所有语言均显示；指定语言则仅在该语言下显示</li>
+                <li><strong>钩子与插件状态</strong>：禁用插件后，其钩子不会在前台出现</li>
+                <li><strong>设置页语言选择</strong>：从系统设置的 <code>/api/admin/lang-settings</code> 接口动态获取可用语言列表，保持与站点配置一致</li>
+                <li><strong>Wasm 轻量化</strong>：将业务逻辑放在前端 JavaScript 中，减少 Wasm 复杂度</li>
                 <li><strong>语言包</strong>：JSON 文件末尾不能有多余逗号</li>
-                <li><strong>前端 API 路径</strong>：使用 <code>/api/plugin/{name}</code></li>
                 <li><strong>静态资源路径</strong>：使用 <code>/plugins/{name}/static/{file}</code></li>
-                <li><strong>插件安装</strong>：系统会复制 wasm 文件，卸载时删除副本，原始文件保留</li>
-                <li><strong>多语言</strong>：安装/启用/卸载插件时自动重新加载语言包</li>
+                <li><strong>页面入口</strong>：建议使用 <code>/plugins/{name}/index</code> 作为默认首页</li>
+                <li><strong>钩子渲染</strong>：主题模板中需使用 <code>{{ hooks.xxx | safe }}</code> 输出 HTML</li>
+                <li><strong>安装机制</strong>：系统会复制 wasm 文件，卸载时删除副本，原始文件保留</li>
             </ul>
         </section>
 
         <footer class="border-t pt-6 text-center text-gray-500 text-sm">
-            <p>通过本用户中心插件，你已经掌握了在 RustForge 中开发功能完备的插件的所有知识。</p>
+            <p>通过本指南，你已经掌握在 RustForge 中开发完整插件的所有知识。</p>
+            <p>以五运六气插件为实战案例，融入了多语言、数据存储、钩子系统、路由访问等关键实践。</p>
             <p class="mt-2">© 2025 RustForge Team</p>
         </footer>
     </main>

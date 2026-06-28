@@ -10,6 +10,10 @@ pub mod amatemplate_repo;
 pub mod attribute_repo; // <-- 新增模块
 
 pub mod product_repo;
+pub mod plugin_hook_repo;
+
+
+
 pub use product_repo::PostgresProductRepo;
 
 pub use plugin_repo::PostgresPluginRepo;

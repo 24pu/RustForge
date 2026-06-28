@@ -5,6 +5,8 @@ use axum::{
     response::{IntoResponse, Redirect},
     Json,
 };
+
+
 use crate::presentation::types::UserInfo;        // 添加 UserInfo
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -119,7 +121,9 @@ pub async fn plugin_static_handler(
     }
 }
 
-
+pub async fn plugin_default_handler(Path(plugin_name): Path<String>) -> impl IntoResponse {
+    Redirect::temporary(&format!("/plugins/{}/index", plugin_name))
+}
 
 
 
@@ -143,24 +147,38 @@ pub async fn plugin_page_handler(
             Err(_) => false,
         }
     } else {
-        matches!(page.as_str(), "profile" | "orders" | "password")
+        false
     };
 
+    
     if is_protected && user_id.is_none() {
-        return Redirect::temporary(&format!("/plugins/{}/login", plugin_name)).into_response();
+    let current_url = format!("/plugins/{}/{}", plugin_name, page);
+    return Redirect::temporary(&format!("/admin/login?redirect={}", current_url)).into_response();
     }
 
     let plugin_locales = load_plugin_locales(&plugin_name, &lang);
 
     let nav_categories = get_nav_categories(&state).await;
-    let site_config = get_site_config_map(&state.db_pool).await;
+    let mut site_config = get_site_config_map(&state.db_pool).await;
+
+    // ===== 从插件语言包注入 SEO 信息 =====
+    if let Some(title) = plugin_locales.get("page_title").or(plugin_locales.get("title")) {
+        site_config.insert("seo_title".to_string(), title.clone());
+    }
+    if let Some(desc) = plugin_locales.get("page_description") {
+        site_config.insert("seo_description".to_string(), desc.clone());
+    }
+    if let Some(keywords) = plugin_locales.get("page_keywords") {
+        site_config.insert("seo_keywords".to_string(), keywords.clone());
+    }
+
     let view_path = format!("plugins/{}/views/{}.html", plugin_name, page);
     let mut content_fragment = match tokio::fs::read_to_string(&view_path).await {
         Ok(c) => c,
         Err(_) => return (StatusCode::NOT_FOUND, "Page not found").into_response(),
     };
 
-    // 直接替换模板中的变量
+    // 替换模板变量（{{ key }}）
     for (key, value) in &plugin_locales {
         let placeholder = format!("{{{{ {} }}}}", key);
         content_fragment = content_fragment.replace(&placeholder, value);

@@ -133,16 +133,11 @@
                             {% endif %}
                         </li>
                     {% endfor %}
-                    <li class="relative nav-item">
-                        <a href="/plugins/docs/index" class="hover:text-purple-600">{{ t(key="development_docs", lang=lang) }}</a>
-                        <ul class="submenu">
-                            <li><a href="/plugins/docs/static/plugin-dev-guide.html" target="_blank" class="block px-4 py-2 hover:bg-gray-100">{{ t(key="plugin_dev_guide", lang=lang) }}</a></li>
-                            <li><a href="/plugins/docs/static/theme-dev-guide.html" target="_blank" class="block px-4 py-2 hover:bg-gray-100">{{ t(key="theme_dev_guide", lang=lang) }}</a></li>
-                            <li><a href="/plugins/docs/static/main-program-dev-guide.html" target="_blank" class="block px-4 py-2 hover:bg-gray-100">{{ t(key="main_program_dev_docs", lang=lang) }}</a></li>
-                        </ul>
-                    </li>
+
+                  {{ hooks.nav | default(value='') | safe }}
+                  
                 </ul>
-            </div>
+            </div> 
 
             <!-- 右侧：语言切换 + 用户菜单 -->
             <div class="hidden md:flex items-center space-x-4 text-sm shrink-0">
@@ -375,5 +370,6 @@
     });
     </script>
     {% endif %}
+
 </body>
 </html>
