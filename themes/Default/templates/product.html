@@ -74,15 +74,15 @@
             </div>
         </div>
 
+            <!-- 按钮区域：加入购物车（不跳转） + 立即购买（跳转） -->
             <div class="flex space-x-4 mb-6">
-            <button id="add-to-cart-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg transition">
-                <i class="fas fa-shopping-cart mr-2"></i>{{ t(key="add_to_cart", lang=lang) }}
-            </button>
-            <!-- 可选：保留立即购买，暂时不可用 -->
-            <!-- <button id="buy-now" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg transition" disabled>
-                <i class="fas fa-bolt mr-2"></i>{{ t(key="buy_now", lang=lang) }}
-            </button> -->
-        </div>
+                <button id="add-to-cart-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg transition">
+                    <i class="fas fa-shopping-cart mr-2"></i>{{ t(key="add_to_cart", lang=lang) }}
+                </button>
+                <button id="buy-now-btn" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg transition">
+                    <i class="fas fa-bolt mr-2"></i>{{ t(key="buy_now", lang=lang) }}
+                </button>
+            </div>
             
             <!-- 卖点展示 - 每行带图标 -->
             {% if product.points %}
@@ -126,7 +126,7 @@
     </div>
     {% endif %}
 
-    <!-- ========== 产品属性区域（新增） ========== -->
+    <!-- ========== 产品属性区域 ========== -->
     <div id="product-attributes-container" class="mt-8 bg-white rounded-lg shadow-md p-6" style="display: none;">
         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
             <i class="fas fa-tags text-purple-500 mr-2"></i>{{ t(key="product_attributes", lang=lang) | default(value="产品属性") }}
@@ -136,7 +136,7 @@
         </div>
     </div>
 
-    <!-- 详细描述 - 移到下方 -->
+    <!-- 详细描述 -->
     {% if product.description %}
     <div class="mt-8 bg-white rounded-lg shadow-md p-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
@@ -164,7 +164,6 @@ var variantColors = [];
 var colorMap = {};
 var colorNameMap = {};
 // 从语言包获取部位名称翻译
-// 注意：这些 key 需要在语言包中预先定义
 var partTranslations = {
     "Waist": "{{ t(key='size_waist', lang=lang) }}",
     "Hip": "{{ t(key='size_hip', lang=lang) }}",
@@ -588,41 +587,14 @@ async function loadProductAttributes() {
     }
 }
 
-// 初始化变体
-async function initVariants() {
-    await loadColorConfig();
-    
-    if (!variants || variants.length === 0) {
-        updateThumbnails();
-        return;
-    }
-    
-    buildImagesByColor();
-    initColorButtons();
-    initSizeButtons();
-    
-    if (variants.length > 0) {
-        var firstVariant = variants[0];
-        if (firstVariant.color_name) {
-            selectedColor = firstVariant.color_name;
-            var colorBtn = document.querySelector('.color-option[data-color="' + selectedColor + '"]');
-            if (colorBtn) colorBtn.classList.add('ring-2', 'ring-purple-500');
-        }
-        if (firstVariant.size) {
-            selectedSize = firstVariant.size;
-            var sizeBtn = document.querySelector('.size-option[data-size="' + selectedSize + '"]');
-            if (sizeBtn) sizeBtn.classList.add('border-purple-500', 'bg-purple-50');
-        }
-        updateDisplay();
-    }
-}
+// ========== 购物车相关（核心修改） ==========
 
-// ========== 加入购物车 ==========
-async function addToCart() {
-    // 先检查认证
+// 通用加入购物车函数
+async function addToCartInternal(redirectAfterAdd) {
+    // 检查登录
     if (!await requireAuth()) return;
 
-    // 检查是否选择了变体（如果有变体）
+    // 检查变体选择（若有变体）
     let variantId = null;
     if (variants && variants.length > 0) {
         if (!selectedVariant) {
@@ -631,22 +603,61 @@ async function addToCart() {
         }
         variantId = selectedVariant.id;
     }
+
     const productId = "{{ product.id }}";
     const quantity = parseInt(document.getElementById('qty-value').textContent) || 1;
     if (quantity < 1) {
         alert('数量必须大于0');
         return;
     }
+
     try {
-        const result = await apiCall('POST', '/api/cart/items', { 
+        await apiCall('POST', '/api/cart/items', { 
             product_id: productId, 
             variant_id: variantId, 
             quantity 
         });
-        // 加入成功，跳转到购物车页面
-        window.location.href = '/user/cart';
+
+        if (redirectAfterAdd) {
+            // 立即购买：加入后跳转到购物车
+            window.location.href = '/user/cart';
+        } else {
+            // 加入购物车：提示成功，更新徽章（不跳转）
+            alert('已加入购物车！');
+            updateCartBadge();
+        }
     } catch (err) {
         alert('加入购物车失败: ' + err.message);
+    }
+}
+
+// 加入购物车（不跳转）
+async function addToCart() {
+    await addToCartInternal(false);
+}
+
+// 立即购买（加入后跳转购物车）
+async function buyNow() {
+    await addToCartInternal(true);
+}
+
+// 更新购物车徽章
+async function updateCartBadge() {
+    try {
+        const data = await apiCall('GET', '/api/cart/count');
+        const count = data.count || 0;
+        // 更新所有带有 cart-badge 类的元素
+        const badges = document.querySelectorAll('.cart-badge');
+        badges.forEach(badge => {
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'inline';
+            } else {
+                badge.style.display = 'none';
+            }
+        });
+    } catch (e) {
+        console.warn('更新购物车徽章失败:', e);
     }
 }
 
@@ -685,11 +696,40 @@ document.addEventListener('DOMContentLoaded', function() {
             qtyValue.textContent = current + 1;
         });
     }
+
     // 绑定加入购物车事件
-    var addToCartBtn = document.getElementById('add-to-cart-btn');
-    if (addToCartBtn) {
-        addToCartBtn.addEventListener('click', addToCart);
-    }
+    document.getElementById('add-to-cart-btn')?.addEventListener('click', addToCart);
+    // 绑定立即购买事件
+    document.getElementById('buy-now-btn')?.addEventListener('click', buyNow);
 });
+
+// 初始化变体（保留原有）
+async function initVariants() {
+    await loadColorConfig();
+    
+    if (!variants || variants.length === 0) {
+        updateThumbnails();
+        return;
+    }
+    
+    buildImagesByColor();
+    initColorButtons();
+    initSizeButtons();
+    
+    if (variants.length > 0) {
+        var firstVariant = variants[0];
+        if (firstVariant.color_name) {
+            selectedColor = firstVariant.color_name;
+            var colorBtn = document.querySelector('.color-option[data-color="' + selectedColor + '"]');
+            if (colorBtn) colorBtn.classList.add('ring-2', 'ring-purple-500');
+        }
+        if (firstVariant.size) {
+            selectedSize = firstVariant.size;
+            var sizeBtn = document.querySelector('.size-option[data-size="' + selectedSize + '"]');
+            if (sizeBtn) sizeBtn.classList.add('border-purple-500', 'bg-purple-50');
+        }
+        updateDisplay();
+    }
+}
 </script>
 {% endblock %}
