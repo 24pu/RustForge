@@ -64,12 +64,25 @@
                 </div>
             </div>
             {% endif %}
+            <!-- 数量选择器 -->
+        <div class="flex items-center space-x-4 mb-4">
+            <label class="text-sm font-medium text-gray-700">{{ t(key="quantity", lang=lang) }}</label>
+            <div class="flex items-center border rounded-md">
+                <button id="qty-decr" class="w-10 h-10 flex items-center justify-center hover:bg-gray-100 transition">−</button>
+                <span id="qty-value" class="w-12 text-center font-semibold">1</span>
+                <button id="qty-incr" class="w-10 h-10 flex items-center justify-center hover:bg-gray-100 transition">+</button>
+            </div>
+        </div>
 
             <div class="flex space-x-4 mb-6">
-                <button id="buy-now" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg transition">
-                    <i class="fas fa-shopping-cart mr-2"></i>{{ t(key="buy_now", lang=lang) }}
-                </button>
-            </div>
+            <button id="add-to-cart-btn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg transition">
+                <i class="fas fa-shopping-cart mr-2"></i>{{ t(key="add_to_cart", lang=lang) }}
+            </button>
+            <!-- 可选：保留立即购买，暂时不可用 -->
+            <!-- <button id="buy-now" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg transition" disabled>
+                <i class="fas fa-bolt mr-2"></i>{{ t(key="buy_now", lang=lang) }}
+            </button> -->
+        </div>
             
             <!-- 卖点展示 - 每行带图标 -->
             {% if product.points %}
@@ -604,16 +617,37 @@ async function initVariants() {
     }
 }
 
-// 购买按钮
-var buyBtn = document.getElementById('buy-now');
-if (buyBtn) {
-    buyBtn.addEventListener('click', function() {
-        if (selectedVariant) {
-            alert('购买: ' + selectedVariant.sku + '\n价格: ¥' + selectedVariant.price);
-        } else {
-            alert('购买: {{ product.name }}\n价格: ¥{{ product.price }}');
+// ========== 加入购物车 ==========
+async function addToCart() {
+    // 先检查认证
+    if (!await requireAuth()) return;
+
+    // 检查是否选择了变体（如果有变体）
+    let variantId = null;
+    if (variants && variants.length > 0) {
+        if (!selectedVariant) {
+            alert('请先选择颜色和尺码');
+            return;
         }
-    });
+        variantId = selectedVariant.id;
+    }
+    const productId = "{{ product.id }}";
+    const quantity = parseInt(document.getElementById('qty-value').textContent) || 1;
+    if (quantity < 1) {
+        alert('数量必须大于0');
+        return;
+    }
+    try {
+        const result = await apiCall('POST', '/api/cart/items', { 
+            product_id: productId, 
+            variant_id: variantId, 
+            quantity 
+        });
+        // 加入成功，跳转到购物车页面
+        window.location.href = '/user/cart';
+    } catch (err) {
+        alert('加入购物车失败: ' + err.message);
+    }
 }
 
 function escapeHtml(str) {
@@ -631,6 +665,31 @@ document.addEventListener('DOMContentLoaded', function() {
     initVariants();
     loadSizeTable();
     loadProductAttributes(); // 加载产品属性
+    
+    // 数量加减
+    const qtyDecr = document.getElementById('qty-decr');
+    const qtyIncr = document.getElementById('qty-incr');
+    const qtyValue = document.getElementById('qty-value');
+
+    if (qtyDecr && qtyValue) {
+        qtyDecr.addEventListener('click', function() {
+            let current = parseInt(qtyValue.textContent) || 1;
+            if (current > 1) {
+                qtyValue.textContent = current - 1;
+            }
+        });
+    }
+    if (qtyIncr && qtyValue) {
+        qtyIncr.addEventListener('click', function() {
+            let current = parseInt(qtyValue.textContent) || 1;
+            qtyValue.textContent = current + 1;
+        });
+    }
+    // 绑定加入购物车事件
+    var addToCartBtn = document.getElementById('add-to-cart-btn');
+    if (addToCartBtn) {
+        addToCartBtn.addEventListener('click', addToCart);
+    }
 });
 </script>
 {% endblock %}

@@ -12,6 +12,9 @@
     <meta name="keywords" content="{{ site_config.seo_keywords | default(value='') }}">
     <link rel="icon" href="{{ site_config.favicon_url | default(value='/uploads/favicon.svg') }}" type="image/svg+xml">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/admin/common.js"></script>
+    <!-- Font Awesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .nav-item {
             position: relative;
@@ -91,6 +94,85 @@
             margin-left: 50%;
             transform: translateX(-50%);
         }
+        /* 购物车徽章位置微调 */
+        .cart-badge {
+            position: absolute;
+            top: -6px;
+            right: -8px;
+            background-color: #ef4444;
+            color: white;
+            font-size: 10px;
+            border-radius: 9999px;
+            padding: 0.1rem 0.4rem;
+            min-width: 18px;
+            text-align: center;
+            line-height: 1.2;
+        }
+        /* 移动端导航列表容器内的所有 li 垂直排列 */
+        .mobile-nav-list li {
+            list-style: none;
+            position: relative;
+        }
+
+        /* 移动端的一级菜单项（桌面是 .nav-item，这里我们通用所有带子菜单的 li） */
+        .mobile-nav-list .nav-item {
+            position: relative;
+        }
+
+        /* 移动端 .nav-item 的父级链接 - 让它可点击并显示指示器 */
+        .mobile-nav-list .nav-item > a {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            cursor: pointer;
+        }
+
+        /* 为有子菜单的链接添加右箭头指示器（纯 CSS 方式） */
+        .mobile-nav-list .nav-item > a::after {
+            content: "▸";
+            font-size: 0.8rem;
+            transition: transform 0.2s;
+        }
+
+        /* 当子菜单展开时，旋转箭头 */
+        .mobile-nav-list .nav-item.open > a::after {
+            transform: rotate(90deg);
+        }
+
+        /* 移动端子菜单默认隐藏，并添加过渡效果 */
+        .mobile-nav-list .nav-item .submenu {
+            display: none;            /* 覆盖桌面默认的 display:block + visibility */
+            visibility: visible;      /* 重置可见性 */
+            opacity: 1;
+            position: static;         /* 不再绝对定位，跟随文档流 */
+            background: transparent;
+            box-shadow: none;
+            padding: 0 0 0 1rem;      /* 左缩进，形成层级 */
+            border-radius: 0;
+            white-space: normal;
+        }
+
+        /* 子菜单项样式 */
+        .mobile-nav-list .nav-item .submenu li {
+            padding: 0.25rem 0;
+        }
+
+        .mobile-nav-list .nav-item .submenu a {
+            display: block;
+            padding: 0.25rem 0;
+            color: #4b5563;           /* text-gray-600 */
+            font-size: 0.875rem;
+        }
+
+        .mobile-nav-list .nav-item .submenu a:hover {
+            color: #7c3aed;           /* purple-600 */
+        }
+
+        /* 当子菜单展开时显示 */
+        .mobile-nav-list .nav-item.open .submenu {
+            display: block;
+        }
     </style>
 </head>
 <body class="bg-white">
@@ -139,8 +221,11 @@
                 </ul>
             </div> 
 
-            <!-- 右侧：语言切换 + 用户菜单 -->
+            <!-- 右侧：购物车 + 语言切换 + 用户菜单 -->
             <div class="hidden md:flex items-center space-x-4 text-sm shrink-0">
+                
+               
+
                 <!-- 语言切换下拉 -->
                 <div class="lang-dropdown">
                     <button class="text-gray-600 hover:text-purple-600 py-2">
@@ -155,6 +240,7 @@
                         {% endfor %}
                     </div>
                 </div>
+                
 
                 <!-- 用户菜单 -->
                 {% if user_info and user_info.is_logged_in %}
@@ -166,7 +252,7 @@
                             </svg>
                         </button>
                         <div class="dropdown-menu">
-                            <a href="/plugins/user-center/profile" class="block px-4 py-2 hover:bg-gray-100">{{ t(key="user_center", lang=lang) }}</a>
+                            <a href="/user/profile" class="block px-4 py-2 hover:bg-gray-100">{{ t(key="user_center", lang=lang) }}</a>
                             <a href="/admin/" class="block px-4 py-2 hover:bg-gray-100">{{ t(key="admin_panel", lang=lang) }}</a>
                             <hr class="my-1">
                             <a href="#" id="logout-link-desktop" class="block px-4 py-2 hover:bg-gray-100 text-red-600">{{ t(key="logout", lang=lang) }}</a>
@@ -174,10 +260,18 @@
                     </div>
                 {% else %}
                     <div class="flex items-center space-x-3">
-                        <a href="/plugins/user-center/login" class="text-purple-600 hover:underline">{{ t(key="login", lang=lang) }}</a>
-                        <a href="/plugins/user-center/register" class="text-gray-600 hover:underline">{{ t(key="register", lang=lang) }}</a>
+                        <a href="/login" class="text-purple-600 hover:underline">{{ t(key="login", lang=lang) }}</a>
+                        <a href="/register" class="text-gray-600 hover:underline">{{ t(key="register", lang=lang) }}</a>
                     </div>
                 {% endif %}
+                <!-- 购物车图标（仅登录用户可见） -->
+                 {% if user_info and user_info.is_logged_in %}
+                <a href="/user/cart" class="relative text-gray-600 hover:text-purple-600 py-2" title="{{ t(key="cart", lang=lang) }}">
+                    <i class="fas fa-shopping-cart text-xl"></i>
+                    <span id="cart-badge-desktop" class="cart-badge" style="display:none;">0</span>
+                </a>
+                {% endif %}
+
             </div>
 
             <!-- 移动端汉堡按钮 -->
@@ -213,21 +307,21 @@
                         {% endif %}
                     </li>
                 {% endfor %}
-                <li class="mt-2">
-                    <span class="block py-1 font-semibold text-gray-700">{{ t(key="development_docs", lang=lang) }}</span>
-                    <ul class="mobile-submenu pl-4">
-                        <li><a href="/plugins/docs/static/plugin-dev-guide.html" target="_blank" class="block py-1 text-sm text-gray-600 hover:text-purple-600">{{ t(key="plugin_dev_guide", lang=lang) }}</a></li>
-                        <li><a href="/plugins/docs/static/theme-dev-guide.html" target="_blank" class="block py-1 text-sm text-gray-600 hover:text-purple-600">{{ t(key="theme_dev_guide", lang=lang) }}</a></li>
-                        <li><a href="/plugins/docs/static/main-program-dev-guide.html" target="_blank" class="block py-1 text-sm text-gray-600 hover:text-purple-600">{{ t(key="main_program_dev_docs", lang=lang) }}</a></li>
-                    </ul>
-                </li>
+                 <!-- ===== 钩子导航（移动端） ===== -->
+        {{ hooks.nav | default(value='') | safe }}
+              
             </ul>
 
             <!-- 移动端用户区域 -->
             <div class="px-4 py-2 border-t text-sm space-y-2">
                 {% if user_info and user_info.is_logged_in %}
                     <div class="text-gray-600">👤 {{ user_info.user_name | default(value="用户") }}</div>
-                    <a href="/plugins/user-center/profile" class="block text-purple-600 hover:underline">{{ t(key="user_center", lang=lang) }}</a>
+                    <!-- 移动端购物车 -->
+                    <a href="/user/cart" class="flex items-center text-purple-600 hover:underline">
+                        <i class="fas fa-shopping-cart mr-2"></i>{{ t(key="cart", lang=lang) }}
+                        <span id="cart-badge-mobile" class="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 ml-2" style="display:none;">0</span>
+                    </a>
+                    <a href="/user/profile" class="block text-purple-600 hover:underline">{{ t(key="user_center", lang=lang) }}</a>
                     <a href="/admin/" class="block text-purple-600 hover:underline">{{ t(key="admin_panel", lang=lang) }}</a>
                     <a href="#" id="logout-link-mobile" class="block text-red-600 hover:underline">{{ t(key="logout", lang=lang) }}</a>
 
@@ -244,8 +338,8 @@
                         </div>
                     </div>
                 {% else %}
-                    <a href="/plugins/user-center/login" class="block text-purple-600 hover:underline">{{ t(key="login", lang=lang) }}</a>
-                    <a href="/plugins/user-center/register" class="block text-gray-600 hover:underline">{{ t(key="register", lang=lang) }}</a>
+                    <a href="/login" class="block text-purple-600 hover:underline">{{ t(key="login", lang=lang) }}</a>
+                    <a href="/register" class="block text-gray-600 hover:underline">{{ t(key="register", lang=lang) }}</a>
 
                     <!-- 移动端语言切换 -->
                     <div class="pt-2 border-t mt-2">
@@ -289,6 +383,37 @@
                 mobileMenu.classList.toggle('hidden');
             });
         }
+        // 移动端导航子菜单切换（处理钩子内的 .nav-item 以及系统分类的子菜单）
+function initMobileNav() {
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (!mobileMenu) return;
+
+    // 查找所有包含子菜单的 li（包括钩子内的 .nav-item 和系统分类的 li 含有 .mobile-submenu）
+    // 我们统一处理：找到所有 li 下直接包含 ul 的 li
+    const menuItems = mobileMenu.querySelectorAll('li:has(ul)');
+    menuItems.forEach(item => {
+        const link = item.querySelector('a:first-child');
+        if (!link) return;
+
+        // 只处理 .mobile-nav-list 内部的（或者全局移动菜单内的）
+        // 如果是系统分类的 .mobile-submenu，我们也可以用相同逻辑，但已有样式不同，为统一起见，我们统一使用点击切换
+        // 但为了不影响系统分类原有样式，我们可以判断是否包含 .mobile-submenu 或 .submenu
+        const submenu = item.querySelector('ul.submenu') || item.querySelector('ul.mobile-submenu');
+        if (!submenu) return;
+
+        // 阻止链接跳转（如果是纯导航链接，需保留；但此处我们希望点击父级时只展开/折叠，不跳转）
+        // 如果父级链接本身有 href 且不想跳转，可以阻止默认行为，或者使用 data-toggle 属性
+        // 我们采用更安全方式：检查是否包含子菜单，如果包含，则阻止点击跳转，只作切换
+        link.addEventListener('click', function(e) {
+            // 如果点击的是父级链接，我们不进行页面跳转
+            e.preventDefault();
+            // 切换当前 li 的 open 类
+            item.classList.toggle('open');
+        });
+    });
+}
+
+
 
         // 语言切换函数
         function switchLang(lang) {
@@ -306,7 +431,6 @@
                 if (!response.ok) throw new Error('加载失败');
                 const categories = await response.json();
                 
-                // 渲染桌面端下拉菜单
                 const desktopSubmenu = document.getElementById('products-submenu-desktop');
                 if (desktopSubmenu && categories.length > 0) {
                     desktopSubmenu.innerHTML = categories.map(cat => `
@@ -316,7 +440,6 @@
                     desktopSubmenu.innerHTML = '<li><a href="/products" class="block px-4 py-2 hover:bg-gray-100">所有产品</a></li>';
                 }
                 
-                // 渲染移动端下拉菜单
                 const mobileSubmenu = document.getElementById('products-submenu-mobile');
                 if (mobileSubmenu && categories.length > 0) {
                     mobileSubmenu.innerHTML = categories.map(cat => `
@@ -347,21 +470,49 @@
                 return m;
             });
         }
-        
-        // 页面加载完成后加载产品分类
-        document.addEventListener('DOMContentLoaded', loadProductCategories);
+
+        // ========== 更新购物车徽章 ==========
+        async function updateCartBadge() {
+            try {
+                const cart = await apiCall('GET', '/api/cart/count');
+                const count = cart.count || 0;
+                const desktopBadge = document.getElementById('cart-badge-desktop');
+                const mobileBadge = document.getElementById('cart-badge-mobile');
+                if (count > 0) {
+                    if (desktopBadge) { desktopBadge.textContent = count; desktopBadge.style.display = 'inline'; }
+                    if (mobileBadge) { mobileBadge.textContent = count; mobileBadge.style.display = 'inline'; }
+                } else {
+                    if (desktopBadge) desktopBadge.style.display = 'none';
+                    if (mobileBadge) mobileBadge.style.display = 'none';
+                }
+            } catch (e) {
+                console.warn('加载购物车数量失败:', e);
+            }
+        }
+
+        // 页面加载完成后加载产品分类和购物车数量
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProductCategories();
+            updateCartBadge();
+            initMobileNav();
+        });
     </script>
 
-    <!-- 退出登录脚本（仅登录用户可见） -->
+    <!-- 退出登录脚本（使用 common.js 中的 logout） -->
     {% if user_info and user_info.is_logged_in %}
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         function handleLogout(e) {
             e.preventDefault();
-            fetch('/api/logout', { method: 'POST', credentials: 'include' })
-                .finally(() => {
-                    window.location.href = '/';
-                });
+            if (typeof logout === 'function') {
+                logout();
+            } else {
+                fetch('/api/logout', { method: 'POST', credentials: 'include' })
+                    .finally(() => {
+                        const isAdmin = window.location.pathname.startsWith('/admin');
+                        window.location.href = isAdmin ? '/admin/login.html' : '/login';
+                    });
+            }
         }
         const desktopLogout = document.getElementById('logout-link-desktop');
         if (desktopLogout) desktopLogout.addEventListener('click', handleLogout);

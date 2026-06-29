@@ -1,0 +1,256 @@
+{% extends "user_center_base.html" %}
+
+{% block title_prefix %}{{ t(key="my_orders", lang=lang) }} - {{ site_config.site_name }}{% endblock %}
+
+{% block user_content %}
+<h2 class="text-2xl font-bold text-gray-800 mb-6">{{ t(key="my_orders", lang=lang) }}</h2>
+
+<!-- 状态筛选 -->
+<div class="flex flex-wrap gap-2 mb-6">
+    <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="">{{ t(key="all", lang=lang) }}</button>
+    <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="pending">{{ t(key="status_pending", lang=lang) }}</button>
+    <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="paid">{{ t(key="status_paid", lang=lang) }}</button>
+    <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="shipped">{{ t(key="status_shipped", lang=lang) }}</button>
+    <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="completed">{{ t(key="status_completed", lang=lang) }}</button>
+    <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="cancelled">{{ t(key="status_cancelled", lang=lang) }}</button>
+</div>
+
+<div id="orders-container" class="space-y-4">
+    <div class="text-center text-gray-500 py-8">{{ t(key="loading", lang=lang) }}</div>
+</div>
+
+<div id="pagination" class="flex justify-between items-center mt-6">
+    <span id="page-info" class="text-sm text-gray-600"></span>
+    <div class="flex gap-2">
+        <button id="prev-page" class="px-4 py-1 border rounded hover:bg-gray-50 disabled:opacity-50">{{ t(key="prev_page", lang=lang) }}</button>
+        <span id="page-current" class="px-4 py-1 border rounded bg-purple-600 text-white">1</span>
+        <button id="next-page" class="px-4 py-1 border rounded hover:bg-gray-50 disabled:opacity-50">{{ t(key="next_page", lang=lang) }}</button>
+    </div>
+</div>
+
+<!-- 订单详情模态框（已修复居中） -->
+<div id="detail-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">{{ t(key="order_detail", lang=lang) }}</h3>
+            <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+        </div>
+        <div id="detail-content"></div>
+    </div>
+</div>
+
+<script>
+    let currentPage = 1;
+    let currentStatus = '';
+    let allOrders = [];
+
+    const translations = {
+        'order_detail': '{{ t(key="order_detail", lang=lang) }}',
+        'status_pending': '{{ t(key="status_pending", lang=lang) }}',
+        'status_paid': '{{ t(key="status_paid", lang=lang) }}',
+        'status_shipped': '{{ t(key="status_shipped", lang=lang) }}',
+        'status_completed': '{{ t(key="status_completed", lang=lang) }}',
+        'status_cancelled': '{{ t(key="status_cancelled", lang=lang) }}',
+        'loading': '{{ t(key="loading", lang=lang) }}',
+        'no_orders': '{{ t(key="no_orders", lang=lang) }}',
+        'load_failed': '{{ t(key="load_failed", lang=lang) }}',
+        'prev_page': '{{ t(key="prev_page", lang=lang) }}',
+        'next_page': '{{ t(key="next_page", lang=lang) }}',
+        'order_number': '{{ t(key="order_number", lang=lang) }}',
+        'status': '{{ t(key="status", lang=lang) }}',
+        'recipient': '{{ t(key="recipient", lang=lang) }}',
+        'phone': '{{ t(key="phone", lang=lang) }}',
+        'address': '{{ t(key="address", lang=lang) }}',
+        'note': '{{ t(key="note", lang=lang) }}',
+        'created_at': '{{ t(key="created_at", lang=lang) }}',
+        'paid_at': '{{ t(key="paid_at", lang=lang) }}',
+        'total_amount': '{{ t(key="total_amount", lang=lang) }}',
+    };
+
+    function __(key) { return translations[key] || key; }
+
+    async function loadOrders(status = '') {
+        const container = document.getElementById('orders-container');
+        container.innerHTML = `<div class="text-center text-gray-500 py-8">${__('loading')}</div>`;
+
+        try {
+            if (allOrders.length === 0) {
+                const data = await apiCall('GET', '/api/orders');
+                allOrders = Array.isArray(data) ? data : (data.items || data.orders || []);
+            }
+
+            let filtered = allOrders;
+            if (status) {
+                filtered = allOrders.filter(o => o.status === status);
+            }
+            filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            renderOrders(filtered);
+            updatePagination(filtered.length);
+        } catch (err) {
+            container.innerHTML = `<div class="text-center text-red-500 py-8">${__('load_failed')}</div>`;
+        }
+    }
+
+    function renderOrders(orders) {
+        const container = document.getElementById('orders-container');
+        if (!orders || orders.length === 0) {
+            container.innerHTML = `<div class="text-center text-gray-500 py-8">${__('no_orders')}</div>`;
+            return;
+        }
+
+        const statusMap = {
+            pending: __('status_pending'),
+            paid: __('status_paid'),
+            shipped: __('status_shipped'),
+            completed: __('status_completed'),
+            cancelled: __('status_cancelled')
+        };
+        const statusClass = {
+            pending: 'bg-yellow-100 text-yellow-800',
+            paid: 'bg-blue-100 text-blue-800',
+            shipped: 'bg-green-100 text-green-800',
+            completed: 'bg-green-100 text-green-800',
+            cancelled: 'bg-red-100 text-red-800'
+        };
+
+        let html = '';
+        for (const order of orders) {
+            const created = new Date(order.created_at).toLocaleString('zh-CN');
+            html += `
+                <div class="border rounded-lg p-4 hover:shadow transition">
+                    <div class="flex flex-wrap justify-between items-start cursor-pointer" onclick="viewOrder('${order.id}')">
+                        <div>
+                            <div class="font-medium text-gray-800">#${order.order_number}</div>
+                            <div class="text-sm text-gray-500">${created}</div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg font-semibold text-red-600">¥${order.total_amount.toFixed(2)}</span>
+                            <span class="px-2 py-1 rounded text-xs font-medium ${statusClass[order.status] || 'bg-gray-100'}">${statusMap[order.status] || order.status}</span>
+                        </div>
+                    </div>
+                    <div class="text-sm text-gray-600 mt-2">
+                        ${__('recipient')}：${order.shipping_name || '-'} | ${__('phone')}：${order.shipping_phone || '-'}
+                    </div>
+                    <!-- 操作按钮 -->
+                    <div class="mt-3 flex justify-end gap-2 border-t pt-2">
+                        ${(order.status === 'pending' || order.status === 'paid') ? `
+                            <button onclick="cancelOrder('${order.id}')" class="text-sm text-red-600 hover:text-red-800 border border-red-300 px-3 py-1 rounded hover:bg-red-50 transition">
+                                {{ t(key="cancel_order", lang=lang) }}
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    function updatePagination(total) {
+        document.getElementById('page-info').textContent = `共 ${total} 条`;
+        document.getElementById('page-current').textContent = '1';
+        document.getElementById('prev-page').disabled = true;
+        document.getElementById('next-page').disabled = true;
+    }
+
+    // 取消订单
+    async function cancelOrder(orderId) {
+        if (!confirm('{{ t(key="confirm_cancel_order", lang=lang) }}')) return;
+        try {
+            await apiCall('POST', `/api/orders/${orderId}/cancel`);
+            alert('{{ t(key="order_cancelled_success", lang=lang) }}');
+            allOrders = [];
+            loadOrders(currentStatus);
+        } catch (err) {
+            alert('{{ t(key="order_cancel_failed", lang=lang) }}: ' + (err.message || ''));
+        }
+    }
+
+    // 查看订单详情
+    async function viewOrder(orderId) {
+        try {
+            const order = await apiCall('GET', `/api/orders/${orderId}`);
+            const detailContent = document.getElementById('detail-content');
+            const statusMap = {
+                pending: __('status_pending'),
+                paid: __('status_paid'),
+                shipped: __('status_shipped'),
+                completed: __('status_completed'),
+                cancelled: __('status_cancelled')
+            };
+            const statusClass = {
+                pending: 'bg-yellow-100 text-yellow-800',
+                paid: 'bg-blue-100 text-blue-800',
+                shipped: 'bg-green-100 text-green-800',
+                completed: 'bg-green-100 text-green-800',
+                cancelled: 'bg-red-100 text-red-800'
+            };
+
+            let itemsHtml = '';
+            if (order.items && order.items.length > 0) {
+                itemsHtml = `
+                    <div class="mt-4 border-t pt-4">
+                        <h4 class="font-medium text-gray-700 mb-2">商品明细</h4>
+                        <div class="space-y-2">
+                            ${order.items.map(item => `
+                                <div class="flex justify-between text-sm border-b pb-2">
+                                    <span>${escapeHtml(item.product_name)} ${item.variant_sku ? '('+escapeHtml(item.variant_sku)+')' : ''}</span>
+                                    <span>×${item.quantity}  ¥${item.price.toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="text-right font-bold mt-2">${__('total_amount')}：¥${order.total_amount.toFixed(2)}</div>
+                    </div>
+                `;
+            }
+
+            detailContent.innerHTML = `
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div><span class="text-gray-500">${__('order_number')}</span><br><span class="font-medium">${escapeHtml(order.order_number)}</span></div>
+                    <div><span class="text-gray-500">${__('status')}</span><br><span class="px-2 py-1 rounded text-xs font-medium ${statusClass[order.status] || 'bg-gray-100'}">${statusMap[order.status] || order.status}</span></div>
+                    <div><span class="text-gray-500">${__('recipient')}</span><br><span class="font-medium">${escapeHtml(order.shipping_name || '-')}</span></div>
+                    <div><span class="text-gray-500">${__('phone')}</span><br><span class="font-medium">${escapeHtml(order.shipping_phone || '-')}</span></div>
+                    <div class="col-span-2"><span class="text-gray-500">${__('address')}</span><br><span class="font-medium">${escapeHtml(order.shipping_address || '-')}</span></div>
+                    ${order.note ? `<div class="col-span-2"><span class="text-gray-500">${__('note')}</span><br><span class="font-medium">${escapeHtml(order.note)}</span></div>` : ''}
+                    <div><span class="text-gray-500">${__('created_at')}</span><br><span class="font-medium">${new Date(order.created_at).toLocaleString('zh-CN')}</span></div>
+                    ${order.paid_at ? `<div><span class="text-gray-500">${__('paid_at')}</span><br><span class="font-medium">${new Date(order.paid_at).toLocaleString('zh-CN')}</span></div>` : ''}
+                </div>
+                ${itemsHtml}
+            `;
+            document.getElementById('detail-modal').classList.remove('hidden');
+        } catch (err) {
+            alert(__('load_failed') + ': ' + err.message);
+        }
+    }
+
+    // 模态框关闭
+    document.getElementById('close-modal').addEventListener('click', function() {
+        document.getElementById('detail-modal').classList.add('hidden');
+    });
+    document.getElementById('detail-modal').addEventListener('click', function(e) {
+        if (e.target === this) this.classList.add('hidden');
+    });
+
+    // 筛选按钮
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('bg-purple-100', 'border-purple-500'));
+            this.classList.add('bg-purple-100', 'border-purple-500');
+            currentStatus = this.dataset.status;
+            if (allOrders.length > 0) {
+                loadOrders(currentStatus);
+            } else {
+                loadOrders(currentStatus);
+            }
+        });
+    });
+    document.querySelector('.filter-btn[data-status=""]')?.classList.add('bg-purple-100', 'border-purple-500');
+
+    // 翻页（禁用的占位）
+    document.getElementById('prev-page').addEventListener('click', () => {});
+    document.getElementById('next-page').addEventListener('click', () => {});
+
+    // 初始化
+    loadOrders();
+</script>
+{% endblock %}

@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::presentation::AppState;
 use crate::presentation::middleware::CurrentUser;
 use crate::presentation::handlers::utils::check_permission;
-use crate::core::models::{CreatePluginHookRequest, UpdatePluginHookRequest};  // 新增导入
+use crate::core::models::{CreatePluginHookRequest, UpdatePluginHookRequest};
 use crate::core::PluginHookRepository;
 use crate::infrastructure::db::plugin_hook_repo::PostgresPluginHookRepo;
 
@@ -38,12 +38,10 @@ pub struct UpdateHookRequest {
     pub content: Option<String>,
     pub sort_order: Option<i32>,
     pub enabled: Option<bool>,
-    pub lang: Option<String>,  // 新增
+    pub lang: Option<String>,
 }
 
 // ---------- 处理器 ----------
-
-
 
 pub async fn list_plugin_hooks(
     CurrentUser(user_opt): CurrentUser,
@@ -51,7 +49,6 @@ pub async fn list_plugin_hooks(
     Path(plugin_name): Path<String>,
     Query(params): Query<ListHookParams>,
 ) -> impl IntoResponse {
-    // ... 权限检查保持不变 ...
     let user_id = match user_opt {
         Some(id) => id,
         None => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
@@ -63,7 +60,6 @@ pub async fn list_plugin_hooks(
     let repo = PostgresPluginHookRepo::new(state.db_pool.clone());
     
     let hooks = if let Some(hook_name) = params.hook_name {
-        // 如果指定了 hook_name，则按钩子名和语言查询
         let lang = params.lang.unwrap_or_else(|| "".to_string());
         match repo.list_by_hook(&hook_name, &lang, params.enabled).await {
             Ok(h) => h,
@@ -73,7 +69,6 @@ pub async fn list_plugin_hooks(
             }
         }
     } else {
-        // 否则返回该插件的所有钩子
         match repo.list_by_plugin(&plugin_name, params.enabled).await {
             Ok(h) => h,
             Err(e) => {
@@ -83,7 +78,6 @@ pub async fn list_plugin_hooks(
         }
     };
 
-    // 无需再过滤，因为 list_by_plugin 已经按插件名查询了
     (StatusCode::OK, Json(hooks)).into_response()
 }
 
@@ -136,15 +130,13 @@ pub async fn update_plugin_hook(
 
     let repo = PostgresPluginHookRepo::new(state.db_pool.clone());
 
-    // 先检查钩子是否存在且属于该插件
     match repo.get_by_id(hook_id).await {
         Ok(Some(hook)) if hook.plugin_name == plugin_name => {
-            // 可以更新
             let req = UpdatePluginHookRequest {
                 content: payload.content,
                 sort_order: payload.sort_order,
                 enabled: payload.enabled,
-                lang: payload.lang,   // 新增
+                lang: payload.lang,
             };
             match repo.update(hook_id, &req).await {
                 Ok(updated) => (StatusCode::OK, Json(updated)).into_response(),
@@ -174,7 +166,6 @@ pub async fn delete_plugin_hook(
 
     let repo = PostgresPluginHookRepo::new(state.db_pool.clone());
 
-    // 检查钩子是否属于该插件
     match repo.get_by_id(hook_id).await {
         Ok(Some(hook)) if hook.plugin_name == plugin_name => {
             match repo.delete(hook_id).await {
@@ -184,5 +175,52 @@ pub async fn delete_plugin_hook(
         }
         Ok(None) => (StatusCode::NOT_FOUND, "钩子不存在").into_response(),
         _ => (StatusCode::FORBIDDEN, "无权操作").into_response(),
+    }
+}
+
+// ========== 新增：管理员全局钩子列表 ==========
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ListAllHooksParams {
+    pub page: Option<i64>,
+    pub per_page: Option<i64>,
+}
+
+/// 管理员获取所有钩子（全局，不分插件）
+pub async fn admin_list_all_hooks_handler(
+    CurrentUser(user_opt): CurrentUser,
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<ListAllHooksParams>,
+) -> impl IntoResponse {
+    let user_id = match user_opt {
+        Some(id) => id,
+        None => return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response(),
+    };
+
+    // 检查权限（需要 plugin:list 或 admin 权限）
+    if let Err((status, msg)) = check_permission(Some(user_id), &state.user_repo, "plugin:list").await {
+        return (status, msg).into_response();
+    }
+
+    let page = params.page.unwrap_or(1).max(1);
+    let per_page = params.per_page.unwrap_or(20).min(100);
+
+    let repo = PostgresPluginHookRepo::new(state.db_pool.clone());
+    match repo.list_all_hooks(page, per_page).await {
+        Ok((hooks, total)) => {
+            let total_pages = (total + per_page - 1) / per_page;
+            let resp = serde_json::json!({
+                "items": hooks,
+                "total": total,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": total_pages,
+            });
+            (StatusCode::OK, Json(resp)).into_response()
+        }
+        Err(e) => {
+            eprintln!("获取全局钩子列表失败: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "获取钩子列表失败").into_response()
+        }
     }
 }

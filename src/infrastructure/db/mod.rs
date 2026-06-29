@@ -12,11 +12,17 @@ pub mod attribute_repo; // <-- 新增模块
 pub mod product_repo;
 pub mod plugin_hook_repo;
 
+pub mod cart_repo;
+pub mod order_repo;
 
+pub use cart_repo::PostgresCartRepo;
+pub use order_repo::PostgresOrderRepo;
 
 pub use product_repo::PostgresProductRepo;
 
 pub use plugin_repo::PostgresPluginRepo;
+pub use plugin_hook_repo::PostgresPluginHookRepo;
+
 pub use media_repo::PostgresMediaRepo;
 pub use media_folder_repo::PostgresMediaFolderRepo;
 use sqlx::postgres::PgPoolOptions;

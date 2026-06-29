@@ -213,6 +213,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .route("/api/admin/product-categories/:id", get(get_product_category_handler))
         .route("/api/admin/product-categories/:id", put(update_product_category_handler))
         .route("/api/admin/product-categories/:id", delete(delete_product_category_handler))
+        
         // 产品路由
         .route("/api/admin/products", get(list_products_handler).post(create_product_handler))
         .route("/api/admin/products/:id", get(get_product_handler).put(update_product_handler).delete(delete_product_handler))
@@ -220,14 +221,32 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .route("/api/admin/products/:id/variants", get(list_variants_handler).post(generate_variants_by_rule_handler))
         .route("/api/admin/products/variants/:variant_id", put(update_variant_handler).delete(delete_variant_handler))
         .route("/admin/product-attributes.html", get(|| async { 
-    axum::response::Html(include_str!("../../frontend/dist/admin/product-attributes.html"))
-}))
+            axum::response::Html(include_str!("../../frontend/dist/admin/product-attributes.html"))
+        }))
         // 在 protected_api 中添加
         .route("/api/admin/products/export", post(export_selected_products_handler))
         // 图片
         .route("/api/admin/products/:id/images", get(get_product_images_handler).post(upload_product_images_handler))
         .route("/api/admin/products/:product_id/images/:image_id", delete(delete_product_image_handler))
         .route("/api/admin/products/:id/images/reorder", post(reorder_product_images_handler))
+        // ========== 用户中心 ==========
+        // 购物车
+        .route("/api/cart", get(get_cart_handler))
+        .route("/api/cart/items", post(add_to_cart_handler))
+        .route("/api/cart/items/:id", put(update_cart_item_handler).delete(remove_cart_item_handler))
+        .route("/api/cart/clear", delete(clear_cart_handler))
+        .route("/api/cart/count", get(get_cart_count_handler))
+        // 订单
+        .route("/api/orders", get(list_orders_handler).post(create_order_handler))
+        .route("/api/orders/:id", get(get_order_handler))
+        .route("/api/orders/stats", get(get_order_stats_handler))
+        .route("/api/admin/orders/:id", get(get_order_handler))
+        .route("/api/admin/orders", get(admin_list_orders_handler))
+        .route("/api/admin/orders/stats", get(admin_order_stats_handler))
+        .route("/api/orders/:id/cancel", post(cancel_order_handler))
+        .route("/api/admin/hooks", get(admin_list_all_hooks_handler))
+        // ========== 订单管理 ==========
+
         .layer(axum::middleware::from_fn(auth_middleware));
 
     let admin_assets = ServeDir::new("frontend/dist/admin");
@@ -245,6 +264,14 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     let app = Router::new()
         .route("/", get(home_handler))
         .route("/search", get(search_page_handler))
+        // ---- 用户中心页面 ----
+        .route("/user/profile", get(user_profile_handler))
+        .route("/user/orders", get(user_orders_handler))
+        .route("/user/cart", get(user_cart_handler))
+        // ---- 注册/登录页面 ----
+        .route("/login", get(login_page_handler))
+        .route("/register", get(register_page_handler))
+        .route("/user/password", get(user_password_handler))
         // 前台产品路由
         .route("/api/public/products/hot", get(get_hot_products_handler))
         .route("/api/public/products", get(get_public_products_handler))

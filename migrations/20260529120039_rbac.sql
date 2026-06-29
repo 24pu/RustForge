@@ -48,7 +48,9 @@ INSERT INTO permissions (name, description, module) VALUES
     ('plugin:list', '查看插件列表', 'plugin'),
     ('plugin:install', '安装插件', 'plugin'),
     ('plugin:uninstall', '卸载插件', 'plugin'),
-    ('plugin:manage', '启用/禁用插件', 'plugin')
+    ('plugin:manage', '启用/禁用插件', 'plugin'),
+    ('order:list', '查看订单列表', 'order'),
+    ('order:manage', '订单管理', 'order')
 ON CONFLICT (name) DO NOTHING;
 
 -- 清空原有角色权限关系，重新分配

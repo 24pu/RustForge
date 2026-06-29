@@ -11,7 +11,3 @@ CREATE TABLE IF NOT EXISTS plugins (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 插入示例插件（如果名称冲突则跳过）
-INSERT INTO plugins (name, version, author, description, file_path, enabled) VALUES
-    ('user-center', '1.0.0', 'RustForge Team', '用户中心插件，提供个人资料等功能', 'plugins/user-center/user_center.wasm', true)
-ON CONFLICT (name) DO NOTHING;

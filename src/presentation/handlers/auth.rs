@@ -8,24 +8,18 @@ use crate::presentation::types::*;
 use crate::presentation::middleware::CurrentUser;
 use crate::infrastructure::auth::generate_token;
 use crate::core::UserRepository;
-use uuid::Uuid;  // 虽然未直接使用，但可能间接需要
+use uuid::Uuid;
 use sqlx;
-use tower_cookies::{Cookie, Cookies};  // 确保导入
-
+use tower_cookies::{Cookie, Cookies};
 use serde::Deserialize;
 
-
-
-
 pub async fn logout_handler(cookies: Cookies) -> impl IntoResponse {
-    // 构造一个过期的 Cookie，属性与登录时一致
-    let  removal = Cookie::build(("auth_token", ""))
+    let removal = Cookie::build(("auth_token", ""))
         .path("/")
         .http_only(true)
         .same_site(tower_cookies::cookie::SameSite::Lax)
-        .max_age(tower_cookies::cookie::time::Duration::seconds(0)) // 立即过期
+        .max_age(tower_cookies::cookie::time::Duration::seconds(0))
         .build();
-    // 也可以设置过去的 expires，但 max_age(0) 足够
     cookies.add(removal);
     Json(json!({ "message": "Logged out" }))
 }
@@ -42,7 +36,7 @@ pub async fn register_handler(
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "Failed to hash password" }))).into_response(),
     };
     match state.user_repo.create_user(&payload.email, &hashed, payload.name.as_deref()).await {
-        Ok(_) => (StatusCode::CREATED, Json(json!({ "message": "User registered" }))).into_response(),
+        Ok(_) => (StatusCode::CREATED, Json(json!({ "success": true, "message": "User registered" }))).into_response(),
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "Failed to create user" }))).into_response(),
     }
 }
@@ -63,24 +57,24 @@ pub async fn login_handler(
     if !valid {
         return (StatusCode::UNAUTHORIZED, Json(json!({ "error": "Invalid credentials" }))).into_response();
     }
-        let token = match generate_token(user.id) {
+    let token = match generate_token(user.id) {
         Ok(t) => t,
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": "Failed to generate token" }))).into_response(),
     };
 
-    // ----- 关键：设置 Cookie -----
     cookies.add(
         Cookie::build(("auth_token", token.clone()))
-            .path("/")                     // 全站可用
-            .http_only(true)               // 防止 JS 读取
+            .path("/")
+            .http_only(true)
             .same_site(tower_cookies::cookie::SameSite::Lax)
             .build(),
     );
 
-    (StatusCode::OK, Json(LoginResponse {
-        message: "Login successful".into(),
-        token,   // 仍可返回，但前端不再需要手动存
-    })).into_response()
+    (StatusCode::OK, Json(json!({
+        "success": true,
+        "message": "Login successful",
+        "token": token
+    }))).into_response()
 }
 
 pub async fn me_handler(
@@ -132,80 +126,69 @@ pub async fn my_permissions_handler(
     (StatusCode::OK, Json(permissions)).into_response()
 }
 
-
-
 #[derive(Deserialize)]
 pub struct ChangePasswordRequest {
     pub old_password: String,
     pub new_password: String,
 }
 
-
-
-
-
 pub async fn change_password_handler(
     CurrentUser(user_id): CurrentUser,
     State(state): State<Arc<AppState>>,
     Json(payload): Json<ChangePasswordRequest>,
 ) -> impl IntoResponse {
-    // 1. 确认用户已登录
     let user_id = match user_id {
         Some(id) => id,
         None => {
-            eprintln!("[change_password] Unauthorized: user_id is None");
+            //eprintln!("[change_password] Unauthorized: user_id is None");
             return (StatusCode::UNAUTHORIZED, Json(json!({"error": "Unauthorized"}))).into_response();
         }
     };
-    eprintln!("[change_password] User ID: {}", user_id);
+   // eprintln!("[change_password] User ID: {}", user_id);
 
-    // 2. 从数据库获取用户（必须包含 password_hash）
     let user = match state.user_repo.get_user_by_id(user_id).await {
         Ok(Some(u)) => u,
         Ok(None) => {
-            eprintln!("[change_password] User not found");
+            //eprintln!("[change_password] User not found");
             return (StatusCode::NOT_FOUND, Json(json!({"error": "User not found"}))).into_response();
         }
         Err(e) => {
-            eprintln!("[change_password] Database error: {:?}", e);
+            //eprintln!("[change_password] Database error: {:?}", e);
             return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Database error"}))).into_response();
         }
     };
 
-    eprintln!("[change_password] password_hash from DB: {}", user.password_hash);
+    //eprintln!("[change_password] password_hash from DB: {}", user.password_hash);
 
-    // 3. 验证旧密码
     match verify(&payload.old_password, &user.password_hash) {
         Ok(true) => {
-            eprintln!("[change_password] Old password matched");
+            //eprintln!("[change_password] Old password matched");
         }
         Ok(false) => {
-            eprintln!("[change_password] Old password mismatch");
+           // eprintln!("[change_password] Old password mismatch");
             return (StatusCode::BAD_REQUEST, Json(json!({"error": "当前密码错误"}))).into_response();
         }
         Err(e) => {
-            eprintln!("[change_password] bcrypt verify error: {:?}", e);
+           // eprintln!("[change_password] bcrypt verify error: {:?}", e);
             return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "密码验证出错"}))).into_response();
         }
     }
 
-    // 4. 新密码哈希
     let new_hash = match hash(&payload.new_password, DEFAULT_COST) {
         Ok(h) => h,
         Err(e) => {
-            eprintln!("[change_password] bcrypt hash error: {:?}", e);
+            //eprintln!("[change_password] bcrypt hash error: {:?}", e);
             return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "密码加密失败"}))).into_response();
         }
     };
 
-    // 5. 更新数据库
     match state.user_repo.update_password(user_id, &new_hash).await {
         Ok(()) => {
-            eprintln!("[change_password] Password updated successfully");
+            //eprintln!("[change_password] Password updated successfully");
             (StatusCode::OK, Json(json!({"message": "密码修改成功"}))).into_response()
         }
         Err(e) => {
-            eprintln!("[change_password] Update error: {:?}", e);
+            //eprintln!("[change_password] Update error: {:?}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "更新密码失败"}))).into_response()
         }
     }

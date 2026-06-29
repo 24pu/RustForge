@@ -1,0 +1,53 @@
+{% extends "user_center_base.html" %}
+
+{% block title_prefix %}{{ t(key="profile", lang=lang) }} - {{ site_config.site_name }}{% endblock %}
+
+{% block user_content %}
+<h2 class="text-2xl font-bold text-gray-800 mb-6">{{ t(key="profile", lang=lang) }}</h2>
+
+<div id="profile-message" class="mb-4 text-sm"></div>
+
+<form id="profile-form" class="space-y-4 max-w-md">
+    <div>
+        <label class="block text-sm font-medium text-gray-700">{{ t(key="nickname", lang=lang) }}</label>
+        <input type="text" id="nickname" class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-purple-500">
+    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-700">{{ t(key="email", lang=lang) }}</label>
+        <input type="email" id="email" class="w-full border rounded px-3 py-2 bg-gray-100" readonly>
+    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-700">{{ t(key="phone", lang=lang) }}</label>
+        <input type="tel" id="phone" class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-purple-500" placeholder="{{ t(key='phone_placeholder', lang=lang) }}">
+    </div>
+    <div>
+        <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded transition">{{ t(key="save_changes", lang=lang) }}</button>
+    </div>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async function() {
+        try {
+            const user = await apiCall('GET', '/api/me');
+            document.getElementById('nickname').value = user.name || '';
+            document.getElementById('email').value = user.email || '';
+            document.getElementById('phone').value = user.phone || '';
+        } catch (e) {
+            console.error('{{ t(key="load_failed", lang=lang) }}', e);
+        }
+
+        document.getElementById('profile-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('nickname').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            try {
+                await apiCall('PUT', '/api/me', { name, phone });
+                document.getElementById('profile-message').innerHTML = `<span class="text-green-600">{{ t(key="save_success", lang=lang) }}</span>`;
+                setTimeout(() => document.getElementById('profile-message').innerHTML = '', 3000);
+            } catch (err) {
+                document.getElementById('profile-message').innerHTML = `<span class="text-red-600">{{ t(key="save_failed", lang=lang) }}: ${err.message}</span>`;
+            }
+        });
+    });
+</script>
+{% endblock %}

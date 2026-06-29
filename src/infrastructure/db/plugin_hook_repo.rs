@@ -160,4 +160,48 @@ impl PluginHookRepository for PostgresPluginHookRepo {
         .await?;
         Ok(rows)
     }
+
+    /// 获取所有钩子（全局，不分插件），按创建时间降序，支持分页
+     async fn list_all_hooks(
+        &self,
+        page: i64,
+        per_page: i64,
+    ) -> Result<(Vec<PluginHook>, i64)> {
+        let offset = (page - 1) * per_page;
+
+        let count_sql = "SELECT COUNT(*) FROM plugin_hooks";
+        let total: i64 = sqlx::query_scalar(count_sql)
+            .fetch_one(&self.pool)
+            .await?;
+
+        let rows = sqlx::query!(
+            r#"
+            SELECT 
+                id, plugin_name, hook_name, content, sort_order, lang, enabled, created_at, updated_at
+            FROM plugin_hooks
+            ORDER BY created_at DESC
+            LIMIT $1 OFFSET $2
+            "#,
+            per_page,
+            offset
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut hooks = Vec::new();
+        for row in rows {
+            hooks.push(PluginHook {
+                id: row.id,
+                plugin_name: row.plugin_name,
+                hook_name: row.hook_name,
+                content: row.content,
+                sort_order: row.sort_order,
+                lang: row.lang,
+                enabled: row.enabled,
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+            });
+        }
+        Ok((hooks, total))
+    }
 }

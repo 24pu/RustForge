@@ -1,6 +1,7 @@
 // core.rs
 
 pub mod models;
+pub use models::*;  // 重新导出所有模型类型
 
 use chrono::{DateTime, Utc};
 use async_trait::async_trait;
@@ -14,7 +15,7 @@ use crate::core::models::{User, Content, Permission, RoleInfo, Category, MediaFi
 use crate::core::models::{Product, ProductVariant, ProductImage, ProductCategory,AmaTemplate};
 use crate::core::models::{AttributeTemplate, AttributeGroup, GroupTemplateRelation, ProductAttributeValue,GroupDetail};
 use crate::core::models::{PluginHook,CreatePluginHookRequest,UpdatePluginHookRequest};
-
+use crate::core::models::*;
 
 // ---------- 主题相关 ----------
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -496,4 +497,41 @@ pub trait PluginHookRepository: Send + Sync {
     async fn list_by_lang(&self, lang: &str, enabled: Option<bool>) -> Result<Vec<PluginHook>>;
     /// 查询指定语言且所属插件已启用的钩子（用于前台渲染）
     async fn list_enabled_by_lang(&self, lang: &str) -> Result<Vec<PluginHook>>;
+    async fn list_all_hooks(
+        &self,
+        page: i64,
+        per_page: i64,
+    ) -> Result<(Vec<PluginHook>, i64)>;
+}
+
+// ---------- 购物车 ----------
+#[async_trait]
+pub trait CartRepository: Send + Sync {
+    // 获取用户购物车（含商品）
+    async fn get_cart(&self, user_id: Uuid) -> Result<CartWithItems>;
+    // 添加商品到购物车
+    async fn add_item(&self, user_id: Uuid, product_id: Uuid, variant_id: Option<Uuid>, quantity: i32) -> Result<CartItem>;
+    // 更新购物车项数量
+    async fn update_item(&self, user_id: Uuid, item_id: Uuid, quantity: i32) -> Result<CartItem>;
+    // 删除购物车项
+    async fn remove_item(&self, user_id: Uuid, item_id: Uuid) -> Result<bool>;
+    // 清空购物车
+    async fn clear_cart(&self, user_id: Uuid) -> Result<bool>;
+    // 获取购物车项数量
+    async fn get_cart_count(&self, user_id: Uuid) -> Result<i64>;
+}
+
+// ---------- 订单 ----------
+#[async_trait]
+pub trait OrderRepository: Send + Sync {
+    // 创建订单（从购物车生成）
+    async fn create_order(&self, user_id: Uuid, req: &CreateOrderRequest) -> Result<OrderWithItems>;
+    // 获取用户订单列表
+    async fn list_orders(&self, user_id: Uuid) -> Result<Vec<Order>>;
+    // 获取订单详情
+    async fn get_order(&self, user_id: Uuid, order_id: Uuid) -> Result<Option<OrderWithItems>>;
+    // 更新订单状态
+    async fn update_order_status(&self, user_id: Uuid, order_id: Uuid, status: &str) -> Result<Order>;
+    // 获取订单状态统计
+    async fn get_order_stats(&self, user_id: Uuid) -> Result<serde_json::Value>;
 }

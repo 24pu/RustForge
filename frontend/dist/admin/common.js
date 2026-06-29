@@ -32,23 +32,6 @@ async function apiCall(method, path, body) {
     return text ? JSON.parse(text) : null;
 }
 
-/**
- * 确保用户已认证，未认证则跳转至登录页
- * @returns {Promise<boolean>} 认证成功返回 true
- */
-async function requireAuth() {
-    try {
-        const userInfo = await apiCall('GET', '/api/me');
-        if (userInfo && userInfo.roles) {
-            localStorage.setItem('userRoles', JSON.stringify(userInfo.roles));
-        }
-        return true;
-    } catch (e) {
-        clearAuth();
-        window.location.href = '/admin/login.html';
-        return false;
-    }
-}
 
 /**
  * 判断当前用户是否为管理员（拥有角色分配权限或 admin 权限）
@@ -60,16 +43,30 @@ async function isAdmin() {
 }
 
 /**
- * 退出登录，清理本地数据并跳转至登录页
+ * 退出登录，清理本地数据并跳转至登录页（根据当前页面自动选择前后台）
  */
+async function requireAuth() {
+    try {
+        const userInfo = await apiCall('GET', '/api/me');
+        if (userInfo && userInfo.roles) {
+            localStorage.setItem('userRoles', JSON.stringify(userInfo.roles));
+        }
+        return true;
+    } catch (e) {
+        clearAuth();
+        const isAdmin = window.location.pathname.startsWith('/admin');
+        window.location.href = isAdmin ? '/admin/login.html' : '/login';
+        return false;
+    }
+}
+
 async function logout() {
     try {
         await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-    } catch (e) {
-        // 静默失败，不影响本地清理
-    }
+    } catch (e) {}
     clearAuth();
-    window.location.href = '/admin/login.html';
+    const isAdmin = window.location.pathname.startsWith('/admin');
+    window.location.href = isAdmin ? '/admin/login.html' : '/login';
 }
 
 /**
@@ -193,6 +190,11 @@ async function loadTopbar() {
         if (perms.includes('product_category:list')) {
             setElementDisplay('product-categories-nav', true, 'block');
             setElementDisplay('product-categories-nav-mobile', true, 'block');
+        }
+        // 订单管理菜单
+        if (perms.includes('order:list')) {
+            setElementDisplay('orders-nav', true, 'block');
+            setElementDisplay('orders-nav-mobile', true, 'block');
         }
 
         // 媒体库菜单（已移到内容下拉内，但仍保留其显示控制）

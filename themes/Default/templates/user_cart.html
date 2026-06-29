@@ -1,0 +1,255 @@
+{% extends "user_center_base.html" %}
+
+{% block title_prefix %}{{ t(key="cart", lang=lang) }} - {{ site_config.site_name }}{% endblock %}
+
+{% block user_content %}
+<div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">{{ t(key="cart", lang=lang) }}</h2>
+    <button id="clear-cart-btn" class="text-red-600 hover:text-red-800 text-sm">{{ t(key="clear_cart", lang=lang) }}</button>
+</div>
+
+<div id="cart-container" class="space-y-4">
+    <div class="text-center text-gray-500 py-8">{{ t(key="loading", lang=lang) }}</div>
+</div>
+
+<div id="cart-summary" class="mt-6 p-4 bg-gray-50 rounded-lg flex flex-wrap justify-between items-center">
+    <div>
+        <span class="text-gray-600">{{ t(key="total_amount", lang=lang) }}：</span>
+        <span id="total-price" class="text-2xl font-bold text-red-600">¥0.00</span>
+    </div>
+    <div>
+        <span class="text-gray-600">{{ t(key="items_count", lang=lang) }}：</span>
+        <span id="total-items" class="font-semibold">0</span>
+    </div>
+    <button id="checkout-btn" class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg transition disabled:opacity-50" disabled>
+        {{ t(key="checkout", lang=lang) }}
+    </button>
+</div>
+
+<!-- 空状态提示 -->
+<div id="empty-cart" class="hidden text-center py-12">
+    <i class="fas fa-shopping-cart text-6xl text-gray-300 mb-4"></i>
+    <p class="text-gray-500">{{ t(key="cart_empty", lang=lang) }}</p>
+    <a href="/products" class="inline-block mt-4 bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded transition">{{ t(key="go_shopping", lang=lang) }}</a>
+</div>
+
+<!-- 订单确认模态框 -->
+<div id="order-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg max-w-md w-full p-6">
+        <h3 class="text-xl font-bold mb-4">{{ t(key="confirm_order_info", lang=lang) }}</h3>
+        <form id="order-form">
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">{{ t(key="shipping_name", lang=lang) }}</label>
+                    <input type="text" id="shipping_name" required class="w-full border rounded px-3 py-2 focus:ring-purple-500 focus:border-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">{{ t(key="shipping_phone", lang=lang) }}</label>
+                    <input type="tel" id="shipping_phone" required class="w-full border rounded px-3 py-2 focus:ring-purple-500 focus:border-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">{{ t(key="shipping_address", lang=lang) }}</label>
+                    <input type="text" id="shipping_address" required class="w-full border rounded px-3 py-2 focus:ring-purple-500 focus:border-purple-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">{{ t(key="order_note", lang=lang) }}</label>
+                    <textarea id="order_note" rows="2" class="w-full border rounded px-3 py-2 focus:ring-purple-500 focus:border-purple-500"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button type="button" id="cancel-order-btn" class="px-4 py-2 border rounded hover:bg-gray-50">{{ t(key="cancel", lang=lang) }}</button>
+                <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">{{ t(key="submit_order", lang=lang) }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // 购物车操作
+    const translations = {
+        'loading': '{{ t(key="loading", lang=lang) }}',
+        'cart_empty': '{{ t(key="cart_empty", lang=lang) }}',
+        'load_failed': '{{ t(key="load_failed", lang=lang) }}',
+        'total_amount': '{{ t(key="total_amount", lang=lang) }}',
+        'items_count': '{{ t(key="items_count", lang=lang) }}',
+        'remove': '{{ t(key="remove", lang=lang) }}',
+        'update_success': '{{ t(key="update_success", lang=lang) }}',
+        'update_failed': '{{ t(key="update_failed", lang=lang) }}',
+        'remove_success': '{{ t(key="remove_success", lang=lang) }}',
+        'remove_failed': '{{ t(key="remove_failed", lang=lang) }}',
+        'clear_success': '{{ t(key="clear_success", lang=lang) }}',
+        'clear_failed': '{{ t(key="clear_failed", lang=lang) }}',
+    };
+    function __(key) { return translations[key] || key; }
+
+    async function loadCart() {
+        const container = document.getElementById('cart-container');
+        const summary = document.getElementById('cart-summary');
+        const empty = document.getElementById('empty-cart');
+
+        try {
+            const cart = await apiCall('GET', '/api/cart');
+            if (!cart.items || cart.items.length === 0) {
+                container.innerHTML = '';
+                summary.style.display = 'none';
+                empty.classList.remove('hidden');
+                document.getElementById('cart-badge').style.display = 'none';
+                return;
+            }
+            empty.classList.add('hidden');
+            summary.style.display = 'flex';
+            renderCartItems(cart.items);
+            updateSummary(cart.items);
+            document.getElementById('cart-badge').textContent = cart.items.reduce((sum, i) => sum + i.quantity, 0);
+            document.getElementById('cart-badge').style.display = 'inline';
+        } catch (err) {
+            container.innerHTML = `<div class="text-center text-red-500 py-8">${__('load_failed')}</div>`;
+        }
+    }
+
+    function renderCartItems(items) {
+        const container = document.getElementById('cart-container');
+        let html = '';
+        for (const item of items) {
+            html += `
+                <div class="flex flex-wrap items-center gap-4 border rounded-lg p-4" data-item-id="${item.id}">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-800">${escapeHtml(item.product_name)}</div>
+                        ${item.variant_sku ? `<div class="text-sm text-gray-500">${escapeHtml(item.variant_sku)}</div>` : ''}
+                        <div class="text-sm text-gray-600">¥${item.price.toFixed(2)}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="qty-decr w-8 h-8 border rounded hover:bg-gray-100">-</button>
+                        <span class="qty-value w-8 text-center font-medium">${item.quantity}</span>
+                        <button class="qty-incr w-8 h-8 border rounded hover:bg-gray-100">+</button>
+                        <button class="remove-item ml-2 text-red-600 hover:text-red-800 text-sm">${__('remove')}</button>
+                    </div>
+                    <div class="text-right min-w-[80px]">
+                        <span class="font-semibold">¥${(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+
+        // 绑定事件
+        container.querySelectorAll('.qty-incr').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const itemId = this.closest('[data-item-id]').dataset.itemId;
+                const qtySpan = this.closest('.flex').querySelector('.qty-value');
+                const newQty = parseInt(qtySpan.textContent) + 1;
+                updateQuantity(itemId, newQty);
+            });
+        });
+        container.querySelectorAll('.qty-decr').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const itemId = this.closest('[data-item-id]').dataset.itemId;
+                const qtySpan = this.closest('.flex').querySelector('.qty-value');
+                const current = parseInt(qtySpan.textContent);
+                if (current > 1) {
+                    updateQuantity(itemId, current - 1);
+                } else {
+                    removeItem(itemId);
+                }
+            });
+        });
+        container.querySelectorAll('.remove-item').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const itemId = this.closest('[data-item-id]').dataset.itemId;
+                removeItem(itemId);
+            });
+        });
+    }
+
+    function updateSummary(items) {
+        const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const count = items.reduce((sum, i) => sum + i.quantity, 0);
+        document.getElementById('total-price').textContent = `¥${total.toFixed(2)}`;
+        document.getElementById('total-items').textContent = count;
+        document.getElementById('checkout-btn').disabled = count === 0;
+    }
+
+    async function updateQuantity(itemId, quantity) {
+        try {
+            await apiCall('PUT', `/api/cart/items/${itemId}`, { quantity });
+            await loadCart();
+            // 不显示消息，静默更新
+        } catch (err) {
+            alert(__('update_failed') + ': ' + err.message);
+        }
+    }
+
+    async function removeItem(itemId) {
+        try {
+            await apiCall('DELETE', `/api/cart/items/${itemId}`);
+            await loadCart();
+            alert(__('remove_success'));
+        } catch (err) {
+            alert(__('remove_failed') + ': ' + err.message);
+        }
+    }
+
+    document.getElementById('clear-cart-btn').addEventListener('click', async function() {
+        if (!confirm('{{ t(key="confirm_clear_cart", lang=lang) }}')) return;
+        try {
+            await apiCall('DELETE', '/api/cart/clear');
+            await loadCart();
+            alert(__('clear_success'));
+        } catch (err) {
+            alert(__('clear_failed') + ': ' + err.message);
+        }
+    });
+
+    // 订单提交
+    document.getElementById('order-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const submitBtn = this.querySelector('[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '{{ t(key="submitting", lang=lang) }}';
+
+        const payload = {
+            shipping_name: document.getElementById('shipping_name').value.trim(),
+            shipping_phone: document.getElementById('shipping_phone').value.trim(),
+            shipping_address: document.getElementById('shipping_address').value.trim(),
+            note: document.getElementById('order_note').value.trim() || null,
+        };
+
+        try {
+            const response = await apiCall('POST', '/api/orders', payload);
+            // 成功后关闭模态框，重新加载购物车，跳转到订单列表
+            alert('{{ t(key="order_created_success", lang=lang) }}');
+            document.getElementById('order-modal').classList.add('hidden');
+            await loadCart();
+            window.location.href = '/user/orders';
+        } catch (err) {
+            // 尝试从 err 中提取更详细的错误信息
+            let errorMsg = err.message;
+            if (err.response && err.response.data && err.response.data.message) {
+                errorMsg = err.response.data.message;
+            } else if (err.response && err.response.statusText) {
+                errorMsg = err.response.statusText;
+            }
+            alert('{{ t(key="order_create_error", lang=lang) }}: ' + errorMsg);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '{{ t(key="submit_order", lang=lang) }}';
+        }
+    });
+
+    // 显示模态框
+    document.getElementById('checkout-btn').addEventListener('click', function() {
+        if (this.disabled) return;
+        document.getElementById('order-modal').classList.remove('hidden');
+    });
+
+    // 关闭模态框
+    document.getElementById('cancel-order-btn').addEventListener('click', function() {
+        document.getElementById('order-modal').classList.add('hidden');
+    });
+    document.getElementById('order-modal').addEventListener('click', function(e) {
+        if (e.target === this) this.classList.add('hidden');
+    });
+
+    loadCart();
+</script>
+{% endblock %}

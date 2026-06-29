@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title_prefix %}{{ t(key="user_center", lang=lang) }} - {{ site_config.site_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="flex flex-col md:flex-row gap-6">
+        <!-- 侧边导航 -->
+        <div class="w-full md:w-56 flex-shrink-0">
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="text-center mb-4 pb-4 border-b">
+                    <div class="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto text-2xl text-purple-600">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div id="user-name" class="font-semibold text-gray-800 mt-2">{{ t(key="loading", lang=lang) }}</div>
+                    <div id="user-email" class="text-sm text-gray-500"></div>
+                </div>
+                <ul class="space-y-1">
+                    <li>
+                        <a href="/user/profile" class="block px-3 py-2 rounded hover:bg-gray-100 transition {% if current_page == 'profile' %}bg-purple-50 text-purple-700{% endif %}">
+                            <i class="fas fa-id-card mr-2"></i>{{ t(key="profile", lang=lang) }}
+                        </a>
+                    </li>
+                    <li>
+                    <a href="/user/password" class="block px-3 py-2 rounded hover:bg-gray-100 transition {% if current_page == 'password' %}bg-purple-50 text-purple-700{% endif %}">
+                        <i class="fas fa-key mr-2"></i>{{ t(key="change_password", lang=lang) }}
+                    </a>
+                </li>
+                    <li>
+                        <a href="/user/orders" class="block px-3 py-2 rounded hover:bg-gray-100 transition {% if current_page == 'orders' %}bg-purple-50 text-purple-700{% endif %}">
+                            <i class="fas fa-clipboard-list mr-2"></i>{{ t(key="my_orders", lang=lang) }}
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/user/cart" class="block px-3 py-2 rounded hover:bg-gray-100 transition {% if current_page == 'cart' %}bg-purple-50 text-purple-700{% endif %}">
+                            <i class="fas fa-shopping-cart mr-2"></i>{{ t(key="cart", lang=lang) }}
+                            <span id="cart-badge" class="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 ml-1" style="display:none;">0</span>
+                        </a>
+                    </li>
+                    <li class="border-t pt-2 mt-2">
+                        <a href="#" onclick="logout()" class="block px-3 py-2 rounded text-red-600 hover:bg-red-50 transition">
+                            <i class="fas fa-sign-out-alt mr-2"></i>{{ t(key="logout", lang=lang) }}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 右侧内容区 -->
+        <div class="flex-1 bg-white rounded-lg shadow p-6">
+            {% block user_content %}
+            <p>{{ t(key="welcome_user_center", lang=lang) }}</p>
+            {% endblock %}
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async function() {
+        try {
+            const user = await apiCall('GET', '/api/me');
+            document.getElementById('user-name').textContent = user.name || user.email || '{{ t(key="user", lang=lang) }}';
+            document.getElementById('user-email').textContent = user.email || '';
+
+            const cart = await apiCall('GET', '/api/cart/count');
+            const badge = document.getElementById('cart-badge');
+            if (cart.count > 0) {
+                badge.textContent = cart.count;
+                badge.style.display = 'inline';
+            }
+        } catch (e) {
+            console.error('{{ t(key="load_failed", lang=lang) }}', e);
+        }
+    });
+</script>
+{% endblock %}
