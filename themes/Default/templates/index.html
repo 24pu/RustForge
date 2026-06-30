@@ -66,8 +66,8 @@
                 <a href="/product/{{ product.slug }}">
                     <div class="relative overflow-hidden h-64">
                         {% if product.cover_image %}
-                            <img src="{{ product.cover_image }}" alt="{{ product.name }}" 
-                                 class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            <img src="{{ product.thumbnail | default(value=product.cover_image) | safe }}" alt="{{ product.name }}" 
+                                 class="w-full h-full object-cover group-hover:scale-105 transition duration-500" loading="lazy">
                         {% else %}
                             <div class="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500">
                                 <i class="fas fa-box text-4xl"></i>
@@ -148,7 +148,6 @@
 </section>
 
 <!-- 最新内容/动态 -->
-<!-- 最新内容/动态 -->
 <section class="py-16 bg-gray-50">
     <div class="container mx-auto px-4">
         <div class="flex justify-between items-center mb-8">
@@ -167,7 +166,7 @@
                     <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition duration-300">
                         <a href="/content/{{ content.slug }}">
                             {% if content.cover_image %}
-                                <img src="{{ content.cover_image }}" alt="{{ content.title }}" class="w-full h-28 object-cover">
+                                <img src="{{ content.cover_image | safe }}" alt="{{ content.title }}" class="w-full h-28 object-cover" loading="lazy">
                             {% else %}
                                 <div class="w-full h-28 bg-gray-200 flex items-center justify-center text-gray-400">
                                     <i class="fas fa-image text-2xl"></i>

@@ -4,7 +4,7 @@ mod middleware;
 mod handlers;
 mod types;
 
-
+use tower_http::limit::RequestBodyLimitLayer;
 use sqlx::PgPool;
 use crate::presentation::handlers::lang_settings::{get_lang_settings_handler, update_lang_settings_handler};
 use crate::presentation::middleware::lang_middleware;
@@ -227,6 +227,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .route("/api/admin/products/export", post(export_selected_products_handler))
         // 图片
         .route("/api/admin/products/:id/images", get(get_product_images_handler).post(upload_product_images_handler))
+        .layer(RequestBodyLimitLayer::new(20 * 1024 * 1024))
         .route("/api/admin/products/:product_id/images/:image_id", delete(delete_product_image_handler))
         .route("/api/admin/products/:id/images/reorder", post(reorder_product_images_handler))
         // ========== 用户中心 ==========

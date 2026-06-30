@@ -8,8 +8,7 @@ edition = "2021"
 axum = { version = "0.7", features = ["multipart"] }
 tokio = { version = "1", features = ["full"] }
 tower = "0.4"
-tower-http = { version = "0.5", features = ["fs", "trace", "cors"] }
-
+tower-http = { version = "0.5", features = ["fs", "trace", "cors","limit"] }
 # 模板引擎（用于主题系统）
 tera = "1"
 walkdir = "2"        # 递归扫描目录

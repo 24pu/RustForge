@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE orders SET status = $1, updated_at = now() WHERE id = $2 AND user_id = $3 RETURNING *",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "order_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "total_amount",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "shipping_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "shipping_phone",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "shipping_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "note",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "paid_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "8a6995c3bdd5038535058033c415dc3030ab33035e7e64647e39104c433eaf7c"
+}

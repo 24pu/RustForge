@@ -416,73 +416,97 @@
         async function loadProductImages() {
             try {
                 const result = await apiCall('GET', `/api/admin/products/${productId}/images`);
-                productImages = result.images || [];
+                productImages = result.images || []; // 确保是数组
                 renderProductImages();
             } catch (err) {
                 console.error('加载图片失败:', err);
+                productImages = []; // 设置为空数组
+                renderProductImages();
             }
         }
 
-        function renderProductImages() {
-            const container = document.getElementById('images-container');
-            const noImages = document.getElementById('no-images');
-            
-            if (!productImages || productImages.length === 0) {
-                if (noImages) noImages.classList.remove('hidden');
-                container.innerHTML = '';
-                container.appendChild(noImages);
-                return;
-            }
-            
-            if (noImages) noImages.classList.add('hidden');
-            const coverImageUrl = document.getElementById('cover_image').value;
-            
-            container.innerHTML = productImages.map((img, index) => `
-                <div class="relative border rounded-lg overflow-hidden group ${coverImageUrl === img.url ? 'ring-2 ring-blue-500' : ''}" data-id="${img.id}" data-url="${img.url}">
-                    <img src="${img.url}" class="w-full h-32 object-cover">
-                    <div class="absolute top-2 right-2 flex space-x-1">
-                        <button type="button" class="set-cover-image bg-blue-600 text-white rounded-full w-6 h-6 text-xs hover:bg-blue-700 flex items-center justify-center" data-url="${img.url}" title="设为主图">
-                            <i class="fas ${coverImageUrl === img.url ? 'fa-star' : 'fa-star-o'} text-xs"></i>
-                        </button>
-                        <button type="button" class="delete-image bg-red-600 text-white rounded-full w-6 h-6 text-xs hover:bg-red-700 flex items-center justify-center" data-id="${img.id}" title="删除">
-                            <i class="fas fa-trash text-xs"></i>
-                        </button>
-                    </div>
-                    <div class="p-2 text-xs">
-                        <div class="truncate">${escapeHtml(img.original_name || img.name || '图片')}</div>
-                        ${img.color_code ? `<div class="text-gray-500 mt-1"><span class="font-medium">颜色:</span> <span class="text-blue-600">${img.color_code}</span> (${getColorNameFromCode(img.color_code)})</div>` : ''}
-                    </div>
-                    ${coverImageUrl === img.url ? '<div class="text-center text-blue-600 font-bold text-xs pb-1">⭐ 主图</div>' : ''}
+function renderProductImages() {
+    const container = document.getElementById('images-container');
+    if (!container) return;
+
+    const coverImageUrl = document.getElementById('cover_image').value;
+
+    // 无图片时显示占位符
+    if (!productImages || productImages.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-gray-400 py-8 col-span-full" id="no-images-placeholder">
+                <i class="fas fa-images text-4xl mb-2"></i>
+                <p>暂无产品图片，点击上传按钮添加图片</p>
+            </div>
+        `;
+        return;
+    }
+
+    // 有图片时渲染所有图片卡片
+    let html = '';
+    productImages.forEach((img, index) => {
+        const isCover = (coverImageUrl === img.url);
+        html += `
+            <div class="relative border rounded-lg overflow-hidden group ${isCover ? 'ring-2 ring-blue-500' : ''}" data-id="${img.id}" data-url="${img.url}">
+                <img src="${img.url}" class="w-full h-32 object-cover">
+                <div class="absolute top-2 right-2 flex space-x-1">
+                    <button type="button" class="set-cover-image bg-blue-600 text-white rounded-full w-6 h-6 text-xs hover:bg-blue-700 flex items-center justify-center" data-url="${img.url}" title="设为主图">
+                        <i class="fas ${isCover ? 'fa-star' : 'fa-star-o'} text-xs"></i>
+                    </button>
+                    <button type="button" class="delete-image bg-red-600 text-white rounded-full w-6 h-6 text-xs hover:bg-red-700 flex items-center justify-center" data-id="${img.id}" title="删除">
+                        <i class="fas fa-trash text-xs"></i>
+                    </button>
                 </div>
-            `).join('');
-            
-            document.querySelectorAll('.delete-image').forEach(btn => {
-                btn.addEventListener('click', () => deleteProductImage(parseInt(btn.dataset.id)));
-            });
-            
-            document.querySelectorAll('.set-cover-image').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const imageUrl = btn.dataset.url;
-                    document.getElementById('cover_image').value = imageUrl;
-                    renderProductImages();
-                    showNotification('主图已更新', 'success');
-                });
-            });
-        }
+                <div class="p-2 text-xs">
+                    <div class="truncate">${escapeHtml(img.original_name || img.name || '图片')}</div>
+                    ${img.color_code ? `<div class="text-gray-500 mt-1"><span class="font-medium">颜色:</span> <span class="text-blue-600">${img.color_code}</span> (${getColorNameFromCode(img.color_code)})</div>` : ''}
+                </div>
+                ${isCover ? '<div class="text-center text-blue-600 font-bold text-xs pb-1">⭐ 主图</div>' : ''}
+            </div>
+        `;
+    });
+    container.innerHTML = html;
 
-        async function deleteProductImage(imageId) {
-            if (!confirm('确定要删除这张图片吗？')) return;
-            showLoading(true);
-            try {
-                await apiCall('DELETE', `/api/admin/products/${productId}/images/${imageId}`);
-                showNotification('图片删除成功', 'success');
-                await loadProductImages();
-            } catch (err) {
-                showNotification('删除失败: ' + err.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
+    // 绑定删除事件
+    document.querySelectorAll('.delete-image').forEach(btn => {
+        btn.removeEventListener('click', handleDelete);
+        btn.addEventListener('click', handleDelete);
+    });
+
+    // 绑定设为主图事件
+    document.querySelectorAll('.set-cover-image').forEach(btn => {
+        btn.removeEventListener('click', handleSetCover);
+        btn.addEventListener('click', handleSetCover);
+    });
+}
+
+// 事件处理函数（放在全局）
+function handleDelete(e) {
+    const imageId = parseInt(this.dataset.id);
+    deleteProductImage(imageId);
+}
+
+async function deleteProductImage(imageId) {
+    showLoading(true);
+    try {
+        await apiCall('DELETE', `/api/admin/products/${productId}/images/${imageId}`);
+        showNotification('图片删除成功', 'success');
+        await loadProductImages();
+    } catch (err) {
+        showNotification('删除失败: ' + err.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function handleSetCover(e) {
+    const imageUrl = this.dataset.url;
+    document.getElementById('cover_image').value = imageUrl;
+    renderProductImages();
+    showNotification('主图已更新', 'success');
+}
+
+
 
         async function loadProduct() {
             productId = getUrlParam('id');

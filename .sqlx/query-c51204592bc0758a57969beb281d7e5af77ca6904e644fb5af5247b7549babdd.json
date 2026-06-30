@@ -1,0 +1,94 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT\n                    oi.*,\n                    p.cover_image as product_cover_image,\n                    pv.color as variant_color,\n                    pv.size as variant_size\n                FROM order_items oi\n                LEFT JOIN products p ON p.id = oi.product_id\n                LEFT JOIN product_variants pv ON pv.id = oi.variant_id\n                WHERE oi.order_id = $1\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "order_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "product_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "variant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "product_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "variant_sku",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "price",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 8,
+        "name": "total",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "product_cover_image",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "variant_color",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "variant_size",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "c51204592bc0758a57969beb281d7e5af77ca6904e644fb5af5247b7549babdd"
+}

@@ -41,6 +41,45 @@ impl IntoResponse for AppError {
     }
 }
 
+// ========== 辅助函数：缩略图生成 ==========
+
+/// 根据原图 URL 生成缩略图 URL（同目录下 thumb_ 前缀）
+fn get_thumbnail_url(original_url: &str) -> Option<String> {
+    if original_url.is_empty() {
+        return None;
+    }
+    // 如果已经包含 /thumb_，则直接返回原 URL（避免重复）
+    if original_url.contains("/thumb_") {
+        return Some(original_url.to_string());
+    }
+    // 查找最后一个 '/'
+    if let Some(last_slash) = original_url.rfind('/') {
+        let (dir, filename) = original_url.split_at(last_slash + 1);
+        if !filename.is_empty() {
+            return Some(format!("{}thumb_{}", dir, filename));
+        }
+    }
+    None
+}
+
+/// 为产品 JSON 添加 thumbnail 字段（不修改原 Product）
+fn add_thumbnail_to_product(product: &crate::core::models::Product) -> serde_json::Value {
+    let mut json = serde_json::to_value(product).unwrap_or(json!({}));
+    if let Some(obj) = json.as_object_mut() {
+        // 如果已有 thumbnail 字段则保留（通常没有）
+        if !obj.contains_key("thumbnail") {
+            if let Some(cover) = product.cover_image.as_ref() {
+                let thumb = get_thumbnail_url(cover).unwrap_or_else(|| cover.clone());
+                obj.insert("thumbnail".to_string(), json!(thumb));
+            } else {
+                obj.insert("thumbnail".to_string(), json!(null));
+            }
+        }
+    }
+    json
+}
+
+// ========== Handlers ==========
 
 // 获取热门产品（前台展示）
 pub async fn get_hot_products_handler(
@@ -55,7 +94,20 @@ pub async fn get_hot_products_handler(
     
     match state.product_repo.list_products(pagination, filters).await {
         Ok((products, _)) => {
-            (StatusCode::OK, Json(products)).into_response()
+            // 添加日志：打印每个产品的 thumbnail
+            for p in &products {
+                let thumb = p.cover_image.as_ref().map(|cover| {
+                    // 使用与 add_thumbnail_to_product 相同的逻辑
+                    get_thumbnail_url(cover).unwrap_or_else(|| cover.clone())
+                });
+                eprintln!("Product {}: cover={:?}, thumbnail={:?}", p.id, p.cover_image, thumb);
+            }
+            // 为每个产品添加缩略图
+            let products_with_thumb: Vec<serde_json::Value> = products
+                .iter()
+                .map(|p| add_thumbnail_to_product(p))
+                .collect();
+            (StatusCode::OK, Json(products_with_thumb)).into_response()
         }
         Err(e) => {
             eprintln!("获取热门产品失败: {}", e);
@@ -92,9 +144,13 @@ pub async fn get_public_products_handler(
     
     match state.product_repo.list_products(pagination, filters).await {
         Ok((products, total)) => {
+            let products_with_thumb: Vec<serde_json::Value> = products
+                .iter()
+                .map(|p| add_thumbnail_to_product(p))
+                .collect();
             let total_pages = (total + per_page as i64 - 1) / per_page as i64;
             let response = json!({
-                "products": products,
+                "products": products_with_thumb,
                 "total": total,
                 "page": page,
                 "per_page": per_page,
@@ -128,8 +184,18 @@ pub async fn get_public_product_handler(
                 }
             };
             
+            // 构建产品 JSON 并添加缩略图
             let mut product_json = serde_json::to_value(&product).unwrap_or(json!({}));
             if let Some(obj) = product_json.as_object_mut() {
+                // 添加 thumbnail（如果没有）
+                if !obj.contains_key("thumbnail") {
+                    if let Some(cover) = product.cover_image.as_ref() {
+                        let thumb = get_thumbnail_url(cover).unwrap_or_else(|| cover.clone());
+                        obj.insert("thumbnail".to_string(), json!(thumb));
+                    } else {
+                        obj.insert("thumbnail".to_string(), json!(null));
+                    }
+                }
                 obj.insert("variants".to_string(), json!(variants));
             }
             
@@ -192,18 +258,6 @@ pub async fn get_product_categories_with_count_handler(
     
     (StatusCode::OK, Json(result)).into_response()
 }
-
-
-
-
-
-
-
-// 获取产品尺码表
-
-
-
-
 
 // 获取产品尺码表
 pub async fn get_product_size_table_handler(

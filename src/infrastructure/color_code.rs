@@ -104,7 +104,7 @@ pub fn get_color_name(color_code: &str) -> String {
 
 // 提取基础颜色代码（去除数字后缀）
 // 例如：BL01 -> BL, RED123 -> RED
-fn extract_base_color_code(color_code: &str) -> String {
+pub fn extract_base_color_code(color_code: &str) -> String {
     let code = color_code.to_uppercase();
     code.chars()
         .take_while(|c| c.is_ascii_alphabetic())

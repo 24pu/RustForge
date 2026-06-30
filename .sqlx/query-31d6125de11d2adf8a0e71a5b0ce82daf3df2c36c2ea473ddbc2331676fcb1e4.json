@@ -1,0 +1,95 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO orders (\n                id, user_id, order_number, total_amount, status,\n                shipping_address, shipping_phone, shipping_name, note\n            ) VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8)\n            RETURNING *\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "order_number",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "total_amount",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "shipping_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "shipping_phone",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "shipping_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "note",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "paid_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Float8",
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "31d6125de11d2adf8a0e71a5b0ce82daf3df2c36c2ea473ddbc2331676fcb1e4"
+}

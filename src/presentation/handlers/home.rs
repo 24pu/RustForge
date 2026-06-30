@@ -88,7 +88,24 @@ pub async fn product_detail_page_handler_by_slug(
     }
 }
 
-// 原有的 home_handler
+// 辅助函数：生成缩略图 URL（与 product_public.rs 保持一致）
+fn get_thumbnail_url(original_url: &str) -> Option<String> {
+    if original_url.is_empty() {
+        return None;
+    }
+    if original_url.contains("/thumb_") {
+        return Some(original_url.to_string());
+    }
+    if let Some(last_slash) = original_url.rfind('/') {
+        let (dir, filename) = original_url.split_at(last_slash + 1);
+        if !filename.is_empty() {
+            return Some(format!("{}thumb_{}", dir, filename));
+        }
+    }
+    None
+}
+
+// 原有的 home_handler（修改后）
 pub async fn home_handler(
     Extension(user_info): Extension<UserInfo>,
     Extension(lang): Extension<String>,
@@ -100,7 +117,7 @@ pub async fn home_handler(
         .filter(|c| c.lang == lang || c.lang.is_empty())
         .collect();
     
-    // 获取热门产品（已发布的前8个）
+    // 获取热门产品（已发布的前8个），并添加缩略图
     let hot_products = match state.product_repo.list_products(
         Pagination::new(1, 8),
         ProductFilters {
@@ -109,7 +126,24 @@ pub async fn home_handler(
             published: Some(true),
         }
     ).await {
-        Ok((products, _)) => products,
+        Ok((products, _)) => {
+            let mut products_with_thumb = Vec::new();
+            for p in products {
+                let mut json = serde_json::to_value(&p).unwrap_or(json!({}));
+                // 添加 thumbnail 字段
+                if let Some(cover) = p.cover_image.as_deref() {
+                    if let Some(thumb) = get_thumbnail_url(cover) {
+                        json["thumbnail"] = json!(thumb);
+                    } else {
+                        json["thumbnail"] = json!(cover);
+                    }
+                } else {
+                    json["thumbnail"] = json!(null);
+                }
+                products_with_thumb.push(json);
+            }
+            products_with_thumb
+        },
         Err(e) => {
             eprintln!("获取热门产品失败: {}", e);
             vec![]

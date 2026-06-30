@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                ci.product_id,\n                ci.variant_id,\n                ci.quantity,\n                ci.price,\n                p.name as product_name,\n                pv.sku as variant_sku\n            FROM cart_items ci\n            JOIN carts c ON c.id = ci.cart_id\n            JOIN products p ON p.id = ci.product_id\n            LEFT JOIN product_variants pv ON pv.id = ci.variant_id\n            WHERE c.user_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "product_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "variant_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "quantity",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "price",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "product_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "variant_sku",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "11c3a4dcb487d8df6ba43698feb1480fde702ba08030fa819865a9821017bf2a"
+}
