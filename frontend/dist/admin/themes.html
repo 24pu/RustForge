@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>主题管理 - 管理后台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.32.3/src-min-noconflict/ace.js"></script>
@@ -12,6 +13,18 @@
             border: 1px solid #ddd;
             border-radius: 0.5rem;
         }
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .ace_editor {
+                height: 50vh; /* 手机屏幕高度的一半 */
+                min-height: 300px;
+            }
+        }
+        /* 确保右侧容器不会溢出 */
+        .editor-container {
+            min-width: 0; /* 防止 flex 溢出 */
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -20,7 +33,8 @@
     <div class="container mx-auto p-6">
         <h1 class="text-2xl font-bold mb-4">主题管理</h1>
 
-        <div class="flex flex-wrap gap-6">
+        <!-- 改为 flex-col 并配合 md:flex-row -->
+        <div class="flex flex-col md:flex-row gap-6">
             <!-- 左侧主题列表 -->
             <div class="w-full md:w-1/3 bg-white rounded shadow p-4">
                 <h2 class="text-lg font-bold mb-3">已安装主题</h2>
@@ -28,14 +42,14 @@
             </div>
 
             <!-- 右侧模板编辑器 -->
-            <div class="flex-1 bg-white rounded shadow p-4">
-                <div class="flex justify-between items-center mb-3">
+            <div class="flex-1 min-w-0 bg-white rounded shadow p-4 editor-container">
+                <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
                     <h2 class="text-lg font-bold">模板编辑器</h2>
-                    <div>
+                    <div class="flex flex-wrap items-center gap-2">
                         <select id="template-select" class="border rounded p-1 text-sm" disabled>
                             <option>请先选择主题</option>
                         </select>
-                        <button id="save-template" class="bg-blue-600 text-white px-3 py-1 rounded ml-2 text-sm" disabled>保存</button>
+                        <button id="save-template" class="bg-blue-600 text-white px-3 py-1 rounded text-sm" disabled>保存</button>
                     </div>
                 </div>
                 <div id="editor" class="ace_editor"></div>
@@ -78,8 +92,7 @@
                             <div class="font-bold">${escapeHtml(theme.name)}</div>
                             <div class="text-sm text-gray-500">版本: ${escapeHtml(theme.version)} | 作者: ${escapeHtml(theme.author)}</div>
                             <div class="text-sm mt-1">${escapeHtml(theme.description || '')}</div>
-                            <div class="mt-2 flex space-x-2">
-                               
+                            <div class="mt-2 flex flex-wrap gap-2">
                                 ${!theme.is_active ? `<button onclick="activateTheme('${escapeHtml(theme.name)}')" class="bg-green-600 text-white px-2 py-1 rounded text-sm">激活</button>` : '<span class="text-green-600 text-sm">当前主题</span>'}
                                 <button onclick="selectTheme('${escapeHtml(theme.name)}')" class="bg-blue-600 text-white px-2 py-1 rounded text-sm">编辑模板</button>
                             </div>
@@ -105,7 +118,6 @@
 
         async function selectTheme(themeName) {
             currentTheme = themeName;
-            // 加载模板列表
             try {
                 const files = await apiCall('GET', `/api/admin/themes/${themeName}/templates`);
                 const select = document.getElementById('template-select');

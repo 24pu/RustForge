@@ -2,45 +2,44 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!-- ===== 添加 viewport ===== -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>插件管理 - 管理后台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="common.js"></script>
+    <style>
+        /* 手机优化：操作按钮换行，表格滚动 */
+        @media (max-width: 640px) {
+            .table-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .action-buttons {
+                flex-wrap: wrap;
+                gap: 0.25rem;
+            }
+            .action-buttons button {
+                font-size: 0.7rem;
+                padding: 0.1rem 0.4rem;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <div id="topbar-container"></div>
 
     <div class="container mx-auto p-6">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
             <h1 class="text-2xl font-bold">插件管理</h1>
-            <div class="space-x-2">
-                <button id="scan-btn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">扫描可用插件</button>
-                <button id="install-btn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">+ 安装插件</button>
+            <div class="flex flex-wrap gap-2">
+                <button id="scan-btn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 text-sm">扫描可用插件</button>
+                <button id="install-btn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm">+ 安装插件</button>
             </div>
         </div>
 
         <!-- 已安装插件列表 -->
         <div class="bg-white rounded shadow overflow-hidden mb-6">
-            <table class="min-w-full">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="p-3 text-left">名称</th>
-                        <th class="p-3 text-left">版本</th>
-                        <th class="p-3 text-left">作者</th>
-                        <th class="p-3 text-left">描述</th>
-                        <th class="p-3 text-left">状态</th>
-                        <th class="p-3 text-left">操作</th>
-                    </tr>
-                </thead>
-                <tbody id="plugins-list">
-                    <tr><td colspan="6" class="p-3 text-center">加载中...</td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- 可用插件（扫描结果） -->
-        <div id="available-plugins-section" class="hidden">
-            <h2 class="text-lg font-bold mb-2">未安装的可用插件</h2>
-            <div class="bg-white rounded shadow overflow-hidden">
+            <div class="table-wrapper">
                 <table class="min-w-full">
                     <thead class="bg-gray-100">
                         <tr>
@@ -48,18 +47,42 @@
                             <th class="p-3 text-left">版本</th>
                             <th class="p-3 text-left">作者</th>
                             <th class="p-3 text-left">描述</th>
+                            <th class="p-3 text-left">状态</th>
                             <th class="p-3 text-left">操作</th>
                         </tr>
                     </thead>
-                    <tbody id="available-plugins-list"></tbody>
+                    <tbody id="plugins-list">
+                        <tr><td colspan="6" class="p-3 text-center">加载中...</td></tr>
+                    </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- 可用插件（扫描结果） -->
+        <div id="available-plugins-section" class="hidden">
+            <h2 class="text-lg font-bold mb-2">未安装的可用插件</h2>
+            <div class="bg-white rounded shadow overflow-hidden">
+                <div class="table-wrapper">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="p-3 text-left">名称</th>
+                                <th class="p-3 text-left">版本</th>
+                                <th class="p-3 text-left">作者</th>
+                                <th class="p-3 text-left">描述</th>
+                                <th class="p-3 text-left">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="available-plugins-list"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- 安装模态框（上传 .wasm 文件） -->
-    <div id="install-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-lg w-96 p-6">
+    <div id="install-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg w-full max-w-md p-6">
             <h2 class="text-lg font-bold mb-3">安装插件</h2>
             <form id="install-form" enctype="multipart/form-data">
                 <div class="mb-3">
@@ -67,7 +90,7 @@
                     <input type="file" id="plugin-file" accept=".wasm" required class="border rounded w-full p-2">
                     <p class="text-xs text-gray-500 mt-1">插件将自动读取元数据（名称、版本、作者、描述）</p>
                 </div>
-                <div class="flex justify-end space-x-2">
+                <div class="flex flex-wrap justify-end space-x-2 gap-2">
                     <button type="button" id="close-modal" class="bg-gray-300 px-4 py-2 rounded">取消</button>
                     <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">安装</button>
                 </div>
@@ -78,6 +101,7 @@
     <div id="footer-container"></div>
 
     <script>
+        // 原有 JavaScript 保持不变
         (async () => {
             if (!await requireAuth()) return;
             await loadTopbar();
@@ -91,7 +115,6 @@
 
             await loadPlugins();
 
-            // 扫描可用插件
             document.getElementById('scan-btn').addEventListener('click', async () => {
                 try {
                     const available = await apiCall('GET', '/api/admin/plugins/available');
@@ -122,7 +145,6 @@
                 }
             });
 
-            // 上传安装
             document.getElementById('install-btn').addEventListener('click', () => {
                 document.getElementById('install-modal').classList.remove('hidden');
             });
@@ -175,10 +197,12 @@
                             <td class="p-3">${escapeHtml(p.author || '')}</td>
                             <td class="p-3">${escapeHtml(p.description || '')}</td>
                             <td class="p-3">
-                                <button onclick="togglePlugin(${p.id}, ${!p.enabled})" class="px-2 py-1 rounded text-sm ${p.enabled ? 'bg-green-500' : 'bg-gray-500'} text-white">
-                                    ${p.enabled ? '已启用' : '已禁用'}
-                                </button>
-                                <button onclick="openSettings('${escapeHtml(p.name)}')" class="bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded text-sm ml-1">设置</button>
+                                <div class="action-buttons flex items-center">
+                                    <button onclick="togglePlugin(${p.id}, ${!p.enabled})" class="px-2 py-1 rounded text-sm ${p.enabled ? 'bg-green-500' : 'bg-gray-500'} text-white">
+                                        ${p.enabled ? '已启用' : '已禁用'}
+                                    </button>
+                                    <button onclick="openSettings('${escapeHtml(p.name)}')" class="bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded text-sm ml-1">设置</button>
+                                </div>
                             </td>
                             <td class="p-3">
                                 <button onclick="uninstallPlugin(${p.id})" class="bg-red-500 text-white px-2 py-1 rounded text-sm">卸载</button>
@@ -211,13 +235,11 @@
             }
         }
 
-        // 安装扫描到的插件（通过文件路径）
         async function installAvailable(filePath) {
             try {
                 await apiCall('POST', '/api/admin/plugins', { file_path: filePath });
                 alert('安装成功');
                 await loadPlugins();
-                // 可选：重新扫描以更新可用列表
                 document.getElementById('scan-btn').click();
             } catch (err) {
                 alert('安装失败: ' + err.message);

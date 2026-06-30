@@ -2,6 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!-- ===== 添加 viewport ===== -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>产品分类管理 - 管理后台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -18,17 +20,28 @@
         }
         .sortable-container li:active { cursor: grabbing; }
         .sortable-container li:hover { background-color: #e5e7eb; }
+        /* 手机优化 */
+        @media (max-width: 640px) {
+            .category-actions a, .category-actions button {
+                font-size: 0.75rem;
+                padding: 0.1rem 0.3rem;
+            }
+            .category-actions {
+                flex-wrap: wrap;
+                gap: 0.25rem;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-100">
     <div id="topbar-container"></div>
 
     <div class="container mx-auto p-6">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
             <h1 class="text-2xl font-bold">产品分类管理</h1>
-            <a href="add-product-category.html" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">+ 新建分类</a>
+            <a href="add-product-category.html" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm sm:text-base">+ 新建分类</a>
         </div>
-        <div class="bg-white rounded shadow p-4">
+        <div class="bg-white rounded shadow p-4 overflow-x-auto">
             <div id="category-tree-container">加载中...</div>
             <div class="mt-4 text-right">
                 <button id="save-order" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">保存排序</button>
@@ -77,13 +90,13 @@
             for (const cat of categories) {
                 html += `
                     <li data-id="${cat.id}">
-                        <div class="flex items-center justify-between py-1 px-2">
-                            <div class="flex items-center">
+                        <div class="flex flex-wrap items-center justify-between py-1 px-2 gap-2">
+                            <div class="flex items-center flex-wrap">
                                 ${'&nbsp;'.repeat(level * 4)}
                                 <span class="font-medium">${escapeHtml(cat.name)}</span>
                                 <span class="text-gray-400 text-sm ml-2">(${escapeHtml(cat.slug)})</span>
                             </div>
-                            <div>
+                            <div class="category-actions flex items-center">
                                 <a href="add-product-category.html?id=${cat.id}" class="text-blue-500 hover:underline mr-2">编辑</a>
                                 <button onclick="deleteCategory(${cat.id})" class="text-red-500 hover:underline">删除</button>
                                 <a href="add-product-category.html?parent_id=${cat.id}" class="text-green-500 hover:underline ml-2">添加子分类</a>

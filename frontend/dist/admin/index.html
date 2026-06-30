@@ -2,6 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!-- ===== 添加 viewport ===== -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>仪表盘 - 管理后台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -24,35 +26,40 @@
         .status-cancelled { background: #fee2e2; color: #991b1b; }
         .plugin-status-enabled { color: #16a34a; }
         .plugin-status-disabled { color: #dc2626; }
+        /* 手机优化 */
+        @media (max-width: 640px) {
+            .stat-number { font-size: 1.25rem; }
+            .card-title { font-size: 1rem; }
+        }
     </style>
 </head>
 <body class="bg-gray-100">
     <div id="topbar-container"></div>
 
     <div class="container mx-auto p-6">
-        <h1 class="text-3xl font-bold mb-6 text-gray-800">仪表盘</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">仪表盘</h1>
         
         <!-- 网格布局：左侧8列，右侧4列 -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             <!-- ========== 左侧：内容、产品、订单 ========== -->
             <div class="lg:col-span-8 space-y-6">
-                <!-- 内容管理（保持不变） -->
+                <!-- 内容管理 -->
                 <div class="bg-white rounded-lg shadow p-5">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <h2 class="card-title text-lg font-semibold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-file-alt text-blue-600 mr-2"></i> 内容管理
                     </h2>
                     <div class="grid grid-cols-3 gap-3 mb-4">
                         <div class="bg-blue-50 rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-blue-600" id="totalCount">-</div>
+                            <div class="stat-number text-2xl font-bold text-blue-600" id="totalCount">-</div>
                             <div class="text-xs text-gray-500">总内容</div>
                         </div>
                         <div class="bg-green-50 rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-green-600" id="publishedCount">-</div>
+                            <div class="stat-number text-2xl font-bold text-green-600" id="publishedCount">-</div>
                             <div class="text-xs text-gray-500">已发布</div>
                         </div>
                         <div class="bg-yellow-50 rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-yellow-600" id="draftCount">-</div>
+                            <div class="stat-number text-2xl font-bold text-yellow-600" id="draftCount">-</div>
                             <div class="text-xs text-gray-500">草稿</div>
                         </div>
                     </div>
@@ -63,26 +70,26 @@
                     <div id="recentContents" class="mt-2">加载中...</div>
                 </div>
 
-                <!-- 产品管理（保持不变） -->
+                <!-- 产品管理 -->
                 <div class="bg-white rounded-lg shadow p-5">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <h2 class="card-title text-lg font-semibold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-boxes text-purple-600 mr-2"></i> 产品管理
                     </h2>
-                    <div class="grid grid-cols-4 gap-2 mb-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
                         <div class="bg-indigo-50 rounded-lg p-2 text-center">
-                            <div class="text-xl font-bold text-indigo-600" id="productTotal">-</div>
+                            <div class="stat-number text-xl font-bold text-indigo-600" id="productTotal">-</div>
                             <div class="text-xs text-gray-500">总产品</div>
                         </div>
                         <div class="bg-emerald-50 rounded-lg p-2 text-center">
-                            <div class="text-xl font-bold text-emerald-600" id="productPublished">-</div>
+                            <div class="stat-number text-xl font-bold text-emerald-600" id="productPublished">-</div>
                             <div class="text-xs text-gray-500">已上架</div>
                         </div>
                         <div class="bg-amber-50 rounded-lg p-2 text-center">
-                            <div class="text-xl font-bold text-amber-600" id="productDraft">-</div>
+                            <div class="stat-number text-xl font-bold text-amber-600" id="productDraft">-</div>
                             <div class="text-xs text-gray-500">草稿</div>
                         </div>
                         <div class="bg-rose-50 rounded-lg p-2 text-center">
-                            <div class="text-xl font-bold text-rose-600" id="variantTotal">-</div>
+                            <div class="stat-number text-xl font-bold text-rose-600" id="variantTotal">-</div>
                             <div class="text-xs text-gray-500">变体</div>
                         </div>
                     </div>
@@ -93,30 +100,30 @@
                     <div id="recentProducts" class="mt-2">加载中...</div>
                 </div>
 
-                <!-- 订单管理（保持不变） -->
+                <!-- 订单管理 -->
                 <div class="bg-white rounded-lg shadow p-5">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <h2 class="card-title text-lg font-semibold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-clipboard-list text-orange-600 mr-2"></i> 订单管理
                     </h2>
-                    <div class="grid grid-cols-3 md:grid-cols-5 gap-3 mb-4">
+                    <div class="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-4">
                         <div class="bg-gray-50 rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-gray-800" id="orderTotal">-</div>
+                            <div class="stat-number text-2xl font-bold text-gray-800" id="orderTotal">-</div>
                             <div class="text-xs text-gray-500">总订单</div>
                         </div>
                         <div class="bg-yellow-50 rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-yellow-600" id="orderPending">-</div>
+                            <div class="stat-number text-2xl font-bold text-yellow-600" id="orderPending">-</div>
                             <div class="text-xs text-gray-500">待付款</div>
                         </div>
                         <div class="bg-blue-50 rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-blue-600" id="orderPaid">-</div>
+                            <div class="stat-number text-2xl font-bold text-blue-600" id="orderPaid">-</div>
                             <div class="text-xs text-gray-500">已付款</div>
                         </div>
                         <div class="bg-green-50 rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-green-600" id="orderShipped">-</div>
+                            <div class="stat-number text-2xl font-bold text-green-600" id="orderShipped">-</div>
                             <div class="text-xs text-gray-500">已发货</div>
                         </div>
                         <div class="bg-red-50 rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-red-600" id="orderCancelled">-</div>
+                            <div class="stat-number text-2xl font-bold text-red-600" id="orderCancelled">-</div>
                             <div class="text-xs text-gray-500">已取消</div>
                         </div>
                     </div>
@@ -131,9 +138,9 @@
             <!-- ========== 右侧：服务器状态 + 用户统计 + 插件信息 + 钩子信息 ========== -->
             <div class="lg:col-span-4 space-y-6">
                 
-                <!-- 服务器状态（保持不变） -->
+                <!-- 服务器状态 -->
                 <div class="bg-white rounded-lg shadow p-5">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <h2 class="card-title text-lg font-semibold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-server text-green-600 mr-2"></i> 服务器状态
                     </h2>
                     <div id="server-info" class="space-y-3 text-sm">
@@ -162,18 +169,18 @@
                     <div id="server-error" class="text-red-500 text-xs mt-3 hidden"></div>
                 </div>
 
-                <!-- 用户统计（保持不变） -->
+                <!-- 用户统计 -->
                 <div class="bg-white rounded-lg shadow p-5">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <h2 class="card-title text-lg font-semibold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-users text-indigo-600 mr-2"></i> 用户统计
                     </h2>
                     <div class="grid grid-cols-2 gap-3 mb-4">
                         <div class="bg-indigo-50 rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-indigo-600" id="userTotal">-</div>
+                            <div class="stat-number text-2xl font-bold text-indigo-600" id="userTotal">-</div>
                             <div class="text-xs text-gray-500">总用户</div>
                         </div>
                         <div class="bg-green-50 rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-green-600" id="userNewToday">-</div>
+                            <div class="stat-number text-2xl font-bold text-green-600" id="userNewToday">-</div>
                             <div class="text-xs text-gray-500">今日新增</div>
                         </div>
                     </div>
@@ -184,22 +191,22 @@
                     <div id="recentUsers" class="mt-2">加载中...</div>
                 </div>
 
-                <!-- ===== 新增：插件信息 ===== -->
+                <!-- 插件信息 -->
                 <div class="bg-white rounded-lg shadow p-5">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <h2 class="card-title text-lg font-semibold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-puzzle-piece text-pink-600 mr-2"></i> 插件信息
                     </h2>
                     <div class="grid grid-cols-3 gap-2 mb-4">
                         <div class="bg-pink-50 rounded-lg p-2 text-center">
-                            <div class="text-xl font-bold text-pink-600" id="pluginTotal">-</div>
+                            <div class="stat-number text-xl font-bold text-pink-600" id="pluginTotal">-</div>
                             <div class="text-xs text-gray-500">已安装</div>
                         </div>
                         <div class="bg-green-50 rounded-lg p-2 text-center">
-                            <div class="text-xl font-bold text-green-600" id="pluginEnabled">-</div>
+                            <div class="stat-number text-xl font-bold text-green-600" id="pluginEnabled">-</div>
                             <div class="text-xs text-gray-500">已启用</div>
                         </div>
                         <div class="bg-red-50 rounded-lg p-2 text-center">
-                            <div class="text-xl font-bold text-red-600" id="pluginDisabled">-</div>
+                            <div class="stat-number text-xl font-bold text-red-600" id="pluginDisabled">-</div>
                             <div class="text-xs text-gray-500">已禁用</div>
                         </div>
                     </div>
@@ -210,18 +217,18 @@
                     <div id="recentPlugins" class="mt-2">加载中...</div>
                 </div>
 
-                <!-- ===== 新增：钩子信息 ===== -->
+                <!-- 钩子信息 -->
                 <div class="bg-white rounded-lg shadow p-5">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <h2 class="card-title text-lg font-semibold text-gray-800 mb-4 flex items-center">
                         <i class="fas fa-code-branch text-cyan-600 mr-2"></i> 钩子信息
                     </h2>
                     <div class="grid grid-cols-2 gap-2 mb-4">
                         <div class="bg-cyan-50 rounded-lg p-2 text-center">
-                            <div class="text-xl font-bold text-cyan-600" id="hookTotal">-</div>
+                            <div class="stat-number text-xl font-bold text-cyan-600" id="hookTotal">-</div>
                             <div class="text-xs text-gray-500">总钩子</div>
                         </div>
                         <div class="bg-gray-50 rounded-lg p-2 text-center">
-                            <div class="text-xl font-bold text-gray-600" id="hookPlugins">-</div>
+                            <div class="stat-number text-xl font-bold text-gray-600" id="hookPlugins">-</div>
                             <div class="text-xs text-gray-500">插件数</div>
                         </div>
                     </div>
@@ -414,20 +421,17 @@
                 document.getElementById('userNewToday').innerText = '-';
             }
 
-           // ===== 新增：插件信息 =====
+            // ===== 插件信息 =====
             try {
                 const pluginData = await apiCall('GET', '/api/admin/plugins');
 
-                // 鲁棒的数据提取
                 let plugins = [];
                 if (Array.isArray(pluginData)) {
                     plugins = pluginData;
                 } else if (pluginData && typeof pluginData === 'object') {
-                    // 尝试常见的键名
                     plugins = pluginData.plugins || pluginData.items || pluginData.data || pluginData.results || [];
                 }
 
-                // 如果 plugins 不是数组，转为空数组
                 if (!Array.isArray(plugins)) plugins = [];
 
                 const total = plugins.length;
@@ -438,7 +442,6 @@
                 document.getElementById('pluginEnabled').innerText = enabled;
                 document.getElementById('pluginDisabled').innerText = disabled;
 
-                // 排序（优先 created_at，其次 installed_at）
                 const sorted = [...plugins].sort((a, b) => {
                     const dateA = new Date(a.created_at || a.installed_at || a.create_time || 0);
                     const dateB = new Date(b.created_at || b.installed_at || b.create_time || 0);
@@ -452,7 +455,6 @@
                 } else {
                     let html = '<ul class="divide-y divide-gray-100">';
                     for (const p of recent) {
-                        // 兼容不同字段名
                         const name = p.name || p.plugin_name || p.title || '未命名';
                         const isEnabled = p.enabled === true || p.is_enabled === true || p.status === 'active';
                         const statusText = isEnabled ? '启用' : '禁用';
@@ -474,20 +476,16 @@
                 document.getElementById('pluginEnabled').innerText = '-';
                 document.getElementById('pluginDisabled').innerText = '-';
             }
-            // ===== 新增：钩子信息 =====
-            // 注意：后端需要提供全局钩子列表接口，例如 GET /api/admin/hooks
-            // 如果尚未实现，以下为模拟数据，您可替换为真实 API 调用
+
             // ===== 钩子信息（真实 API） =====
             try {
                 const hookData = await apiCall('GET', '/api/admin/hooks?page=1&per_page=10');
                 const hooks = hookData.items || [];
                 document.getElementById('hookTotal').innerText = hookData.total || hooks.length;
 
-                // 统计涉及插件数
                 const pluginSet = new Set(hooks.map(h => h.plugin_name));
                 document.getElementById('hookPlugins').innerText = pluginSet.size;
 
-                // 最近钩子（取前5条，因为已按时间降序排列）
                 const recentHooks = hooks.slice(0, 5);
                 const container = document.getElementById('recentHooks');
                 if (!recentHooks.length) {
@@ -516,7 +514,7 @@
                 document.getElementById('hookPlugins').innerText = '-';
             }
 
-            // ===== 服务器状态（原有） =====
+            // ===== 服务器状态 =====
             loadServerInfo();
         }
 

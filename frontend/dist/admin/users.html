@@ -2,16 +2,27 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!-- ===== 添加 viewport ===== -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>用户管理 - 管理后台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="common.js"></script>
+    <style>
+        /* 手机优化 */
+        @media (max-width: 640px) {
+            .action-btn { font-size: 0.7rem; padding: 0.1rem 0.4rem; }
+            .role-select { font-size: 0.7rem; padding: 0.1rem 0.2rem; }
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <div id="topbar-container"></div>
     <div class="container mx-auto p-6">
-        <div class="bg-white p-4 rounded shadow">
+        <div class="bg-white p-4 rounded shadow overflow-hidden">
             <h2 class="text-xl font-bold mb-3">用户列表</h2>
-            <div id="users-list">加载中...</div>
+            <div class="overflow-x-auto">
+                <div id="users-list">加载中...</div>
+            </div>
         </div>
     </div>
     <div id="footer-container"></div>
@@ -61,11 +72,12 @@
 
                 let html = '<table class="min-w-full bg-white border">';
                 html += '<thead class="bg-gray-100">';
-                html += '<th class="p-2 text-left">Email</th>';
-                html += '<th class="p-2 text-left">姓名</th>';
-                html += '<th class="p-2 text-left">角色</th>';
-                html += '<th class="p-2 text-left">操作</th>';
-                html += '</thead><tbody>';
+                html += '<tr>';
+                html += '<th class="p-2 text-left text-xs sm:text-sm">Email</th>';
+                html += '<th class="p-2 text-left text-xs sm:text-sm">姓名</th>';
+                html += '<th class="p-2 text-left text-xs sm:text-sm">角色</th>';
+                html += '<th class="p-2 text-left text-xs sm:text-sm">操作</th>';
+                html += '</tr></thead><tbody>';
 
                 for (const u of users) {
                     const rolesText = u.roles.join(', ') || '无';
@@ -79,10 +91,10 @@
                             options += `<option value="${role.name}" ${selected}>${role.name}</option>`;
                         }
                         actionsHtml = `
-                            <select id="role-select-${u.id}" class="border p-1 rounded text-sm">
+                            <select id="role-select-${u.id}" class="role-select border p-1 rounded text-sm">
                                 ${options}
                             </select>
-                            <button onclick="updateUserRole('${u.id}')" class="bg-blue-500 text-white px-2 py-1 rounded ml-1 text-sm">更新</button>
+                            <button onclick="updateUserRole('${u.id}')" class="action-btn bg-blue-500 text-white px-2 py-1 rounded ml-1 text-sm">更新</button>
                         `;
                     } else {
                         actionsHtml = '<span class="text-gray-400 text-sm">无权限</span>';
@@ -90,15 +102,15 @@
 
                     // 删除按钮：仅当有删除权限且不是当前用户时显示
                     if (canDeleteUser && u.id !== currentUserId) {
-                        actionsHtml += ` <button onclick="deleteUser('${u.id}')" class="bg-red-500 text-white px-2 py-1 rounded ml-1 text-sm">删除</button>`;
+                        actionsHtml += ` <button onclick="deleteUser('${u.id}')" class="action-btn bg-red-500 text-white px-2 py-1 rounded ml-1 text-sm">删除</button>`;
                     }
 
                     html += `
                         <tr class="border-t hover:bg-gray-50">
-                            <td class="p-2">${escapeHtml(u.email)}</td>
-                            <td class="p-2">${escapeHtml(u.name || '')}</td>
-                            <td class="p-2">${escapeHtml(rolesText)}</td>
-                            <td class="p-2">${actionsHtml}</td>
+                            <td class="p-2 text-sm">${escapeHtml(u.email)}</td>
+                            <td class="p-2 text-sm">${escapeHtml(u.name || '')}</td>
+                            <td class="p-2 text-sm">${escapeHtml(rolesText)}</td>
+                            <td class="p-2 text-sm">${actionsHtml}</td>
                         </tr>
                     `;
                 }

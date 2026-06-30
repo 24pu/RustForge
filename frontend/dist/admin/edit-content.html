@@ -2,13 +2,17 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>编辑内容 - 管理后台</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+    <!-- 替换为 Vditor -->
+   
+   <link rel="stylesheet" href="https://unpkg.com/vditor@3.10.6/dist/index.css" / >
+    <script src="https://unpkg.com/vditor@3.10.6/dist/index.min.js"></script>
     <script src="common.js"></script>
     <style>
-        .EasyMDEContainer .CodeMirror { min-height: 400px; }
+        /* Vditor 高度 */
+        .vditor { min-height: 400px; }
         .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem; max-height: 500px; overflow-y: auto; }
         .media-item { background: white; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; }
         .media-item:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
@@ -23,6 +27,12 @@
         .level-1 { margin-left: 1rem; }
         .level-2 { margin-left: 2rem; }
         .level-3 { margin-left: 3rem; }
+        /* 手机优化 */
+        @media (max-width: 640px) {
+            .form-actions { flex-direction: column; gap: 0.5rem; }
+            .form-actions button, .form-actions a { width: 100%; text-align: center; }
+            .cover-actions { flex-wrap: wrap; gap: 0.5rem; }
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -30,13 +40,13 @@
 
     <div class="container mx-auto p-6">
         <div class="bg-white rounded shadow">
-            <div class="p-6 flex justify-between items-center">
+            <div class="p-6 flex flex-wrap justify-between items-center gap-2">
                 <h1 class="text-2xl font-bold">编辑内容</h1>
                 <button type="button" id="media-library-btn" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700">📁 媒体库</button>
             </div>
             <form id="edit-form" novalidate>
-                <div class="flex flex-wrap">
-                    <div class="w-full lg:w-2/3 p-6 border-r border-gray-200">
+                <div class="flex flex-col lg:flex-row">
+                    <div class="w-full lg:w-2/3 p-6 border-b lg:border-b-0 lg:border-r border-gray-200">
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2" for="slug">Slug (唯一标识)</label>
                             <input type="text" id="slug" name="slug" required readonly class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline bg-gray-100">
@@ -49,7 +59,7 @@
                         <!-- 封面图片区域 -->
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2">封面图片</label>
-                            <div class="flex items-center space-x-3">
+                            <div class="flex flex-wrap items-center space-x-3 cover-actions">
                                 <img id="cover-preview" src="" alt="封面预览" class="h-20 w-20 object-cover rounded border hidden">
                                 <button type="button" id="select-cover-btn" class="bg-gray-200 px-3 py-1 rounded text-sm">从媒体库选择</button>
                                 <button type="button" id="remove-cover-btn" class="text-red-500 text-sm hidden">移除</button>
@@ -66,7 +76,8 @@
                         </div>
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2" for="body">正文 (Markdown)</label>
-                            <textarea id="body" name="body" rows="10"></textarea>
+                            <!-- 此处放置 Vditor -->
+                            <div id="vditor-container"></div>
                         </div>
                         <div class="mb-6">
                             <label class="inline-flex items-center">
@@ -74,7 +85,7 @@
                                 <span class="ml-2 text-gray-700">发布（立即公开）</span>
                             </label>
                         </div>
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between form-actions">
                             <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">保存修改</button>
                             <a href="contents.html" class="text-gray-600 hover:text-gray-800">取消</a>
                         </div>
@@ -98,9 +109,9 @@
         </div>
     </div>
 
-    <!-- 媒体库模态框 -->
+    <!-- 媒体库模态框（同添加页面，保持不变） -->
     <div id="media-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 modal">
-        <div class="bg-white rounded-lg w-3/4 max-w-5xl p-6 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-lg w-full max-w-5xl p-6 max-h-[90vh] overflow-y-auto mx-4">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold">媒体库</h2>
                 <button id="close-modal" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
@@ -111,7 +122,7 @@
                     <div id="folder-tree-container" class="folder-tree text-sm">加载中...</div>
                 </div>
                 <div class="flex-1">
-                    <div class="mb-4 flex justify-between items-center">
+                    <div class="mb-4 flex flex-wrap justify-between items-center gap-2">
                         <div class="flex items-center space-x-2">
                             <span class="text-sm">每页显示：</span>
                             <select id="media-per-page" class="border rounded p-1 text-sm">
@@ -131,13 +142,16 @@
     <div id="footer-container"></div>
 
     <script>
-        let easyMDE;
+        let vditor;  // Vditor 实例
         let currentMediaPage = 1;
         let mediaPerPage = 12;
         let mediaTotalPages = 1;
         let currentFolderId = null;
         let selectingCover = false;
         let contentLang = null;
+
+        // 以下函数与添加页面基本相同，仅 easyMDE 相关部分改为 vditor
+        // 我们保留原有命名但内部使用 vditor
 
         async function loadLangOptions() {
             try {
@@ -303,6 +317,7 @@
             paginationDiv.innerHTML = html;
         }
 
+        // 插入媒体到 Vditor（光标位置）
         function insertMediaToEditor(url, filename, mime) {
             if (selectingCover) {
                 if (!mime || !mime.startsWith('image/')) {
@@ -318,17 +333,15 @@
                 return;
             }
 
-            if (!easyMDE) return;
+            if (!vditor) return;
             const isImage = mime.startsWith('image/');
             let insertText = '';
             if (isImage) {
-                insertText = `<img src="${url}" alt="${filename}">`;
+                insertText = `![${filename}](${url})`;
             } else {
                 insertText = `[${filename}](${url})`;
             }
-            const cm = easyMDE.codemirror;
-            const cursor = cm.getCursor();
-            cm.replaceRange(insertText, cursor);
+            vditor.insertValue(insertText);
             document.getElementById('media-modal').style.display = 'none';
         }
 
@@ -368,19 +381,40 @@
                     document.getElementById('remove-cover-btn').classList.remove('hidden');
                 }
 
-                // 显示翻译组信息
                 if (content.translation_group) {
                     document.getElementById('translation-info').classList.remove('hidden');
                     document.getElementById('translation-group-id').innerText = '翻译组 ID: ' + content.translation_group;
                 }
 
-                easyMDE = new EasyMDE({
-                    element: document.getElementById('body'),
-                    spellChecker: false,
+                // 初始化 Vditor
+                vditor = new Vditor('vditor-container', {
+                    height: 400,
+                    mode: 'sv',   // 即时渲染
                     placeholder: '在这里编写内容...',
-                    toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'code', 'unordered-list', 'ordered-list', '|', 'link', 'image', '|', 'preview', 'side-by-side', 'fullscreen', '|', 'guide']
+                    toolbar: [
+                        'emoji', 'headings', 'bold', 'italic', 'strike', '|',
+                        'list', 'ordered-list', 'check', 'outdent', 'indent', '|',
+                        'quote', 'line', 'code', 'inline-code', 'insert-before', 'insert-after', '|',
+                        'table', 'link', 'image', 'mark', '|',
+                        'undo', 'redo', '|',
+                        'edit-mode', 'fullscreen',
+                    ],
+                    counter: { enable: true, max: 50000 },
+                    cache: { enable: false },
+                    preview: {
+                        markdown: {
+                            toc: true,
+                        },
+                    },
                 });
-                easyMDE.value(content.body);
+                // 等待 Vditor 初始化完成后设置内容
+                // 注意：Vditor 初始化是异步的，但 new 是同步的，内容设置需要确保 DOM 已渲染
+                // 简单起见，延迟设置（或使用 after 事件）
+                setTimeout(() => {
+                    if (vditor) {
+                        vditor.setValue(content.body);
+                    }
+                }, 100);
             } catch (err) {
                 alert('加载内容失败: ' + err.message);
                 window.location.href = '/admin/contents.html';
@@ -445,7 +479,8 @@
             document.getElementById('edit-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const title = document.getElementById('title').value.trim();
-                const body = easyMDE.value();
+                // 获取 Vditor 内容
+                const body = vditor ? vditor.getValue() : '';
                 const published = document.getElementById('published').checked;
                 const selectedCheckboxes = document.querySelectorAll('#category-tree input[type="checkbox"]:checked');
                 const categoryIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));

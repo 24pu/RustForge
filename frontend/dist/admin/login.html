@@ -2,17 +2,19 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!-- ===== 添加 viewport ===== -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录 - 管理后台</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 flex items-center justify-center h-screen">
-    <div class="bg-white p-8 rounded shadow-md w-96">
-        <h1 class="text-2xl font-bold mb-6">管理员登录</h1>
-        <input id="email" type="email" placeholder="电子邮箱" class="w-full border p-2 mb-3 rounded">
-        <input id="password" type="password" placeholder="密码" class="w-full border p-2 mb-3 rounded">
-        <button id="loginBtn" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">登录</button>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white p-8 rounded shadow-md w-full max-w-sm mx-auto">
+        <h1 class="text-2xl font-bold mb-6 text-center">管理员登录</h1>
+        <input id="email" type="email" placeholder="电子邮箱" class="w-full border p-2 mb-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <input id="password" type="password" placeholder="密码" class="w-full border p-2 mb-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button id="loginBtn" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">登录</button>
         <p id="errorMsg" class="text-red-500 text-sm mt-2 hidden"></p>
-        <p class="mt-4 text-center text-sm">没有账号？<a href="register.html" class="text-blue-600">立即注册</a></p>
+        <p class="mt-4 text-center text-sm">没有账号？<a href="register.html" class="text-blue-600 hover:underline">立即注册</a></p>
     </div>
     <script src="common.js"></script>
     <script>

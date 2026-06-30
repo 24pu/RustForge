@@ -300,6 +300,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .merge(plugin_settings_router)
         .nest_service("/uploads", ServeDir::new("uploads"))
         .nest_service("/config", ServeDir::new("config"))  // 添加这一行
+        .nest_service("/lib", ServeDir::new("lib"))
         .route("/content/:slug", get(content_detail_handler))
         .route("/:slug", get(category_page_handler))
         .route("/plugins/:plugin_name", get(plugin_default_handler))      // 无斜杠

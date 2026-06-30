@@ -1,16 +1,22 @@
+
+
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!-- ===== 关键修复：添加 viewport ===== -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>媒体库 - 管理后台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="common.js"></script>
     <style>
         .folder-tree ul {
             list-style: none;
+            padding-left: 0;
         }
         .folder-tree li {
-            margin: 0.2rem 0.2rem;
+            margin: 0.2rem 0;
         }
         .folder-item {
             display: flex;
@@ -19,6 +25,8 @@
             padding: 0.2rem 0.5rem;
             border-radius: 0.25rem;
             cursor: pointer;
+            flex-wrap: wrap;
+            gap: 0.25rem;
         }
         .level-0 { padding-left: 0; }
         .level-1 { padding-left: 1rem; }
@@ -33,7 +41,7 @@
         }
         .media-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
             gap: 1rem;
         }
         .media-item {
@@ -60,16 +68,40 @@
             justify-content: center;
             height: 100%;
         }
+        /* 移动端调整 */
+        @media (max-width: 640px) {
+            .media-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 0.5rem;
+            }
+            .folder-tree .folder-item {
+                font-size: 0.9rem;
+                padding: 0.15rem 0.3rem;
+            }
+            .folder-tree .folder-item .text-xs {
+                font-size: 0.7rem;
+            }
+            .pagination-controls {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 0.25rem;
+            }
+            .pagination-controls button {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.8rem;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-100">
     <div id="topbar-container"></div>
 
-    <div class="container mx-auto p-6">
+    <div class="container mx-auto p-4 md:p-6">
         <h1 class="text-2xl font-bold mb-4">媒体库</h1>
 
-        <div class="flex flex-col md:flex-row gap-6">
-            <!-- 左侧文件夹树 -->
+        <!-- 改为 flex-col 并在 md 以上变为 row -->
+        <div class="flex flex-col md:flex-row gap-4 md:gap-6">
+            <!-- 左侧文件夹树（在手机上可折叠） -->
             <div class="w-full md:w-64 bg-white rounded shadow p-3">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="font-bold">文件夹</h2>
@@ -79,8 +111,8 @@
             </div>
 
             <!-- 右侧内容 -->
-            <div class="flex-1">
-                <div class="flex justify-between items-center mb-3">
+            <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
                     <div>
                         <span class="text-gray-600">当前文件夹：</span>
                         <span id="current-folder-name" class="font-medium">根目录</span>
@@ -88,13 +120,13 @@
                     <button id="upload-btn" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">上传文件</button>
                 </div>
 
-                <!-- 上传区域（隐藏） -->
+                <!-- 上传区域 -->
                 <div id="upload-area" class="hidden bg-white p-4 rounded shadow mb-4">
                     <form id="upload-form">
                         <div class="mb-2">
                             <input type="file" id="file-input" name="files" multiple class="w-full text-sm">
                         </div>
-                        <div class="flex space-x-2">
+                        <div class="flex flex-wrap gap-2">
                             <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded text-sm">开始上传</button>
                             <button type="button" id="cancel-upload" class="bg-gray-400 text-white px-3 py-1 rounded text-sm">取消</button>
                         </div>
@@ -103,16 +135,16 @@
                 </div>
 
                 <!-- 分页 -->
-                <div class="bg-white rounded shadow p-3 mb-3 flex justify-between items-center">
+                <div class="bg-white rounded shadow p-3 mb-3 flex flex-wrap justify-between items-center gap-2">
                     <div class="flex items-center space-x-2">
-                        <span class="text-sm">每页显示：</span>
+                        <span class="text-sm">每页：</span>
                         <select id="per-page" class="border rounded p-1 text-sm">
                             <option value="12">12</option>
                             <option value="24">24</option>
                             <option value="48">48</option>
                         </select>
                     </div>
-                    <div class="flex space-x-1" id="pagination"></div>
+                    <div class="flex space-x-1 pagination-controls" id="pagination"></div>
                 </div>
 
                 <!-- 媒体网格 -->
@@ -123,7 +155,7 @@
 
     <div id="footer-container"></div>
 
-    <script>
+   <script>
         let currentPage = 1;
         let perPage = 12;
         let totalPages = 1;

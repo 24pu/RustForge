@@ -2,7 +2,12 @@
 
 {% block title_prefix %}{{ site_config.seo_title | default(value='RustForge') }}{% endblock %}
 {% block title_suffix %} - {{ post.title }}{% endblock %}
-
+{% block extra_head %}
+<!-- 引入 abcjs -->
+ <script src="/lib/abcjs/abcjs-basic-min.js"></script>
+<!-- 备选：如果本地加载失败，尝试 CDN（可选） -->
+<!-- <script src="/lib/abcjs/abcjs-basic-min.js" onerror="this.src='https://unpkg.com/abcjs@6.0.0/dist/abcjs-basic-min.js'"></script> -->
+{% endblock %}
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-8">
     <div class="flex flex-col md:flex-row gap-6">
@@ -74,6 +79,25 @@
     </div>
     </div>
 </div>
-
-
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 渲染所有 ABC 代码块
+    const abcBlocks = document.querySelectorAll('pre code.language-abc');
+    abcBlocks.forEach(function(codeElement) {
+        const pre = codeElement.parentNode;
+        const abcText = codeElement.textContent.trim();
+        // 跳过空内容
+        if (!abcText) return;
+        const container = document.createElement('div');
+        container.className = 'abc-container';
+        pre.parentNode.replaceChild(container, pre);
+        try {
+            ABCJS.renderAbc(container, abcText, {});
+        } catch (e) {
+            console.warn('ABC 渲染失败，显示原始代码:', e);
+            container.innerHTML = `<pre><code class="language-abc">${abcText}</code></pre>`;
+        }
+    });
+});
+</script>
 {% endblock %}

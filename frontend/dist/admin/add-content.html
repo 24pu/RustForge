@@ -2,13 +2,18 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>添加内容 - 管理后台</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+    <!-- 使用 Vditor -->
+      <!-- 从 admin/ 目录回退到上级目录，再进入 lib/vditor/ -->
+
+ <link rel="stylesheet" href="https://unpkg.com/vditor@3.10.6/dist/index.css" / >
+    <script src="https://unpkg.com/vditor@3.10.6/dist/index.min.js"></script>
     <script src="common.js"></script>
     <style>
-        .EasyMDEContainer .CodeMirror { min-height: 400px; }
+        /* Vditor 内容区域高度 */
+        .vditor { min-height: 500px; }
         .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem; max-height: 500px; overflow-y: auto; }
         .media-item { background: white; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; }
         .media-item:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
@@ -23,6 +28,10 @@
         .level-1 { margin-left: 1rem; }
         .level-2 { margin-left: 2rem; }
         .level-3 { margin-left: 3rem; }
+        @media (max-width: 640px) {
+            .form-actions { flex-direction: column; gap: 0.5rem; }
+            .form-actions button, .form-actions a { width: 100%; text-align: center; }
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -30,14 +39,14 @@
 
     <div class="container mx-auto p-6">
         <div class="bg-white rounded shadow">
-            <div class="p-6 flex justify-between items-center">
+            <div class="p-6 flex flex-wrap justify-between items-center">
                 <h1 id="page-title" class="text-2xl font-bold">添加新内容</h1>
                 <button type="button" id="media-library-btn" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700">📁 媒体库</button>
             </div>
             <form id="create-form" novalidate>
                 <input type="hidden" id="translation_group" name="translation_group">
-                <div class="flex flex-wrap">
-                    <div class="w-full lg:w-2/3 p-6 border-r border-gray-200">
+                <div class="flex flex-col lg:flex-row">
+                    <div class="w-full lg:w-2/3 p-6 border-b lg:border-b-0 lg:border-r border-gray-200">
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2" for="slug">Slug (唯一标识)</label>
                             <input type="text" id="slug" name="slug" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
@@ -49,7 +58,7 @@
                         </div>
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2">封面图片</label>
-                            <div class="flex items-center space-x-3">
+                            <div class="flex flex-wrap items-center space-x-3">
                                 <img id="cover-preview" src="" alt="封面预览" class="h-20 w-20 object-cover rounded border hidden">
                                 <button type="button" id="select-cover-btn" class="bg-gray-200 px-3 py-1 rounded text-sm">从媒体库选择</button>
                                 <button type="button" id="remove-cover-btn" class="text-red-500 text-sm hidden">移除</button>
@@ -64,7 +73,8 @@
                         </div>
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2" for="body">正文 (Markdown)</label>
-                            <textarea id="body" name="body" rows="10"></textarea>
+                            
+                             <div id="vditor-container"></div>
                         </div>
                         <div class="mb-6">
                             <label class="inline-flex items-center">
@@ -73,7 +83,7 @@
                             </label>
                             <p class="text-gray-500 text-xs mt-1">如果不勾选，内容将保存为草稿，稍后可再发布。</p>
                         </div>
-                        <div class="flex items-center justify-between">
+                        <div class="flex flex-wrap items-center justify-between form-actions">
                             <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">保存内容</button>
                             <a href="contents.html" class="text-gray-600 hover:text-gray-800">取消</a>
                         </div>
@@ -103,7 +113,7 @@
                     <div id="folder-tree-container" class="folder-tree text-sm">加载中...</div>
                 </div>
                 <div class="flex-1">
-                    <div class="mb-4 flex justify-between items-center">
+                    <div class="mb-4 flex flex-wrap justify-between items-center gap-2">
                         <div class="flex items-center space-x-2">
                             <span class="text-sm">每页显示：</span>
                             <select id="media-per-page" class="border rounded p-1 text-sm">
@@ -123,14 +133,14 @@
     <div id="footer-container"></div>
 
     <script>
-        let easyMDE;
+        let vditor;                     // Vditor 实例
         let currentMediaPage = 1;
         let mediaPerPage = 12;
         let mediaTotalPages = 1;
         let currentFolderId = null;
         let selectingCover = false;
-        let sourceLang = null;       // 源语言（翻译自哪个语言）
-        let isTranslation = false;   // 是否为翻译模式
+        let sourceLang = null;
+        let isTranslation = false;
 
         function renderTree(categories, level = 0) {
             let html = '';
@@ -169,7 +179,6 @@
                     return `<option value="${code}">${lang ? lang.name : code}</option>`;
                 }).join('');
 
-                // 如果是翻译模式，自动选择非源语言
                 if (isTranslation && sourceLang) {
                     for (let i = 0; i < select.options.length; i++) {
                         if (select.options[i].value !== sourceLang) {
@@ -301,6 +310,7 @@
             paginationDiv.innerHTML = html;
         }
 
+        // 插入媒体到 Vditor 编辑器（光标位置）
         function insertMediaToEditor(url, filename, mime) {
             if (selectingCover) {
                 if (!mime || !mime.startsWith('image/')) {
@@ -316,17 +326,16 @@
                 return;
             }
 
-            if (!easyMDE) return;
+            if (!vditor) return;
             const isImage = mime.startsWith('image/');
             let insertText = '';
             if (isImage) {
-                insertText = `<img src="${url}" alt="${filename}">`;
+                insertText = `![${filename}](${url})`;
             } else {
                 insertText = `[${filename}](${url})`;
             }
-            const cm = easyMDE.codemirror;
-            const cursor = cm.getCursor();
-            cm.replaceRange(insertText, cursor);
+            // 使用 Vditor 的 insertValue 在光标处插入
+            vditor.insertValue(insertText);
             document.getElementById('media-modal').style.display = 'none';
         }
 
@@ -406,11 +415,26 @@
                 document.getElementById('translation_group').value = inheritedGroup || '';
             }
 
-            easyMDE = new EasyMDE({
-                element: document.getElementById('body'),
-                spellChecker: false,
+            // ---- 初始化 Vditor ----
+              vditor = new Vditor('vditor-container', {
+                height: 500,
+                mode: 'sv',   // 'sv'（即时渲染）或 'ir'（分屏预览）或 'wysiwyg'
                 placeholder: '在这里编写内容...',
-                toolbar: ['bold', 'italic', 'heading', '|', 'quote', 'code', 'unordered-list', 'ordered-list', '|', 'link', 'image', '|', 'preview', 'side-by-side', 'fullscreen', '|', 'guide']
+                toolbar: [
+                    'emoji', 'headings', 'bold', 'italic', 'strike', '|',
+                    'list', 'ordered-list', 'check', 'outdent', 'indent', '|',
+                    'quote', 'line', 'code', 'inline-code', 'insert-before', 'insert-after', '|',
+                    'table', 'link', 'image', 'mark', '|',
+                    'undo', 'redo', '|',
+                    'edit-mode', 'fullscreen',
+                ],
+                counter: { enable: true, max: 50000 },
+                cache: { enable: false },
+                preview: {
+                    markdown: {
+                        toc: true,
+                    },
+                },
             });
 
             await loadLangOptions();
@@ -420,7 +444,7 @@
                 e.preventDefault();
                 const slug = document.getElementById('slug').value.trim();
                 const title = document.getElementById('title').value.trim();
-                const body = easyMDE.value();
+                const body = vditor.getValue(); // 获取 Markdown 原文
                 const published = document.getElementById('published').checked;
                 const selectedCheckboxes = document.querySelectorAll('#category-tree input[type="checkbox"]:checked');
                 const categoryIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));

@@ -2,6 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <!-- ===== 添加 viewport ===== -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>角色管理 - 管理后台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="common.js"></script>
@@ -9,7 +11,12 @@
         .modal { transition: opacity 0.25s ease; }
         .permission-group { margin-bottom: 1rem; }
         .group-title { font-weight: bold; margin-bottom: 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid #e2e8f0; }
-        .permission-item { margin-left: 1rem; display: inline-block; width: 200px; }
+        .permission-item { display: inline-block; width: 200px; margin-right: 0.5rem; }
+        /* 手机优化 */
+        @media (max-width: 640px) {
+            .permission-item { width: 100%; display: block; }
+            .action-btn { font-size: 0.7rem; padding: 0.1rem 0.4rem; }
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -17,31 +24,33 @@
     <div id="topbar-container"></div>
 
     <div class="container mx-auto p-6">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
             <h1 class="text-2xl font-bold">角色管理</h1>
-            <button onclick="openCreateModal()" class="bg-green-600 text-white px-4 py-2 rounded">+ 新建角色</button>
+            <button onclick="openCreateModal()" class="bg-green-600 text-white px-4 py-2 rounded text-sm sm:text-base">+ 新建角色</button>
         </div>
-        <div class="bg-white rounded shadow">
-            <table class="min-w-full">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="p-3 text-left">ID</th>
-                        <th class="p-3 text-left">角色名称</th>
-                        <th class="p-3 text-left">描述</th>
-                        <th class="p-3 text-left">操作</th>
-                    </tr>
-                </thead>
-                <tbody id="roles-table">
-                    <tr><td colspan="4" class="p-3 text-center">加载中...</td></tr>
-                </tbody>
-            </table>
+        <div class="bg-white rounded shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="p-3 text-left">ID</th>
+                            <th class="p-3 text-left">角色名称</th>
+                            <th class="p-3 text-left">描述</th>
+                            <th class="p-3 text-left">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roles-table">
+                        <tr><td colspan="4" class="p-3 text-center">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     <div id="footer-container"></div>
 
     <!-- 创建/编辑角色的模态框 -->
-    <div id="role-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-lg w-96 p-6">
+    <div id="role-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg w-full max-w-md p-6">
             <h3 id="modal-title" class="text-lg font-bold mb-3">创建角色</h3>
             <input type="hidden" id="role-id">
             <label class="block text-sm font-medium">角色名称</label>
@@ -56,17 +65,17 @@
     </div>
 
     <!-- 权限分配模态框 -->
- <div id="perm-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-lg w-2/3 max-h-[80vh] overflow-y-auto p-6">
-        <h3 class="text-lg font-bold mb-3">分配权限</h3>
-        <input type="hidden" id="perm-role-id">
-        <div id="permissions-container" class="mb-4">加载中...</div>
-        <div class="flex justify-end space-x-2">
-            <button onclick="closePermModal()" class="bg-gray-300 px-4 py-2 rounded">取消</button>
-            <button id="savePermBtn" class="bg-blue-600 text-white px-4 py-2 rounded">保存</button>
+    <div id="perm-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
+            <h3 class="text-lg font-bold mb-3">分配权限</h3>
+            <input type="hidden" id="perm-role-id">
+            <div id="permissions-container" class="mb-4">加载中...</div>
+            <div class="flex justify-end space-x-2">
+                <button onclick="closePermModal()" class="bg-gray-300 px-4 py-2 rounded">取消</button>
+                <button id="savePermBtn" class="bg-blue-600 text-white px-4 py-2 rounded">保存</button>
+            </div>
         </div>
     </div>
-</div>
 
     <script>
         let currentRoleIdForPerm = null;
@@ -98,13 +107,15 @@
 
         (async () => {
             if (!await requireAuth()) return;
-            // 加载顶部导航栏（而不是侧边栏）
             await loadTopbar();
             // 根据角色显示用户管理和角色管理菜单（在顶部导航中）
-            if (isAdmin()) {
+            const perms = await fetchUserPermissions();
+            if (perms.includes('user:list')) {
                 const usersNav = document.getElementById('users-nav');
-                const rolesNav = document.getElementById('roles-nav');
                 if (usersNav) usersNav.style.display = 'inline-block';
+            }
+            if (perms.includes('role:list')) {
+                const rolesNav = document.getElementById('roles-nav');
                 if (rolesNav) rolesNav.style.display = 'inline-block';
             }
             // 高亮当前页面菜单
@@ -115,7 +126,7 @@
             });
             await loadRoles();
             await loadPermissionsCached(); // 预加载权限缓存
-            await loadFooter(); // 添加这一行
+            await loadFooter();
         })();
 
         async function loadRoles() {
@@ -134,9 +145,9 @@
                             <td class="p-3">${escapeHtml(r.name)}</td>
                             <td class="p-3">${escapeHtml(r.description || '')}</td>
                             <td class="p-3">
-                                <button onclick="openEditModal(${r.id}, '${escapeHtml(r.name)}', '${escapeHtml(r.description || '')}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-sm">编辑</button>
-                                <button onclick="deleteRole(${r.id})" class="bg-red-500 text-white px-2 py-1 rounded text-sm ml-1">删除</button>
-                                <button onclick="openPermModal(${r.id})" class="bg-blue-500 text-white px-2 py-1 rounded text-sm ml-1">权限</button>
+                                <button onclick="openEditModal(${r.id}, '${escapeHtml(r.name)}', '${escapeHtml(r.description || '')}')" class="bg-yellow-500 text-white px-2 py-1 rounded text-sm action-btn">编辑</button>
+                                <button onclick="deleteRole(${r.id})" class="bg-red-500 text-white px-2 py-1 rounded text-sm action-btn ml-1">删除</button>
+                                <button onclick="openPermModal(${r.id})" class="bg-blue-500 text-white px-2 py-1 rounded text-sm action-btn ml-1">权限</button>
                             </td>
                         </tr>
                     `;
@@ -155,6 +166,7 @@
             document.getElementById('role-id').value = '';
             document.getElementById('role-name').value = '';
             document.getElementById('role-desc').value = '';
+            document.getElementById('role-modal').classList.remove('hidden');
             document.getElementById('role-modal').style.display = 'flex';
         }
         function openEditModal(id, name, desc) {
@@ -163,10 +175,12 @@
             document.getElementById('role-id').value = id;
             document.getElementById('role-name').value = name;
             document.getElementById('role-desc').value = desc;
+            document.getElementById('role-modal').classList.remove('hidden');
             document.getElementById('role-modal').style.display = 'flex';
         }
         function closeModal() {
             document.getElementById('role-modal').style.display = 'none';
+            document.getElementById('role-modal').classList.add('hidden');
             currentRoleId = null;
         }
         document.getElementById('saveRoleBtn').addEventListener('click', async () => {
@@ -200,21 +214,21 @@
         async function openPermModal(roleId) {
             currentRoleIdForPerm = roleId;
             document.getElementById('perm-role-id').value = roleId;
+            document.getElementById('perm-modal').classList.remove('hidden');
             document.getElementById('perm-modal').style.display = 'flex';
             await renderPermissionTree(roleId);
         }
         function closePermModal() {
             document.getElementById('perm-modal').style.display = 'none';
+            document.getElementById('perm-modal').classList.add('hidden');
             currentRoleIdForPerm = null;
         }
 
         async function renderPermissionTree(roleId) {
-            // 确保 allPermissions 已加载（缓存或新请求）
             let perms = allPermissions;
             if (!perms.length) {
                 perms = await loadPermissionsCached();
             }
-            // 获取角色当前权限
             let rolePerms = [];
             try {
                 rolePerms = await apiCall('GET', `/api/admin/roles/${roleId}/permissions`);
@@ -222,7 +236,6 @@
                 console.error(err);
             }
             const rolePermIds = rolePerms.map(p => p.id);
-            // 按模块分组
             const groups = {};
             for (const perm of perms) {
                 const module = perm.module || '其他';
@@ -230,13 +243,15 @@
                 groups[module].push(perm);
             }
             let html = `
-                <div class="mb-4 flex space-x-4">
+                <div class="mb-4 flex flex-wrap space-x-4">
                     <button id="select-all-perms" class="bg-blue-500 text-white px-3 py-1 rounded text-sm">全选</button>
                     <button id="unselect-all-perms" class="bg-gray-500 text-white px-3 py-1 rounded text-sm">全不选</button>
                 </div>
             `;
             for (const [module, permsArr] of Object.entries(groups)) {
                 html += `<div class="permission-group"><div class="group-title">${escapeHtml(module)}</div>`;
+                // 使用 grid 布局，自动适应宽度
+                html += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-1">`;
                 for (const perm of permsArr) {
                     const checked = rolePermIds.includes(perm.id);
                     html += `
@@ -244,11 +259,10 @@
                             <input type="checkbox" value="${perm.id}" ${checked ? 'checked' : ''}> ${escapeHtml(perm.name)}
                         </label>`;
                 }
-                html += `</div>`;
+                html += `</div></div>`;
             }
             document.getElementById('permissions-container').innerHTML = html;
 
-            // 绑定全选/全不选事件
             const selectAllBtn = document.getElementById('select-all-perms');
             const unselectAllBtn = document.getElementById('unselect-all-perms');
             if (selectAllBtn) {
@@ -279,6 +293,13 @@
 
         document.getElementById('savePermBtn').addEventListener('click', savePermissions);
         
+        // 点击模态框背景关闭
+        document.getElementById('role-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('role-modal')) closeModal();
+        });
+        document.getElementById('perm-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('perm-modal')) closePermModal();
+        });
     </script>
 </body>
 </html>
