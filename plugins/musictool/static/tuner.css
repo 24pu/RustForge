@@ -1,0 +1,24 @@
+/* 调音器专用样式 - 紫色主题 (匹配 RustForge 主题) */
+.bg-accent { background-color: #7c3aed; }          /* purple-600 */
+.bg-accent-dark { background-color: #6d28d9; }      /* purple-700 */
+.hover\:bg-accent:hover { background-color: #7c3aed; color: white; }
+.hover\:bg-accent-dark:hover { background-color: #6d28d9; }
+.text-accent { color: #7c3aed; }
+.ring-accent { --tw-ring-color: #7c3aed; }
+.bg-accent\/10 { background-color: rgba(124, 58, 237, 0.1); }
+.border-accent { border-color: #7c3aed; }
+.bg-dark { background-color: #1e293b; }
+.text-dark { color: #1e293b; }
+
+.string-btn.ring-2 {
+    box-shadow: 0 0 0 2px #7c3aed;
+}
+#meterFill {
+    transition: width 75ms ease-out;
+}
+@media (max-width: 480px) {
+    .inst-btn, .base-btn {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+    }
+}
