@@ -2,16 +2,96 @@
 
 {% block title_prefix %}{{ site_config.seo_title | default(value='RustForge') }}{% endblock %}
 {% block title_suffix %} - {{ post.title }}{% endblock %}
+
 {% block extra_head %}
-<!-- 引入 abcjs -->
- <script src="/lib/abcjs/abcjs-basic-min.js"></script>
-<!-- 备选：如果本地加载失败，尝试 CDN（可选） -->
+<!-- 引入 abcjs 核心 JS -->
+<script src="/lib/abcjs/abcjs-basic-min.js"></script>
+<!-- 若本地 JS 加载失败，可启用下方 CDN 备选 -->
 <!-- <script src="/lib/abcjs/abcjs-basic-min.js" onerror="this.src='https://unpkg.com/abcjs@6.0.0/dist/abcjs-basic-min.js'"></script> -->
+
+<!-- ===== 新增：引入 abcjs 音频样式（必须，否则会出现 CSS required 警告） ===== -->
+<link rel="stylesheet" href="/lib/abcjs/abcjs-audio.css">
+<!-- 备选：若本地无此文件，使用 CDN（取消注释下列行，并注释掉上面本地引用） -->
+<!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/abcjs@6.3.0/dist/abcjs-audio.css"> -->
+<!-- 或使用 unpkg -->
+<!-- <link rel="stylesheet" href="https://unpkg.com/abcjs@6.0.0/dist/abcjs-audio.css"> -->
+
+<style>
+    /* 自定义样式，与播放控件配合 */
+    .abc-wrapper {
+        margin: 1.5rem 0;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #fafafa;
+    }
+    .abc-paper {
+        padding: 16px;
+        background: #ffffff;
+        overflow-x: auto;
+    }
+    .abc-paper svg {
+        display: block;
+        max-width: 100%;
+        height: auto;
+    }
+    .abc-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 16px;
+        padding: 8px 16px;
+        background: #f3f4f6;
+        border-top: 1px solid #e5e7eb;
+        font-size: 14px;
+    }
+    .abc-controls button {
+        background: #6b7280;
+        color: white;
+        border: none;
+        padding: 4px 16px;
+        border-radius: 16px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .abc-controls button:hover:not(:disabled) {
+        background: #4b5563;
+    }
+    .abc-controls button:disabled {
+        background: #d1d5db;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    .abc-controls .abc-status {
+        color: #374151;
+        font-size: 13px;
+        margin-left: auto;
+    }
+    .abc-audio {
+        padding: 4px 16px 12px 16px;
+        background: #ffffff;
+        border-top: 1px solid #e5e7eb;
+    }
+    /* 进度条颜色与主题统一（依赖 abcjs-audio.css 的基础样式） */
+    .abc-audio .abcjs-inline-progress {
+        background: #e5e7eb;
+        height: 4px;
+        border-radius: 2px;
+    }
+    .abc-audio .abcjs-progress-bar {
+        background: #7c3aed;
+        height: 4px;
+        border-radius: 2px;
+    }
+</style>
 {% endblock %}
+
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-8">
     <div class="flex flex-col md:flex-row gap-6">
         <div class="flex-1 min-w-0">
+            <!-- 面包屑 -->
             <nav class="text-sm text-gray-500 mb-4" aria-label="Breadcrumb">
                 <ol class="flex flex-wrap items-center space-x-2">
                     <li><a href="/" class="hover:text-purple-600">{{ t(key="home", lang=lang) }}</a></li>
@@ -76,27 +156,130 @@
 
         <div class="w-full lg:w-72 shrink-0">
         {{ hooks.sidebar_friendlinks | default(value='') | safe }}
-    </div>
+        </div>
     </div>
 </div>
+
+<!-- ========== 播放脚本（仅播放按钮，无停止） ========== -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // 渲染所有 ABC 代码块
+    if (typeof ABCJS === 'undefined') {
+        console.error('abcjs 库未加载');
+        return;
+    }
+
     const abcBlocks = document.querySelectorAll('pre code.language-abc');
-    abcBlocks.forEach(function(codeElement) {
+    if (abcBlocks.length === 0) return;
+
+    abcBlocks.forEach(function(codeElement, index) {
         const pre = codeElement.parentNode;
         const abcText = codeElement.textContent.trim();
-        // 跳过空内容
         if (!abcText) return;
-        const container = document.createElement('div');
-        container.className = 'abc-container';
-        pre.parentNode.replaceChild(container, pre);
+
+        // 构建 DOM
+        const wrapper = document.createElement('div');
+        wrapper.className = 'abc-wrapper';
+
+        const paperDiv = document.createElement('div');
+        paperDiv.className = 'abc-paper';
+        wrapper.appendChild(paperDiv);
+
+        const controlsDiv = document.createElement('div');
+        controlsDiv.className = 'abc-controls';
+
+        const playBtn = document.createElement('button');
+        playBtn.textContent = '▶️ 播放';
+        playBtn.disabled = true;
+
+        const statusSpan = document.createElement('span');
+        statusSpan.className = 'abc-status';
+        statusSpan.textContent = '⏳ 加载中...';
+
+        controlsDiv.appendChild(playBtn);
+        controlsDiv.appendChild(statusSpan);
+        wrapper.appendChild(controlsDiv);
+
+        const audioContainer = document.createElement('div');
+        audioContainer.className = 'abc-audio';
+        const audioId = `abc-audio-${index}`;
+        audioContainer.id = audioId;
+        wrapper.appendChild(audioContainer);
+
+        pre.parentNode.replaceChild(wrapper, pre);
+
+        // 渲染五线谱
+        let visualObj = null;
         try {
-            ABCJS.renderAbc(container, abcText, {});
+            visualObj = ABCJS.renderAbc(paperDiv, abcText, {
+                responsive: 'resize',
+                add_classes: true,
+            });
         } catch (e) {
-            console.warn('ABC 渲染失败，显示原始代码:', e);
-            container.innerHTML = `<pre><code class="language-abc">${abcText}</code></pre>`;
+            console.warn('ABC 渲染失败:', e);
+            paperDiv.innerHTML = `<pre><code>${abcText}</code></pre>`;
+            statusSpan.textContent = '❌ 渲染失败';
+            return;
         }
+
+        if (!visualObj || visualObj.length === 0) {
+            statusSpan.textContent = '❌ 无有效乐谱';
+            return;
+        }
+
+        if (!ABCJS.synth.supportsAudio()) {
+            statusSpan.textContent = '⚠️ 浏览器不支持 Web Audio';
+            console.warn('当前浏览器不支持 Web Audio');
+            return;
+        }
+
+        // 创建音频控制器
+        let synthController = null;
+        let synthCreate = null;
+
+        try {
+            synthController = new ABCJS.synth.SynthController();
+            synthCreate = new ABCJS.synth.CreateSynth();
+
+            synthController.load(`#${audioId}`, null, {
+                displayLoop: true,
+                displayRestart: true,
+                displayPlay: false,
+                displayProgress: true,
+                displayWarp: true,
+            });
+        } catch (e) {
+            console.error('创建音频控制器失败:', e);
+            statusSpan.textContent = '❌ 音频组件创建失败';
+            return;
+        }
+
+        // 绑定乐谱
+        synthCreate.init({ visualObj: visualObj[0] })
+            .then(() => synthController.setTune(visualObj[0], false))
+            .then(() => {
+                statusSpan.textContent = '✅ 就绪';
+                playBtn.disabled = false;
+                wrapper.__synthController = synthController;
+
+                playBtn.addEventListener('click', function() {
+                    const ctrl = wrapper.__synthController;
+                    if (ctrl && typeof ctrl.play === 'function') {
+                        ctrl.play();
+                    } else {
+                        console.warn('播放控制器不可用');
+                    }
+                });
+
+                console.log(`ABC 块 ${index} 音频初始化成功`);
+            })
+            .catch(err => {
+                console.error(`ABC 块 ${index} 音频初始化失败:`, err);
+                statusSpan.textContent = '❌ 音频加载失败 (查看控制台)';
+                playBtn.disabled = true;
+                if (err.message) {
+                    statusSpan.textContent += ` - ${err.message}`;
+                }
+            });
     });
 });
 </script>

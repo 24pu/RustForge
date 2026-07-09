@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE categories\n            SET name = $1, slug = $2, description = $3, parent_id = $4, display_type = $5, show_in_nav = $6, updated_at = now()\n            WHERE id = $7\n            RETURNING id, name, slug, description, parent_id, sort, display_type, show_in_nav, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "slug",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "parent_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "sort",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "display_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "show_in_nav",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Int4",
+        "Varchar",
+        "Bool",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "ed99d14cf15fbcdc74fba1348339c54f16d2ddc63d1b05923e46ea2c3db95e67"
+}

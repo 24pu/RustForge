@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO group_attribute_template_relations (group_id, attribute_template_id, sort_order) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7ac67b99409b51753f1b5aea372703323ca73231a5db5cb26fe87864136ceda6"
+}

@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, name, slug, description, parent_id, sort, display_type, show_in_nav, created_at, updated_at\n             FROM categories WHERE slug = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "slug",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "parent_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "sort",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "display_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "show_in_nav",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "1f3a356574e04b42486ef3dbee594b217a21bbc815f41d7f1837198425397953"
+}

@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE amatemplates SET name = $1, value = $2, is_used = $3, updated_at = now() WHERE id = $4 AND user_id = $5 RETURNING id, name, value, is_used, user_id, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "value",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_used",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text",
+        "Bool",
+        "Int4",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "fbe8ff3db4b14ead8a48e2a43755f29d0458e255457636a9274a85ed564519a4"
+}

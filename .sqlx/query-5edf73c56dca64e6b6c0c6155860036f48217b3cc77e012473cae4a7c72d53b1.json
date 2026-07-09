@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE roles SET name = $1, description = $2 WHERE id = $3 RETURNING id, name, description",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "5edf73c56dca64e6b6c0c6155860036f48217b3cc77e012473cae4a7c72d53b1"
+}

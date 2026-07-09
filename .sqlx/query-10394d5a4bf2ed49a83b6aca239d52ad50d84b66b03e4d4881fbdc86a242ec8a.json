@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO product_images \n                       (product_id, url, name, original_name, file_size, mime_type, color_code, sort_order) \n                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Int8",
+        "Varchar",
+        "Varchar",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "10394d5a4bf2ed49a83b6aca239d52ad50d84b66b03e4d4881fbdc86a242ec8a"
+}

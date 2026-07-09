@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO attribute_groups (name, description, user_id, is_used, sort_order) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, description, user_id, is_used, sort_order, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "is_used",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "sort_order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text",
+        "Uuid",
+        "Bool",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "169f0f33343b8b0a9a1013621120680aac58a3235d6be0c7b642eaea773b9c76"
+}

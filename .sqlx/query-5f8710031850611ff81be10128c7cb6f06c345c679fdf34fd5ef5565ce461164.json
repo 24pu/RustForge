@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE plugins SET enabled = $1, updated_at = now() WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5f8710031850611ff81be10128c7cb6f06c345c679fdf34fd5ef5565ce461164"
+}

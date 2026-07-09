@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO roles (name, description) VALUES ($1, $2) RETURNING id, name, description",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "description",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "a14291247cf267179bb389e1bca668dbac42705f76934e2975f3b2f34063d836"
+}

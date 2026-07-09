@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE product_images SET sort_order = $1 WHERE id = $2 AND product_id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "99f08981d6ec96122b2db65b57bb1f6276cad98a38e0e4616d3f0b1e954b6197"
+}

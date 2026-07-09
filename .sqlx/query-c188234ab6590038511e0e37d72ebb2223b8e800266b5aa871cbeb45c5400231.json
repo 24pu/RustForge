@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE product_images SET sort_order = new_sort.sort_order \n                 FROM (SELECT id, ROW_NUMBER() OVER (ORDER BY sort_order) - 1 as sort_order \n                       FROM product_images WHERE product_id = $1) AS new_sort \n                 WHERE product_images.id = new_sort.id",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c188234ab6590038511e0e37d72ebb2223b8e800266b5aa871cbeb45c5400231"
+}

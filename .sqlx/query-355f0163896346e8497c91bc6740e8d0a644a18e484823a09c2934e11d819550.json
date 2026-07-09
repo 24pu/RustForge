@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT value FROM site_config WHERE key = 'product_thumbnail_height'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "355f0163896346e8497c91bc6740e8d0a644a18e484823a09c2934e11d819550"
+}

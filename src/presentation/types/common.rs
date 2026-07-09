@@ -48,15 +48,3 @@ pub struct PaginatedResponse<T> {
     pub total_pages: i64,
 }
 
-impl<T> PaginatedResponse<T> {
-    pub fn new(items: Vec<T>, total: i64, page: i64, per_page: i64) -> Self {
-        let total_pages = (total + per_page - 1) / per_page;
-        PaginatedResponse {
-            items,
-            total,
-            page,
-            per_page,
-            total_pages,
-        }
-    }
-}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO site_config (key, value) VALUES ('supported_langs', $1), ('default_lang', $2)\n         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "81e85daddca628c2a67cf63145623ea80ae1ce42edd8be3bc7f7efb489e2d1ce"
+}

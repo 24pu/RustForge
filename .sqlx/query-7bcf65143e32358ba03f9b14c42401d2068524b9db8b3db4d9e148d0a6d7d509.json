@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT ph.id, ph.plugin_name, ph.hook_name, ph.content, ph.sort_order, ph.lang, ph.enabled, ph.created_at, ph.updated_at\n            FROM plugin_hooks ph\n            INNER JOIN plugins p ON p.name = ph.plugin_name\n            WHERE ph.lang = $1 AND ph.enabled = true AND p.enabled = true\n            ORDER BY ph.hook_name, ph.sort_order, ph.id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "plugin_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "hook_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "sort_order",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "lang",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "7bcf65143e32358ba03f9b14c42401d2068524b9db8b3db4d9e148d0a6d7d509"
+}

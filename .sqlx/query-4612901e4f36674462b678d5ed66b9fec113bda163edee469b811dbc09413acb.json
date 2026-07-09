@@ -1,0 +1,75 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO plugins (name, version, author, description, file_path, enabled)\n             VALUES ($1, $2, $3, $4, $5, $6)\n             RETURNING id, name, version, author, description, file_path, enabled, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "version",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "author",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "file_path",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Varchar",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4612901e4f36674462b678d5ed66b9fec113bda163edee469b811dbc09413acb"
+}
