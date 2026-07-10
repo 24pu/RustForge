@@ -42,12 +42,15 @@ pub extern "C" fn execute(_ptr: *const u8, _len: usize) -> *mut u8 {
 
 #[no_mangle]
 pub extern "C" fn is_page_protected(_ptr: *const u8, _len: usize) -> *mut u8 {
-    let result = b"false";
+    // 返回 "0" 表示不需要登录保护
+    let output = "0".to_string();
+    let bytes = output.into_bytes();
+    let len = bytes.len();
     unsafe {
-        let layout = Layout::array::<u8>(result.len()).unwrap();
-        let ptr = alloc(layout);
-        std::ptr::copy_nonoverlapping(result.as_ptr(), ptr, result.len());
-        LAST_LEN = result.len();
+        let layout = Layout::array::<u8>(len).unwrap();
+        let ptr = alloc(layout) as *mut u8;
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), ptr, len);
+        LAST_LEN = len;
         ptr
     }
 }

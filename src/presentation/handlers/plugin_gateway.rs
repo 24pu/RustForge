@@ -153,7 +153,7 @@ pub async fn plugin_page_handler(
     
     if is_protected && user_id.is_none() {
     let current_url = format!("/plugins/{}/{}", plugin_name, page);
-    return Redirect::temporary(&format!("/admin/login?redirect={}", current_url)).into_response();
+    return Redirect::temporary(&format!("/login?redirect={}", current_url)).into_response();
     }
 
     let plugin_locales = load_plugin_locales(&plugin_name, &lang);
