@@ -9,26 +9,49 @@
     <div class="bg-white p-8 rounded shadow-md w-96">
         <h1 class="text-2xl font-bold mb-6 text-center">RustForge 安装</h1>
         <form id="install-form">
-           
+            <!-- 管理员邮箱 -->
             <div class="mb-4">
                 <label class="block text-sm font-medium mb-1">管理员邮箱</label>
                 <input type="email" id="email" required class="w-full border rounded p-2">
             </div>
+            <!-- 管理员密码 -->
             <div class="mb-4">
                 <label class="block text-sm font-medium mb-1">管理员密码</label>
                 <input type="password" id="password" required class="w-full border rounded p-2">
             </div>
-            <button type="submit" class="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700">开始安装</button>
+
+            <!-- ===== 示例数据选择（单选） ===== -->
+            <div class="mb-4">
+                <p class="text-sm font-medium text-gray-700 mb-2">安装示例数据（可选）</p>
+                <div class="space-y-2">
+                    <label class="flex items-center">
+                        <input type="radio" name="sample_type" value="none" checked class="w-4 h-4 text-purple-600">
+                        <span class="ml-2 text-sm text-gray-600">不安装示例数据</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="sample_type" value="music" class="w-4 h-4 text-purple-600">
+                        <span class="ml-2 text-sm text-gray-600">音乐站点（乐谱分类 + 示例乐谱）</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="sample_type" value="it" class="w-4 h-4 text-purple-600">
+                        <span class="ml-2 text-sm text-gray-600">企业站点（关于我们、法律声明等）</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 提交按钮 -->
+            <button type="submit" class="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700 transition">开始安装</button>
             <p id="error" class="text-red-500 text-sm mt-2"></p>
         </form>
     </div>
     <script>
         document.getElementById('install-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const sampleType = document.querySelector('input[name="sample_type"]:checked').value;
             const payload = {
-                
                 email: document.getElementById('email').value,
                 password: document.getElementById('password').value,
+                sample_type: sampleType   // 'none', 'music', 'it'
             };
             try {
                 const res = await fetch('/api/install', {
