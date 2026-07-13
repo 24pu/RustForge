@@ -1,0 +1,114 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                f.id as \"favorite_id\",\n                f.user_id as \"favorite_user_id\",\n                f.content_id as \"favorite_content_id\",\n                f.mark as \"favorite_mark\",\n                f.created_at as \"favorite_created_at\",\n                f.updated_at as \"favorite_updated_at\",\n                c.id as \"content_id\",\n                c.slug,\n                c.title,\n                c.body,\n                c.published,\n                c.cover_image,\n                c.lang,\n                c.translation_group,\n                c.created_at as \"content_created_at\",\n                c.updated_at as \"content_updated_at\"\n            FROM favorites f\n            INNER JOIN contents c ON c.id = f.content_id\n            WHERE f.user_id = $1\n            ORDER BY f.created_at DESC\n            LIMIT $2 OFFSET $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "favorite_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "favorite_user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "favorite_content_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "favorite_mark",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "favorite_created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "favorite_updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "content_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "slug",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "body",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "published",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "cover_image",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "lang",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 13,
+        "name": "translation_group",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 14,
+        "name": "content_created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 15,
+        "name": "content_updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "f53ee5f5beb916ef37393c755e4708cdf44ba5d8e0a855d0657028f94920d2f6"
+}

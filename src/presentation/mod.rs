@@ -20,7 +20,8 @@ use tower_cookies::CookieManagerLayer;
 use std::sync::Arc;
 use std::net::SocketAddr;
 use axum::extract::Path;
-
+use crate::infrastructure::db::favorite_repo::PostgresFavoriteRepo;
+use crate::core::FavoriteRepository;
 
 use crate::presentation::handlers::product_admin::*;
 use crate::presentation::handlers::install_handler;
@@ -65,6 +66,7 @@ pub struct AppState {
     pub amatemplate_repo: Arc<dyn AmaTemplateRepository>,
     pub product_repo: Arc<dyn ProductRepository>,  // 改为非 Option
     pub product_category_repo: Arc<dyn ProductCategoryRepository>,  // 改为非 Option
+    pub favorite_repo: Arc<dyn FavoriteRepository>,
 }
 
 
@@ -124,7 +126,8 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     // ---- 初始化产品相关仓库 ----
     let product_category_repo = Arc::new(PostgresProductCategoryRepo::new(pool.clone()));
     let product_repo = Arc::new(PostgresProductRepo::new(pool.clone()));  // 取消注释并初始化
-    
+    let favorite_repo = Arc::new(PostgresFavoriteRepo::new(pool.clone()));
+
     // ---- 创建 state ----
     let state = Arc::new(AppState {
         theme_manager,
@@ -140,6 +143,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         product_repo,  // 现在是 Arc<dyn ProductRepository>
         product_category_repo,  // 现在是 Arc<dyn ProductCategoryRepository>
         amatemplate_repo,
+        favorite_repo,  // 新增
         
     });
 
@@ -247,7 +251,11 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .route("/api/orders/:id/cancel", post(cancel_order_handler))
         .route("/api/admin/hooks", get(admin_list_all_hooks_handler))
         // ========== 订单管理 ==========
-
+        // 收藏（已加 /api 前缀）
+        .route("/api/favorites", post(favorite_handler).get(list_favorites_handler))
+        .route("/api/favorites/:content_id", delete(unfavorite_handler).put(update_favorite_mark_handler))
+        .route("/api/favorites/:content_id/check", get(check_favorite_handler))
+            
         .layer(axum::middleware::from_fn(auth_middleware));
 
     let admin_assets = ServeDir::new("frontend/dist/admin");
@@ -269,6 +277,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .route("/user/profile", get(user_profile_handler))
         .route("/user/orders", get(user_orders_handler))
         .route("/user/cart", get(user_cart_handler))
+        .route("/user/favorites", get(user_favorites_handler))   // 新增
         // ---- 注册/登录页面 ----
         .route("/login", get(login_page_handler))
         .route("/register", get(register_page_handler))

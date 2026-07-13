@@ -20,15 +20,20 @@ CREATE TABLE IF NOT EXISTS  content_categories (
 -- 3. 向 contents 表删除 category_id 字段（如果之前添加了单列）
 ALTER TABLE contents DROP COLUMN IF EXISTS category_id;
 
--- 先插入顶级分类
+-- 1. 顶级分类：音乐
 INSERT INTO categories (name, slug, description, parent_id) VALUES
-    ('产品', 'pro', '公司产品介绍', NULL),
-    ('新闻', 'news', '公司新闻动态', NULL),
-    ('技术', 'tech', '技术文章', NULL)
+    ('乐谱', 'score', '音乐相关分类', NULL)
 ON CONFLICT (slug) DO NOTHING;
 
--- 再插入子分类（依赖父分类已存在）
+-- 2. 子分类（父级为音乐）
 INSERT INTO categories (name, slug, description, parent_id) VALUES
-    ('前端开发', 'frontend', '前端技术', (SELECT id FROM categories WHERE slug = 'tech')),
-    ('后端开发', 'backend', '后端技术', (SELECT id FROM categories WHERE slug = 'tech'))
+    ('古典音乐', 'classical', '西方古典音乐作品与理论', (SELECT id FROM categories WHERE slug = 'score')),
+    ('流行音乐', 'pop', '现代流行、摇滚、电子等', (SELECT id FROM categories WHERE slug = 'score')),
+    ('爵士音乐', 'jazz', '爵士乐风格与即兴', (SELECT id FROM categories WHERE slug = 'score')),
+    ('民族音乐', 'folk', '世界民族音乐、中国传统音乐', (SELECT id FROM categories WHERE slug = 'score')),
+    ('乐理与视唱', 'music-theory', '音阶、调式、节奏、视唱练耳', (SELECT id FROM categories WHERE slug = 'score')),
+    ('和声与作曲', 'harmony-composition', '和声学、曲式分析、作曲技术', (SELECT id FROM categories WHERE slug = 'score'))
 ON CONFLICT (slug) DO NOTHING;
+
+
+

@@ -15,6 +15,8 @@
                 <label class="block text-sm font-medium text-gray-700">{{ t(key="password", lang=lang) }}</label>
                 <input type="password" id="password" required class="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-purple-500">
             </div>
+            <!-- 隐藏的 redirect 字段，由后端模板注入 -->
+            <input type="hidden" id="redirect-input" value="{{ redirect | default(value='') }}">
             <div id="login-message" class="text-sm"></div>
             <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded transition">{{ t(key="login", lang=lang) }}</button>
         </form>
@@ -25,19 +27,24 @@
 </div>
 
 <script>
-    // 如果已登录，直接跳转到用户中心
+    // 如果已登录，直接跳转（优先使用 redirect，否则到用户中心）
     if (document.cookie.split(';').some(c => c.trim().startsWith('auth_token='))) {
-        window.location.href = '/user/profile';
+        const redirect = document.getElementById('redirect-input').value;
+        window.location.href = redirect || '/user/profile';
     }
 
     document.getElementById('login-form').addEventListener('submit', async function(e) {
         e.preventDefault();
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
+        const redirect = document.getElementById('redirect-input').value.trim();
+
         try {
-            const result = await apiCall('POST', '/api/login', { email, password });
+            const result = await apiCall('POST', '/api/login', { email, password, redirect: redirect || undefined });
             if (result && result.success) {
-                window.location.href = '/user/profile';
+                // 优先使用后端返回的 redirect，否则使用前端保存的 redirect，最后默认 /user/profile
+                const target = result.redirect || redirect || '/user/profile';
+                window.location.href = target;
             } else {
                 document.getElementById('login-message').innerHTML = `<span class="text-red-600">${result.error || '{{ t(key="login_failed", lang=lang) }}'}</span>`;
             }

@@ -535,3 +535,13 @@ pub trait OrderRepository: Send + Sync {
     // 获取订单状态统计
     async fn get_order_stats(&self, user_id: Uuid) -> Result<serde_json::Value>;
 }
+
+#[async_trait]
+pub trait FavoriteRepository: Send + Sync {
+    async fn create(&self, user_id: Uuid, content_id: Uuid, mark: Option<&str>) -> Result<Favorite>;
+    async fn update_mark(&self, user_id: Uuid, content_id: Uuid, mark: Option<&str>) -> Result<Favorite>;
+    async fn delete(&self, user_id: Uuid, content_id: Uuid) -> Result<()>;
+    async fn find_by_user_and_content(&self, user_id: Uuid, content_id: Uuid) -> Result<Option<Favorite>>;
+    async fn list_by_user(&self, user_id: Uuid, limit: i64, offset: i64) -> Result<Vec<FavoriteWithContent>>;
+    async fn count_by_user(&self, user_id: Uuid) -> Result<i64>;
+}

@@ -1,0 +1,237 @@
+{% extends "user_center_base.html" %}
+
+{% block title_prefix %}{{ t(key="my_favorites", lang=lang) }} - {{ site_config.site_name }}{% endblock %}
+
+{% block user_content %}
+<div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold text-gray-800">{{ t(key="my_favorites", lang=lang) }}</h2>
+    <span class="text-sm text-gray-500" id="favorites-count"></span>
+</div>
+
+<!-- 收藏列表容器 -->
+<div id="favorites-container" class="space-y-4">
+    <div class="text-center text-gray-500 py-8">{{ t(key="loading", lang=lang) }}</div>
+</div>
+
+<!-- 分页 -->
+<div id="pagination-container" class="mt-6 flex justify-center gap-2">
+    <!-- 由 JavaScript 动态生成 -->
+</div>
+
+<!-- 空状态 -->
+<div id="empty-favorites" class="hidden text-center py-12">
+    <i class="fas fa-heart text-6xl text-gray-300 mb-4"></i>
+    <p class="text-gray-500">{{ t(key="favorites_empty", lang=lang) }}</p>
+    <a href="/" class="inline-block mt-4 bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded transition">{{ t(key="go_browse", lang=lang) }}</a>
+</div>
+
+<script>
+    // ===== 修复1：定义 escapeHtml 函数 =====
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // 多语言翻译映射
+    const translations = {
+        'loading': '{{ t(key="loading", lang=lang) }}',
+        'favorites_empty': '{{ t(key="favorites_empty", lang=lang) }}',
+        'load_failed': '{{ t(key="load_failed", lang=lang) }}',
+        'unfavorite_confirm': '{{ t(key="unfavorite_confirm", lang=lang) }}',
+        'remove_success': '{{ t(key="remove_success", lang=lang) }}',
+        'remove_failed': '{{ t(key="remove_failed", lang=lang) }}',
+        'update_success': '{{ t(key="update_success", lang=lang) }}',
+        'update_failed': '{{ t(key="update_failed", lang=lang) }}',
+        'mark_placeholder': '{{ t(key="mark_placeholder", lang=lang) }}',
+        'no_mark': '{{ t(key="no_mark", lang=lang) }}',
+        'practicing': '{{ t(key="practicing", lang=lang) }}',
+        'mastered': '{{ t(key="mastered", lang=lang) }}',
+        'prepare': '{{ t(key="prepare", lang=lang) }}',
+        'custom': '{{ t(key="custom", lang=lang) }}',
+        'save_mark': '{{ t(key="save_mark", lang=lang) }}',
+        'unfavorite': '{{ t(key="unfavorite", lang=lang) }}',
+        'view_article': '{{ t(key="view_article", lang=lang) }}',
+    };
+    function __(key) { return translations[key] || key; }
+
+    let currentPage = 1;
+    const limit = 10;
+
+    // 加载收藏列表
+    async function loadFavorites(page = 1) {
+        const container = document.getElementById('favorites-container');
+        const empty = document.getElementById('empty-favorites');
+        const pagination = document.getElementById('pagination-container');
+        const countSpan = document.getElementById('favorites-count');
+
+        const offset = (page - 1) * limit;
+        try {
+            const data = await apiCall('GET', `/api/favorites?limit=${limit}&offset=${offset}`);
+            const items = data.items || [];
+            const total = data.total || 0;
+            const totalPages = Math.ceil(total / limit);
+
+            countSpan.textContent = total > 0 ? `${total} {{ t(key="items", lang=lang) }}` : '';
+
+            if (total === 0) {
+                container.innerHTML = '';
+                empty.classList.remove('hidden');
+                pagination.innerHTML = '';
+                return;
+            }
+            empty.classList.add('hidden');
+
+            renderFavorites(items);
+            renderPagination(page, totalPages);
+        } catch (err) {
+            console.error('加载收藏失败:', err);
+            container.innerHTML = `<div class="text-center text-red-500 py-8">${__('load_failed')}</div>`;
+            empty.classList.add('hidden');
+            pagination.innerHTML = '';
+        }
+    }
+
+    function renderFavorites(items) {
+        const container = document.getElementById('favorites-container');
+        let html = '';
+        for (const fav of items) {
+            const content = fav.content;
+            const mark = fav.favorite.mark || '';
+            html += `
+                <div class="favorite-item border rounded-lg p-4 hover:shadow transition" data-favorite-id="${fav.favorite.id}" data-content-id="${content.id}">
+                    <div class="flex flex-wrap items-start gap-3">
+                        <div class="flex-1 min-w-0">
+                            <a href="/content/${content.slug}" class="text-lg font-medium text-purple-700 hover:underline">${escapeHtml(content.title)}</a>
+                            ${content.summary ? `<p class="text-sm text-gray-600 mt-1">${escapeHtml(content.summary)}</p>` : ''}
+                            <div class="text-sm text-gray-400 mt-1">${new Date(content.published_at || content.created_at).toLocaleDateString()}</div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-sm text-gray-500">{{ t(key="mark", lang=lang) }}：</span>
+                            <span class="mark-display text-sm font-medium text-gray-700">${mark ? escapeHtml(mark) : __('no_mark')}</span>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <select class="mark-select border rounded px-2 py-1 text-sm">
+                            <option value="">${__('no_mark')}</option>
+                            <option value="正在练习" ${mark === '正在练习' ? 'selected' : ''}>${__('practicing')}</option>
+                            <option value="已经掌握" ${mark === '已经掌握' ? 'selected' : ''}>${__('mastered')}</option>
+                            <option value="准备练习" ${mark === '准备练习' ? 'selected' : ''}>${__('prepare')}</option>
+                            <option value="custom" ${!['正在练习','已经掌握','准备练习'].includes(mark) && mark ? 'selected' : ''}>${__('custom')}</option>
+                        </select>
+                        <input type="text" class="custom-mark-input border rounded px-2 py-1 text-sm hidden" placeholder="${__('mark_placeholder')}" value="${mark && !['正在练习','已经掌握','准备练习'].includes(mark) ? escapeHtml(mark) : ''}">
+                        <button class="save-mark-btn bg-purple-600 hover:bg-purple-700 text-white text-sm px-3 py-1 rounded transition">${__('save_mark')}</button>
+                        <button class="unfavorite-btn text-red-600 hover:text-red-800 text-sm px-3 py-1 border border-red-300 rounded hover:bg-red-50 transition">${__('unfavorite')}</button>
+                    </div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+
+        // ===== 绑定事件（现在可以找到 .favorite-item） =====
+        document.querySelectorAll('.favorite-item').forEach((item) => {
+            const contentId = item.dataset.contentId;
+            const select = item.querySelector('.mark-select');
+            const customInput = item.querySelector('.custom-mark-input');
+            const saveBtn = item.querySelector('.save-mark-btn');
+            const unfavBtn = item.querySelector('.unfavorite-btn');
+            const markDisplay = item.querySelector('.mark-display');
+
+            // 显示自定义输入框
+            if (select.value === 'custom') {
+                customInput.classList.remove('hidden');
+            }
+            select.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customInput.classList.remove('hidden');
+                    customInput.focus();
+                } else {
+                    customInput.classList.add('hidden');
+                }
+            });
+
+            // 保存标记
+            saveBtn.addEventListener('click', async function() {
+                let mark = select.value;
+                if (mark === 'custom') {
+                    mark = customInput.value.trim();
+                }
+                try {
+                    await apiCall('PUT', `/api/favorites/${contentId}`, { mark: mark || null });
+                    markDisplay.textContent = mark || __('no_mark');
+                    // 更新 select 选中状态
+                    if (['正在练习','已经掌握','准备练习'].includes(mark)) {
+                        select.value = mark;
+                    } else if (mark) {
+                        select.value = 'custom';
+                        customInput.value = mark;
+                        customInput.classList.remove('hidden');
+                    } else {
+                        select.value = '';
+                        customInput.classList.add('hidden');
+                    }
+                    alert(__('update_success'));
+                } catch (err) {
+                    alert(__('update_failed') + ': ' + err.message);
+                }
+            });
+
+            // 取消收藏
+            unfavBtn.addEventListener('click', async function() {
+                if (!confirm(__('unfavorite_confirm'))) return;
+                try {
+                    await apiCall('DELETE', `/api/favorites/${contentId}`);
+                    item.remove();
+                    const remaining = document.querySelectorAll('.favorite-item').length;
+                    if (remaining === 0) {
+                        loadFavorites(currentPage);
+                    } else {
+                        loadFavorites(currentPage);
+                    }
+                    alert(__('remove_success'));
+                } catch (err) {
+                    alert(__('remove_failed') + ': ' + err.message);
+                }
+            });
+        });
+    }
+
+    function renderPagination(current, total) {
+        const container = document.getElementById('pagination-container');
+        if (total <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        let html = '';
+        if (current > 1) {
+            html += `<button class="page-btn px-3 py-1 border rounded hover:bg-gray-100" data-page="${current - 1}">‹</button>`;
+        }
+        for (let i = 1; i <= total; i++) {
+            if (i === current) {
+                html += `<span class="px-3 py-1 bg-purple-600 text-white rounded">${i}</span>`;
+            } else {
+                html += `<button class="page-btn px-3 py-1 border rounded hover:bg-gray-100" data-page="${i}">${i}</button>`;
+            }
+        }
+        if (current < total) {
+            html += `<button class="page-btn px-3 py-1 border rounded hover:bg-gray-100" data-page="${current + 1}">›</button>`;
+        }
+        container.innerHTML = html;
+
+        container.querySelectorAll('.page-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const page = parseInt(this.dataset.page);
+                if (!isNaN(page) && page !== currentPage) {
+                    currentPage = page;
+                    loadFavorites(page);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            });
+        });
+    }
+
+    // 页面加载时加载第一页
+    loadFavorites(1);
+</script>
+{% endblock %}

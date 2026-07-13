@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ metronome_title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <style>
+        /* ===== 通用 ===== */
+        .bg-accent { background-color: #7c3aed; }
+        .bg-accent-dark { background-color: #6d28d9; }
+        .hover\:bg-accent:hover { background-color: #7c3aed; color: white; }
+        .hover\:bg-accent-dark:hover { background-color: #6d28d9; }
+        .text-accent { color: #7c3aed; }
+
+        .back-link {
+            transition: all 0.2s ease;
+        }
+        .back-link:hover {
+            color: #7c3aed;
+            transform: translateX(-4px);
+        }
+
+        /* ===== BPM 显示 ===== */
+        .bpm-display {
+            font-size: 4rem;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1;
+        }
+
+        /* ===== BPM 滑块 ===== */
+        .bpm-controls input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: linear-gradient(to right, #7c3aed, #a78bfa);
+            border-radius: 3px;
+            outline: none;
+        }
+        .bpm-controls input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #7c3aed;
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .bpm-controls input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #7c3aed;
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .bpm-controls input[type="range"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ===== 拍号按钮 ===== */
+        .time-signature-btn {
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+        .time-signature-btn.active {
+            background-color: #7c3aed !important;
+            color: white !important;
+            border-color: #7c3aed;
+        }
+        .time-signature-btn:not(.active) {
+            background-color: #f3f4f6 !important;
+            color: #374151 !important;
+            border-color: #e5e7eb;
+        }
+        .time-signature-btn:not(.active):hover {
+            background-color: #ede9fe !important;
+            border-color: #7c3aed;
+            color: #5b21b6;
+        }
+        .time-signature-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ===== 节拍指示点 ===== */
+        .beat-indicator {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            padding: 0.5rem 0;
+        }
+        .beat-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            transition: all 0.1s ease;
+        }
+        .beat-dot.active {
+            background: #7c3aed;
+            transform: scale(1.2);
+            box-shadow: 0 0 12px rgba(124, 58, 237, 0.5);
+        }
+        .beat-dot.accent {
+            background: #dc2626;
+        }
+        .beat-dot.accent.active {
+            background: #dc2626;
+            box-shadow: 0 0 12px rgba(220, 38, 38, 0.5);
+        }
+
+        /* ===== 控制按钮 ===== */
+        .btn-primary {
+            background-color: #7c3aed;
+            color: white;
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: #6d28d9;
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background-color: #6b7280;
+            color: white;
+            transition: all 0.2s ease;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #4b5563;
+        }
+        .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
+            <!-- 头部 + 返回链接 -->
+            <div class="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-clock text-accent"></i>
+                        {{ metronome_title }}
+                    </h1>
+                    <p class="text-sm text-gray-500 mt-1">{{ metronome_subtitle }}</p>
+                </div>
+                <a href="/plugins/musictool/" class="back-link text-gray-400 hover:text-accent text-sm flex items-center gap-1">
+                    <i class="fas fa-arrow-left"></i> {{ back }}
+                </a>
+            </div>
+
+            <div class="p-5 space-y-5">
+                <!-- BPM 显示 -->
+                <div class="text-center">
+                    <div class="bpm-display" id="bpmDisplay">120</div>
+                    <div class="text-sm text-gray-500">BPM</div>
+                </div>
+
+                <!-- BPM 滑块 -->
+                <div class="bpm-controls">
+                    <input type="range" id="bpmSlider" min="30" max="240" value="120" step="1" />
+                    <div class="flex justify-between text-xs text-gray-400 mt-1">
+                        <span>30</span>
+                        <span>120</span>
+                        <span>240</span>
+                    </div>
+                </div>
+
+                <!-- 拍号选择 -->
+                <div class="flex flex-wrap gap-2 justify-center">
+                    <button class="time-signature-btn active px-4 py-2 rounded-full text-sm font-medium" data-beats="4">
+                        4/4
+                    </button>
+                    <button class="time-signature-btn px-4 py-2 rounded-full text-sm font-medium" data-beats="3">
+                        3/4
+                    </button>
+                    <button class="time-signature-btn px-4 py-2 rounded-full text-sm font-medium" data-beats="6">
+                        6/8
+                    </button>
+                    <button class="time-signature-btn px-4 py-2 rounded-full text-sm font-medium" data-beats="2">
+                        2/4
+                    </button>
+                </div>
+
+                <!-- 节拍指示器 -->
+                <div class="beat-indicator" id="beatIndicator">
+                    <!-- 由 JS 动态生成 -->
+                </div>
+
+                <!-- 控制按钮 -->
+                <div class="flex gap-3">
+                    <button id="metronomeStartBtn" class="btn-primary flex-1 font-semibold py-2 rounded-full transition">
+                        <i class="fas fa-play mr-2"></i> {{ metronome_start }}
+                    </button>
+                    <button id="metronomeStopBtn" class="btn-secondary flex-1 font-semibold py-2 rounded-full transition" disabled>
+                        <i class="fas fa-stop mr-2"></i> {{ stop }}
+                    </button>
+                </div>
+
+                <div class="text-center text-sm text-gray-500 bg-gray-50 rounded-full py-2 px-3" id="metronomeStatus">
+                    {{ metronome_ready }}
+                </div>
+            </div>
+
+            <!-- 页脚 -->
+            <div class="text-center text-xs text-gray-400 border-t border-gray-100 pt-4 px-5 pb-4">
+                <span>{{ footer_text }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 节拍器脚本 -->
+    <script type="module" src="/plugins/musictool/static/metronome.js"></script>
+</body>
+</html>

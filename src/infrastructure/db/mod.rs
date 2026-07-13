@@ -14,6 +14,7 @@ pub mod plugin_hook_repo;
 
 pub mod cart_repo;
 pub mod order_repo;
+pub mod favorite_repo;
 
 pub use cart_repo::PostgresCartRepo;
 pub use order_repo::PostgresOrderRepo;

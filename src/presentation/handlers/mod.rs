@@ -28,6 +28,7 @@ pub mod user_center;
 pub mod user_center_pages;
 pub mod auth_pages;
 pub mod order;
+pub mod favorite;
 pub use user_center_pages::*;
 pub use auth_pages::*;
 
@@ -70,4 +71,11 @@ pub use amatemplate::{
     get_amatemplate_handler,
     update_amatemplate_handler,
     delete_amatemplate_handler,
+};
+pub use favorite::{
+    favorite_handler,
+    list_favorites_handler,
+    unfavorite_handler,
+    update_favorite_mark_handler,
+    check_favorite_handler,
 };

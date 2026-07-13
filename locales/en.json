@@ -213,5 +213,22 @@
   "cancel_order": "Cancel Order",
   "confirm_cancel_order": "Are you sure you want to cancel this order?",
   "order_cancelled_success": "Order cancelled successfully",
-  "order_cancel_failed": "Failed to cancel order"
+  "order_cancel_failed": "Failed to cancel order",
+  "login_to_favorite": "Login to Favorite",
+  "my_favorites": "My Favorites",
+  "mark": "Mark",
+  "loading": "Loading...",
+  "favorites_empty": "No favorites yet",
+  "unfavorite_confirm": "Are you sure to unfavorite this article?",
+  "mark_placeholder": "Enter custom mark",
+  "no_mark": "No mark",
+  "practicing": "Practicing",
+  "mastered": "Mastered",
+  "prepare": "Prepare to practice",
+  "custom": "Custom",
+  "save_mark": "Save Mark",
+  "unfavorite": "Unfavorite",
+  "view_article": "View Article",
+  "items": "items",
+  "go_browse": "Go Browse"
 }

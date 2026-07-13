@@ -1,10 +1,9 @@
-// src/presentation/handlers/auth_pages.rs
-
 use axum::{
-    extract::{Extension, State},
+    extract::{Extension, State, Query},   // 新增 Query
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use serde::{Deserialize, Serialize};      // 新增 Serialize
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -14,16 +13,44 @@ use crate::presentation::AppState;
 use crate::presentation::handlers::utils::{get_nav_categories, get_site_config_map};
 use crate::presentation::types::UserInfo;
 use crate::infrastructure::i18n::LangOption;
+use crate::core::models::User;            // 新增，用于 AuthResponse
 
-/// 登录页
+// ===== 登录 API 的请求/响应结构（通常放在 auth.rs，此处保留供参考） =====
+#[derive(Deserialize)]
+pub struct LoginRequest {
+    pub email: String,
+    pub password: String,
+    pub redirect: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct AuthResponse {
+    pub token: String,
+    pub user: User,
+    pub redirect: String,
+}
+
+// ===== 从 URL 查询参数提取 redirect =====
+#[derive(Deserialize)]
+pub struct RedirectQuery {
+    pub redirect: Option<String>,
+}
+
+/// 登录页（支持 redirect 参数）
 pub async fn login_page_handler(
+    Query(query): Query<RedirectQuery>,   // 提取 ?redirect=xxx
     Extension(user_info): Extension<UserInfo>,
     Extension(lang): Extension<String>,
     Extension(lang_options): Extension<Vec<LangOption>>,
     State(state): State<Arc<AppState>>,
 ) -> Response {
-    // 如果已登录，跳转到用户中心
+    // 如果已登录，跳转到用户中心（或 redirect 指定的页面？）
+    // 但通常登录页仅供未登录用户访问，若已登录可重定向到 redirect 或 profile
     if user_info.is_logged_in {
+        // 若已登录且有 redirect，可跳转至该页（但此时登录无意义，按业务需求决定）
+        if let Some(ref redirect_url) = query.redirect {
+            return axum::response::Redirect::temporary(redirect_url).into_response();
+        }
         return axum::response::Redirect::temporary("/user/profile").into_response();
     }
 
@@ -39,6 +66,8 @@ pub async fn login_page_handler(
         "is_logged_in": false,
         "user_name": null,
     }));
+    // ===== 新增：将 redirect 传递给模板 =====
+    context.insert("redirect".to_string(), json!(query.redirect));
 
     let theme_manager = state.theme_manager.read().await;
     match theme_manager.render("login.html", context).await {
@@ -50,7 +79,7 @@ pub async fn login_page_handler(
     }
 }
 
-/// 注册页
+/// 注册页（保持原样，可自行添加 redirect 支持）
 pub async fn register_page_handler(
     Extension(user_info): Extension<UserInfo>,
     Extension(lang): Extension<String>,
@@ -84,7 +113,7 @@ pub async fn register_page_handler(
     }
 }
 
-/// 修改密码页
+/// 修改密码页（保持原样）
 pub async fn user_password_handler(
     Extension(user_info): Extension<UserInfo>,
     Extension(lang): Extension<String>,

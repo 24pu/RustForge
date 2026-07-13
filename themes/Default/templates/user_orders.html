@@ -3,41 +3,45 @@
 {% block title_prefix %}{{ t(key="my_orders", lang=lang) }} - {{ site_config.site_name }}{% endblock %}
 
 {% block user_content %}
-<h2 class="text-2xl font-bold text-gray-800 mb-6">{{ t(key="my_orders", lang=lang) }}</h2>
+<!-- ===== 新增容器：限制宽度并居中 ===== -->
+<div class="max-w-4xl mx-auto w-full">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ t(key="my_orders", lang=lang) }}</h2>
 
-<!-- 状态筛选 -->
-<div class="flex flex-wrap gap-2 mb-6">
-    <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="">{{ t(key="all", lang=lang) }}</button>
-    <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="pending">{{ t(key="status_pending", lang=lang) }}</button>
-    <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="paid">{{ t(key="status_paid", lang=lang) }}</button>
-    <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="shipped">{{ t(key="status_shipped", lang=lang) }}</button>
-    <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="completed">{{ t(key="status_completed", lang=lang) }}</button>
-    <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="cancelled">{{ t(key="status_cancelled", lang=lang) }}</button>
-</div>
-
-<div id="orders-container" class="space-y-4">
-    <div class="text-center text-gray-500 py-8">{{ t(key="loading", lang=lang) }}</div>
-</div>
-
-<div id="pagination" class="flex justify-between items-center mt-6">
-    <span id="page-info" class="text-sm text-gray-600"></span>
-    <div class="flex gap-2">
-        <button id="prev-page" class="px-4 py-1 border rounded hover:bg-gray-50 disabled:opacity-50">{{ t(key="prev_page", lang=lang) }}</button>
-        <span id="page-current" class="px-4 py-1 border rounded bg-purple-600 text-white">1</span>
-        <button id="next-page" class="px-4 py-1 border rounded hover:bg-gray-50 disabled:opacity-50">{{ t(key="next_page", lang=lang) }}</button>
+    <!-- 状态筛选 -->
+    <div class="flex flex-wrap gap-2 mb-6">
+        <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="">{{ t(key="all", lang=lang) }}</button>
+        <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="pending">{{ t(key="status_pending", lang=lang) }}</button>
+        <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="paid">{{ t(key="status_paid", lang=lang) }}</button>
+        <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="shipped">{{ t(key="status_shipped", lang=lang) }}</button>
+        <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="completed">{{ t(key="status_completed", lang=lang) }}</button>
+        <button class="filter-btn px-4 py-1.5 rounded-full text-sm border border-gray-300 hover:bg-gray-50 transition" data-status="cancelled">{{ t(key="status_cancelled", lang=lang) }}</button>
     </div>
-</div>
 
-<!-- 订单详情模态框（已修复居中） -->
-<div id="detail-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">{{ t(key="order_detail", lang=lang) }}</h3>
-            <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+    <div id="orders-container" class="space-y-4">
+        <div class="text-center text-gray-500 py-8">{{ t(key="loading", lang=lang) }}</div>
+    </div>
+
+    <div id="pagination" class="flex justify-between items-center mt-6">
+        <span id="page-info" class="text-sm text-gray-600"></span>
+        <div class="flex gap-2">
+            <button id="prev-page" class="px-4 py-1 border rounded hover:bg-gray-50 disabled:opacity-50">{{ t(key="prev_page", lang=lang) }}</button>
+            <span id="page-current" class="px-4 py-1 border rounded bg-purple-600 text-white">1</span>
+            <button id="next-page" class="px-4 py-1 border rounded hover:bg-gray-50 disabled:opacity-50">{{ t(key="next_page", lang=lang) }}</button>
         </div>
-        <div id="detail-content"></div>
+    </div>
+
+    <!-- 订单详情模态框 -->
+    <div id="detail-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">{{ t(key="order_detail", lang=lang) }}</h3>
+                <button id="close-modal" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div id="detail-content"></div>
+        </div>
     </div>
 </div>
+<!-- ===== 容器结束 ===== -->
 
 <script>
     let currentPage = 1;
@@ -132,7 +136,6 @@
                     <div class="text-sm text-gray-600 mt-2">
                         ${__('recipient')}：${order.shipping_name || '-'} | ${__('phone')}：${order.shipping_phone || '-'}
                     </div>
-                    <!-- 操作按钮 -->
                     <div class="mt-3 flex justify-end gap-2 border-t pt-2">
                         ${(order.status === 'pending' || order.status === 'paid') ? `
                             <button onclick="cancelOrder('${order.id}')" class="text-sm text-red-600 hover:text-red-800 border border-red-300 px-3 py-1 rounded hover:bg-red-50 transition">
@@ -153,7 +156,6 @@
         document.getElementById('next-page').disabled = true;
     }
 
-    // 取消订单
     async function cancelOrder(orderId) {
         if (!confirm('{{ t(key="confirm_cancel_order", lang=lang) }}')) return;
         try {
@@ -166,7 +168,6 @@
         }
     }
 
-    // 查看订单详情
     async function viewOrder(orderId) {
         try {
             const order = await apiCall('GET', `/api/orders/${orderId}`);
@@ -223,7 +224,6 @@
         }
     }
 
-    // 模态框关闭
     document.getElementById('close-modal').addEventListener('click', function() {
         document.getElementById('detail-modal').classList.add('hidden');
     });
@@ -231,26 +231,19 @@
         if (e.target === this) this.classList.add('hidden');
     });
 
-    // 筛选按钮
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('bg-purple-100', 'border-purple-500'));
             this.classList.add('bg-purple-100', 'border-purple-500');
             currentStatus = this.dataset.status;
-            if (allOrders.length > 0) {
-                loadOrders(currentStatus);
-            } else {
-                loadOrders(currentStatus);
-            }
+            loadOrders(currentStatus);
         });
     });
     document.querySelector('.filter-btn[data-status=""]')?.classList.add('bg-purple-100', 'border-purple-500');
 
-    // 翻页（禁用的占位）
     document.getElementById('prev-page').addEventListener('click', () => {});
     document.getElementById('next-page').addEventListener('click', () => {});
 
-    // 初始化
     loadOrders();
 </script>
 {% endblock %}

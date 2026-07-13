@@ -50,6 +50,7 @@ async fn render_user_page(
         "profile" => "user_profile.html",
         "orders" => "user_orders.html",
         "cart" => "user_cart.html",
+        "favorites" => "user_favorites.html",   // 必须添加
         _ => "user_center_base.html",
     };
 
@@ -100,4 +101,17 @@ pub async fn user_cart_handler(
         return axum::response::Redirect::temporary("/login").into_response();
     }
     render_user_page(&state, &user_info, &lang, &lang_options, "cart", HashMap::new()).await
+}
+
+/// 我的收藏页
+pub async fn user_favorites_handler(
+    Extension(user_info): Extension<UserInfo>,
+    Extension(lang): Extension<String>,
+    Extension(lang_options): Extension<Vec<LangOption>>,
+    State(state): State<Arc<AppState>>,
+) -> Response {
+    if !user_info.is_logged_in {
+        return axum::response::Redirect::temporary("/login").into_response();
+    }
+    render_user_page(&state, &user_info, &lang, &lang_options, "favorites", HashMap::new()).await
 }

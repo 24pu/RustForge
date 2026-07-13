@@ -22,15 +22,23 @@
                         </a>
                     </li>
                     <li>
-                    <a href="/user/password" class="block px-3 py-2 rounded hover:bg-gray-100 transition {% if current_page == 'password' %}bg-purple-50 text-purple-700{% endif %}">
-                        <i class="fas fa-key mr-2"></i>{{ t(key="change_password", lang=lang) }}
-                    </a>
-                </li>
+                        <a href="/user/password" class="block px-3 py-2 rounded hover:bg-gray-100 transition {% if current_page == 'password' %}bg-purple-50 text-purple-700{% endif %}">
+                            <i class="fas fa-key mr-2"></i>{{ t(key="change_password", lang=lang) }}
+                        </a>
+                    </li>
+                     <!-- ========== 新增“我的收藏”菜单项 ========== -->
+                    <li>
+                        <a href="/user/favorites" class="block px-3 py-2 rounded hover:bg-gray-100 transition {% if current_page == 'favorites' %}bg-purple-50 text-purple-700{% endif %}">
+                            <i class="fas fa-heart mr-2"></i>{{ t(key="my_favorites", lang=lang) }}
+                        </a>
+                    </li>
+                    <!-- ========================================= -->
                     <li>
                         <a href="/user/orders" class="block px-3 py-2 rounded hover:bg-gray-100 transition {% if current_page == 'orders' %}bg-purple-50 text-purple-700{% endif %}">
                             <i class="fas fa-clipboard-list mr-2"></i>{{ t(key="my_orders", lang=lang) }}
                         </a>
                     </li>
+                   
                     <li>
                         <a href="/user/cart" class="block px-3 py-2 rounded hover:bg-gray-100 transition {% if current_page == 'cart' %}bg-purple-50 text-purple-700{% endif %}">
                             <i class="fas fa-shopping-cart mr-2"></i>{{ t(key="cart", lang=lang) }}

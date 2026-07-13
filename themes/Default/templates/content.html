@@ -6,18 +6,13 @@
 {% block extra_head %}
 <!-- 引入 abcjs 核心 JS -->
 <script src="/lib/abcjs/abcjs-basic-min.js"></script>
-<!-- 若本地 JS 加载失败，可启用下方 CDN 备选 -->
 <!-- <script src="/lib/abcjs/abcjs-basic-min.js" onerror="this.src='https://unpkg.com/abcjs@6.0.0/dist/abcjs-basic-min.js'"></script> -->
 
-<!-- ===== 新增：引入 abcjs 音频样式（必须，否则会出现 CSS required 警告） ===== -->
+<!-- 引入 abcjs 音频样式 -->
 <link rel="stylesheet" href="/lib/abcjs/abcjs-audio.css">
-<!-- 备选：若本地无此文件，使用 CDN（取消注释下列行，并注释掉上面本地引用） -->
 <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/abcjs@6.3.0/dist/abcjs-audio.css"> -->
-<!-- 或使用 unpkg -->
-<!-- <link rel="stylesheet" href="https://unpkg.com/abcjs@6.0.0/dist/abcjs-audio.css"> -->
 
 <style>
-    /* 自定义样式，与播放控件配合 */
     .abc-wrapper {
         margin: 1.5rem 0;
         border: 1px solid #e5e7eb;
@@ -73,7 +68,6 @@
         background: #ffffff;
         border-top: 1px solid #e5e7eb;
     }
-    /* 进度条颜色与主题统一（依赖 abcjs-audio.css 的基础样式） */
     .abc-audio .abcjs-inline-progress {
         background: #e5e7eb;
         height: 4px;
@@ -83,6 +77,27 @@
         background: #7c3aed;
         height: 4px;
         border-radius: 2px;
+    }
+
+    /* 收藏按钮样式 */
+    #favorite-btn {
+        transition: all 0.2s;
+    }
+    #favorite-btn.favorited {
+        background-color: #fef2f2;
+        border-color: #ef4444;
+        color: #dc2626;
+    }
+    #favorite-btn.not-favorited {
+        background-color: #f3f4f6;
+        border-color: #d1d5db;
+        color: #374151;
+    }
+    #favorite-btn:hover {
+        transform: scale(1.05);
+    }
+    #favorite-btn:active {
+        transform: scale(0.95);
     }
 </style>
 {% endblock %}
@@ -111,7 +126,24 @@
             </nav>
 
             <article class="bg-white rounded-lg shadow-lg p-6 md:p-8">
-                <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4 leading-tight">{{ post.title }}</h1>
+                <!-- 标题区域 + 收藏按钮 -->
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 leading-tight flex-1 min-w-0">{{ post.title }}</h1>
+                   <div class="flex-shrink-0">
+                    {% if user_info.is_logged_in %}
+                        <button id="favorite-btn" class="px-5 py-2 rounded-full border transition not-favorited" data-content-id="{{ post.id }}">
+                            <span id="favorite-text">加载中...</span>
+                        </button>
+                    {% else %}
+                        <!-- ===== 修改点：使用 post.slug ===== -->
+                        <a href="/login?redirect=/content/{{ post.slug }}" class="inline-block px-5 py-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50 transition text-sm">
+                            {{ t(key="login_to_favorite", lang=lang) }}
+                        </a>
+                    {% endif %}
+                </div>
+                </div>
+
+                <!-- 元信息 -->
                 <div class="flex flex-wrap items-center text-gray-500 text-sm mb-6 pb-6 border-b border-gray-200">
                     <span class="mr-4">📅 {{ post.created_at|date(format="%Y-%m-%d") }}</span>
                     {% if post.categories %}
@@ -127,10 +159,12 @@
                     {% endif %}
                 </div>
 
+                <!-- 正文 -->
                 <div class="prose max-w-none">
                     {{ body_html|safe }}
                 </div>
 
+                <!-- 相关文章 -->
                 {% if related and related | length > 0 %}
                 <div class="mt-10 pt-8 border-t border-gray-200">
                     <h3 class="text-xl font-bold text-gray-900 mb-4">{{ t(key="related_articles", lang=lang) }}</h3>
@@ -154,13 +188,14 @@
             </article>
         </div>
 
+        <!-- 侧边栏（钩子） -->
         <div class="w-full lg:w-72 shrink-0">
-        {{ hooks.sidebar_friendlinks | default(value='') | safe }}
+            {{ hooks.sidebar_friendlinks | default(value='') | safe }}
         </div>
     </div>
 </div>
 
-<!-- ========== 播放脚本（仅播放按钮，无停止） ========== -->
+<!-- ========== abcjs 播放脚本（保留） ========== -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     if (typeof ABCJS === 'undefined') {
@@ -176,7 +211,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const abcText = codeElement.textContent.trim();
         if (!abcText) return;
 
-        // 构建 DOM
         const wrapper = document.createElement('div');
         wrapper.className = 'abc-wrapper';
 
@@ -207,7 +241,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         pre.parentNode.replaceChild(wrapper, pre);
 
-        // 渲染五线谱
         let visualObj = null;
         try {
             visualObj = ABCJS.renderAbc(paperDiv, abcText, {
@@ -228,11 +261,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!ABCJS.synth.supportsAudio()) {
             statusSpan.textContent = '⚠️ 浏览器不支持 Web Audio';
-            console.warn('当前浏览器不支持 Web Audio');
             return;
         }
 
-        // 创建音频控制器
         let synthController = null;
         let synthCreate = null;
 
@@ -253,7 +284,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // 绑定乐谱
         synthCreate.init({ visualObj: visualObj[0] })
             .then(() => synthController.setTune(visualObj[0], false))
             .then(() => {
@@ -283,4 +313,58 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<!-- ========== 收藏功能 JavaScript ========== -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('favorite-btn');
+    if (!btn) return;
+
+    const contentId = btn.dataset.contentId;
+    const textSpan = document.getElementById('favorite-text');
+
+    async function checkFavorite() {
+        try {
+            const response = await apiCall('GET', `/api/favorites/${contentId}/check`);
+            const isFavorited = response === true;
+            updateButton(isFavorited);
+        } catch (error) {
+            console.error('检查收藏状态失败:', error);
+            textSpan.textContent = '❌ 加载失败';
+        }
+    }
+
+    function updateButton(isFavorited) {
+        if (isFavorited) {
+            textSpan.textContent = '❤️ 取消收藏';
+            btn.classList.remove('not-favorited');
+            btn.classList.add('favorited');
+        } else {
+            textSpan.textContent = '🤍 收藏';
+            btn.classList.remove('favorited');
+            btn.classList.add('not-favorited');
+        }
+        btn.dataset.favorited = isFavorited ? 'true' : 'false';
+    }
+
+    btn.addEventListener('click', async function() {
+        const currentlyFavorited = this.dataset.favorited === 'true';
+        try {
+            if (currentlyFavorited) {
+                await apiCall('DELETE', `/api/favorites/${contentId}`);
+                updateButton(false);
+            } else {
+                await apiCall('POST', `/api/favorites`, { content_id: contentId, mark: '' });
+                updateButton(true);
+            }
+        } catch (error) {
+            console.error('操作失败:', error);
+            alert('操作失败，请稍后重试');
+        }
+    });
+
+    checkFavorite();
+});
+</script>
+
 {% endblock %}
