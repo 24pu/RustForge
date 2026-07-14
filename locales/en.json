@@ -230,5 +230,12 @@
   "unfavorite": "Unfavorite",
   "view_article": "View Article",
   "items": "items",
-  "go_browse": "Go Browse"
+  "go_browse": "Go Browse",
+   "filter_by_mark": "Filter by Mark",
+  "all_marks": "All Marks",
+  "newest_first": "Newest First",
+  "oldest_first": "Oldest First",
+  "title_asc": "Title A-Z",
+  "title_desc": "Title Z-A",
+  "reset_filters": "Reset Filters"
 }

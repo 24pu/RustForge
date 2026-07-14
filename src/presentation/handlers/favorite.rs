@@ -17,11 +17,13 @@ use crate::core::models::{
 use crate::core::FavoriteRepository;
 use crate::presentation::types::UserInfo;
 
-// ===== 分页参数 =====
+// ===== 分页参数（支持筛选和排序） =====
 #[derive(Debug, Deserialize)]
 pub struct PaginationParams {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
+    pub mark: Option<String>,      // 标记筛选：具体标记值，或 "no_mark" 表示无标记
+    pub sort_by: Option<String>,   // 排序：created_at_desc, created_at_asc, title_asc, title_desc
 }
 
 // ===== 分页响应 =====
@@ -56,7 +58,7 @@ pub async fn favorite_handler(
     let user_id = get_user_id(&user_info)?;
 
     let favorite = state
-        .favorite_repo                           // 直接使用，无需 as_ref/ok_or
+        .favorite_repo
         .create(user_id, req.content_id, req.mark.as_deref())
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -126,7 +128,7 @@ pub async fn check_favorite_handler(
     Ok(Json(exists))
 }
 
-/// 获取当前用户的收藏列表（分页）
+/// 获取当前用户的收藏列表（分页，支持筛选和排序）
 pub async fn list_favorites_handler(
     State(state): State<Arc<AppState>>,
     Extension(user_info): Extension<UserInfo>,
@@ -137,18 +139,21 @@ pub async fn list_favorites_handler(
     }
     let user_id = get_user_id(&user_info)?;
 
+    // 在 handler 中：
     let limit = pagination.limit.unwrap_or(20).clamp(1, 100);
     let offset = pagination.offset.unwrap_or(0).max(0);
+    let mark_filter = pagination.mark.as_deref();
+    let sort_by = pagination.sort_by.as_deref();
 
     let items = state
         .favorite_repo
-        .list_by_user(user_id, limit, offset)
+        .list_by_user(user_id, limit, offset, mark_filter, sort_by)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let total = state
         .favorite_repo
-        .count_by_user(user_id)
+        .count_by_user_filtered(user_id, mark_filter)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

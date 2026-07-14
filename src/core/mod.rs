@@ -542,6 +542,18 @@ pub trait FavoriteRepository: Send + Sync {
     async fn update_mark(&self, user_id: Uuid, content_id: Uuid, mark: Option<&str>) -> Result<Favorite>;
     async fn delete(&self, user_id: Uuid, content_id: Uuid) -> Result<()>;
     async fn find_by_user_and_content(&self, user_id: Uuid, content_id: Uuid) -> Result<Option<Favorite>>;
-    async fn list_by_user(&self, user_id: Uuid, limit: i64, offset: i64) -> Result<Vec<FavoriteWithContent>>;
+    async fn list_by_user(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+        offset: i64,
+        mark_filter: Option<&str>,
+        sort_by: Option<&str>,
+    ) -> Result<Vec<FavoriteWithContent>>;
     async fn count_by_user(&self, user_id: Uuid) -> Result<i64>;
+    async fn count_by_user_filtered(
+        &self,
+        user_id: Uuid,
+        mark_filter: Option<&str>,
+    ) -> Result<i64>;
 }

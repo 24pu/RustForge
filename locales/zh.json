@@ -230,5 +230,12 @@
     "unfavorite": "取消收藏",
     "view_article": "查看原文",
     "items": "项",
-    "go_browse": "去浏览"
+    "go_browse": "去浏览",
+    "filter_by_mark": "按标记筛选",
+    "all_marks": "全部标记",
+    "newest_first": "最新收藏",
+    "oldest_first": "最早收藏",
+    "title_asc": "标题 A-Z",
+    "title_desc": "标题 Z-A",
+    "reset_filters": "重置筛选"
 }

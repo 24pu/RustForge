@@ -1,5 +1,3 @@
-// src/infrastructure/db/favorite_repo.rs
-
 use anyhow::Result;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -15,6 +13,15 @@ pub struct PostgresFavoriteRepo {
 impl PostgresFavoriteRepo {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
+    }
+
+    fn map_sort_order(sort_by: Option<&str>) -> &'static str {
+        match sort_by {
+            Some("created_at_asc") => "f.created_at ASC",
+            Some("title_asc") => "c.title ASC NULLS LAST",
+            Some("title_desc") => "c.title DESC NULLS LAST",
+            _ => "f.created_at DESC",
+        }
     }
 }
 
@@ -35,7 +42,6 @@ impl FavoriteRepository for PostgresFavoriteRepo {
         .bind(mark)
         .fetch_one(&self.pool)
         .await?;
-
         Ok(favorite)
     }
 
@@ -53,7 +59,6 @@ impl FavoriteRepository for PostgresFavoriteRepo {
         .bind(mark)
         .fetch_one(&self.pool)
         .await?;
-
         Ok(favorite)
     }
 
@@ -65,7 +70,6 @@ impl FavoriteRepository for PostgresFavoriteRepo {
         .bind(content_id)
         .execute(&self.pool)
         .await?;
-
         Ok(())
     }
 
@@ -77,21 +81,28 @@ impl FavoriteRepository for PostgresFavoriteRepo {
         .bind(content_id)
         .fetch_optional(&self.pool)
         .await?;
-
         Ok(favorite)
     }
 
-    async fn list_by_user(&self, user_id: Uuid, limit: i64, offset: i64) -> Result<Vec<FavoriteWithContent>> {
-        let rows = sqlx::query!(
+    async fn list_by_user(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+        offset: i64,
+        mark_filter: Option<&str>,
+        sort_by: Option<&str>,
+    ) -> Result<Vec<FavoriteWithContent>> {
+        // 构建 SQL 和参数
+        let mut sql = String::from(
             r#"
             SELECT
-                f.id as "favorite_id",
-                f.user_id as "favorite_user_id",
-                f.content_id as "favorite_content_id",
-                f.mark as "favorite_mark",
-                f.created_at as "favorite_created_at",
-                f.updated_at as "favorite_updated_at",
-                c.id as "content_id",
+                f.id,
+                f.user_id,
+                f.content_id,
+                f.mark,
+                f.created_at,
+                f.updated_at,
+                c.id,
                 c.slug,
                 c.title,
                 c.body,
@@ -99,48 +110,69 @@ impl FavoriteRepository for PostgresFavoriteRepo {
                 c.cover_image,
                 c.lang,
                 c.translation_group,
-                c.created_at as "content_created_at",
-                c.updated_at as "content_updated_at"
+                c.created_at,
+                c.updated_at
             FROM favorites f
             INNER JOIN contents c ON c.id = f.content_id
             WHERE f.user_id = $1
-            ORDER BY f.created_at DESC
-            LIMIT $2 OFFSET $3
-            "#,
-            user_id,
-            limit,
-            offset
-        )
-        .fetch_all(&self.pool)
-        .await?;
+            "#
+        );
+
+        let mut param_count = 2;
+        if let Some(filter) = mark_filter {
+            if filter == "no_mark" {
+                sql.push_str(" AND (f.mark IS NULL OR f.mark = '')");
+            } else {
+                sql.push_str(&format!(" AND f.mark = ${}", param_count));
+                param_count += 1;
+            }
+        }
+
+        let order_by = Self::map_sort_order(sort_by);
+        sql.push_str(&format!(" ORDER BY {}", order_by));
+
+        sql.push_str(&format!(" LIMIT ${}", param_count));
+        param_count += 1;
+        sql.push_str(&format!(" OFFSET ${}", param_count));
+
+        // 构建查询
+        let mut query = sqlx::query_as::<_, (i32, Uuid, Uuid, Option<String>, DateTime<Utc>, DateTime<Utc>, Uuid, String, String, String, bool, Option<String>, String, Option<Uuid>, DateTime<Utc>, DateTime<Utc>)>(&sql);
+
+        query = query.bind(user_id);
+
+        if let Some(filter) = mark_filter {
+            if filter != "no_mark" {
+                query = query.bind(filter);
+            }
+        }
+
+        query = query.bind(limit).bind(offset);
+
+        let rows = query.fetch_all(&self.pool).await?;
 
         let mut result = Vec::with_capacity(rows.len());
         for row in rows {
-            // favorites 表的 created_at 和 updated_at 是 Option（可能因未显式 NOT NULL）
-            // 但因有默认值，安全解包
             let favorite = Favorite {
-                id: row.favorite_id,
-                user_id: row.favorite_user_id,
-                content_id: row.favorite_content_id,
-                mark: row.favorite_mark,
-                created_at: row.favorite_created_at.unwrap(),
-                updated_at: row.favorite_updated_at.unwrap(),
+                id: row.0,
+                user_id: row.1,
+                content_id: row.2,
+                mark: row.3,
+                created_at: row.4,
+                updated_at: row.5,
             };
 
-            // contents 表的 created_at 和 updated_at 是非 Option (已显式 NOT NULL)
-            // translation_group 可能为 NULL，使用默认值
             let content = Content {
-                id: row.content_id,
-                slug: row.slug,
-                title: row.title,
-                body: row.body,
-                published: row.published,
-                cover_image: row.cover_image,
-                lang: row.lang,
-                translation_group: row.translation_group.unwrap_or_default(),
-                categories: vec![], // 分类未加载，可后续优化
-                created_at: row.content_created_at,       // 直接赋值
-                updated_at: row.content_updated_at,       // 直接赋值
+                id: row.6,
+                slug: row.7,
+                title: row.8,
+                body: row.9,
+                published: row.10,
+                cover_image: row.11,
+                lang: row.12,
+                translation_group: row.13.unwrap_or_default(),
+                categories: vec![],
+                created_at: row.14,
+                updated_at: row.15,
             };
 
             result.push(FavoriteWithContent { favorite, content });
@@ -156,7 +188,35 @@ impl FavoriteRepository for PostgresFavoriteRepo {
         .bind(user_id)
         .fetch_one(&self.pool)
         .await?;
+        Ok(count)
+    }
 
+    async fn count_by_user_filtered(
+        &self,
+        user_id: Uuid,
+        mark_filter: Option<&str>,
+    ) -> Result<i64> {
+        let mut sql = String::from(
+            "SELECT COUNT(*) FROM favorites WHERE user_id = $1"
+        );
+        let mut param_count = 2;
+        if let Some(filter) = mark_filter {
+            if filter == "no_mark" {
+                sql.push_str(" AND (mark IS NULL OR mark = '')");
+            } else {
+                sql.push_str(&format!(" AND mark = ${}", param_count));
+                param_count += 1;
+            }
+        }
+
+        let mut query = sqlx::query_as::<_, (i64,)>(&sql);
+        query = query.bind(user_id);
+        if let Some(filter) = mark_filter {
+            if filter != "no_mark" {
+                query = query.bind(filter);
+            }
+        }
+        let (count,) = query.fetch_one(&self.pool).await?;
         Ok(count)
     }
 }
