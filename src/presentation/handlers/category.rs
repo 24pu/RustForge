@@ -8,6 +8,9 @@ use serde_json::json;
 use std::sync::Arc;
 use std::collections::HashMap;
 use markdown;
+use tera::Context;  // 添加这行导入
+use serde_json::Value;
+use pulldown_cmark::{Parser, Options, html};
 
 use crate::presentation::AppState;
 use crate::presentation::types::*;
@@ -186,26 +189,38 @@ pub async fn content_detail_handler(
     let categories = state.content_repo.get_content_categories(content.id).await.unwrap_or_default();
     content.categories = categories.clone();
 
-    // 获取相关文章：基于分类，排除自身，最多5篇
+    // 获取相关文章
     let category_ids: Vec<i32> = categories.iter().map(|c| c.id).collect();
     let related = state.content_repo.get_related_contents(content.id, &category_ids, 5).await.unwrap_or_default();
 
     let nav_categories = get_nav_categories(&state).await;
-    let body_html = markdown::to_html(&content.body);
+
+    // ===== 使用 pulldown-cmark 渲染，保留内联 HTML =====
+    // 启用所有扩展（包括 ENABLE_HTML）
+    let options = Options::all();
+    let parser = Parser::new_ext(&content.body, options);
+    let mut body_html = String::new();
+    html::push_html(&mut body_html, parser);
+
+    // 调试日志（确认 body_html 包含 <table> 而不是 &lt;table&gt;）
+    //eprintln!("body_html: {}", body_html);
+
     let site_config = get_site_config_map(&state.db_pool).await;
 
+    // 使用 HashMap 构建上下文，并用 Value::String 显式插入原始字符串
     let mut context = HashMap::new();
     context.insert("site_config".to_string(), json!(site_config));
     context.insert("post".to_string(), json!(content));
-    context.insert("body_html".to_string(), json!(body_html));
+    // 关键：使用 Value::String 确保不额外转义
+    context.insert("body_html".to_string(), Value::String(body_html));
     context.insert("nav_categories".to_string(), json!(nav_categories));
     context.insert("user_info".to_string(), json!({
         "is_logged_in": user_info.is_logged_in,
         "user_name": user_info.user_name,
     }));
-    context.insert("related".to_string(), json!(related));   // 注入相关文章
-    context.insert("lang".to_string(), json!(lang));                // 新增
-    context.insert("lang_options".to_string(), json!(lang_options)); // 新增
+    context.insert("related".to_string(), json!(related));
+    context.insert("lang".to_string(), json!(lang));
+    context.insert("lang_options".to_string(), json!(lang_options));
 
     match state.theme_manager.read().await.render("content.html", context).await {
         Ok(html) => Html(html).into_response(),

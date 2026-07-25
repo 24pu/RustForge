@@ -67,5 +67,8 @@
     "confirm_delete": "Are you sure to delete the navigation hook for this language version?",
     "delete_success": "✅ Deleted",
     "delete_failed": "❌ Failed to delete",
-    "musictool": "Musictools"
+    "musictool": "Musictools",
+    "abc_title": "ABC Music Notation",
+    "abc_desc": "ABC Music Notation is a format for recording music using plain text (ASCII characters).",
+    "abc_badge": "ABC Notation"
 }

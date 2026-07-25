@@ -68,5 +68,9 @@
     "confirm_delete": "确定要删除当前语言版本的导航钩子吗？",
     "delete_success": "✅ 已删除",
     "delete_failed": "❌ 删除失败",
-    "musictool":"音乐工具"
+    "musictool":"音乐工具",
+    "abc_title":"ABC 五线谱",
+    "abc_desc":"ABC记谱法（ABC Music Notation）是一种用纯文本（ASCII字符）记录音乐的格式",
+    "abc_badge":"ABC记谱法"
+
 }

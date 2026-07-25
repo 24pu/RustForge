@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ABC 记谱法入门文档</title>
+    <!-- 引入 TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 可选：自定义配置（如颜色、字体） -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            light: '#eef3f8',
+                            DEFAULT: '#3b7cbf',
+                            dark: '#1e4c7a',
+                            deeper: '#0a2a44',
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['Courier New', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 leading-relaxed antialiased py-6 px-4 md:py-10">
+
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-10 lg:p-12">
+
+        <!-- 标题 -->
+        <h1 class="text-3xl md:text-4xl font-bold text-brand-deeper border-b-4 border-brand pb-3 mb-6">
+            📄 ABC 记谱法入门文档
+        </h1>
+
+        <p class="text-base md:text-lg mb-4">
+            <strong>ABC记谱法</strong>（ABC Music Notation）是一种用纯文本（ASCII字符）记录音乐的格式，因其简洁、易读写，被广泛应用于分享和存储民间音乐、传统曲调等。你提供的《Cooley's》乐谱就是一个很好的例子。
+        </p>
+        <p class="text-base md:text-lg mb-6">
+            这份文档将结合这个例子，详细说明如何书写 ABC 乐谱。
+        </p>
+
+        <!-- 什么是 ABC -->
+        <h2 class="text-2xl md:text-3xl font-semibold text-brand-dark border-l-4 border-brand pl-4 mt-8 mb-3">
+            📌 什么是 ABC 记谱法？
+        </h2>
+        <p class="mb-4">
+            ABC记谱法由克里斯·瓦尔莎（Chris Walshaw）在19世纪发明。它用字母 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">A</code> 到 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">G</code> 表示音符，并辅以其他符号来记录音长、八度、调性等信息。由于其纯文本的特性，非常易于在计算机上处理和分享。
+        </p>
+
+        <!-- 基本结构 -->
+        <h2 class="text-2xl md:text-3xl font-semibold text-brand-dark border-l-4 border-brand pl-4 mt-8 mb-3">
+            🧩 ABC 文件的基本结构
+        </h2>
+        <p class="mb-2">一个 ABC 乐谱主要由两大部分组成：</p>
+        <ol class="list-decimal list-inside space-y-1 mb-4 pl-2">
+            <li><strong>头部 (Header)</strong>：包含乐曲的元数据，如标题、拍号、调号等。每一行都以一个大写字母和冒号（<code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">:</code>）开头。</li>
+            <li><strong>主体 (Body)</strong>：包含实际的音符序列和音乐指令。</li>
+        </ol>
+
+        <!-- 头部信息详解 -->
+        <h2 class="text-2xl md:text-3xl font-semibold text-brand-dark border-l-4 border-brand pl-4 mt-8 mb-3">
+            📋 头部信息详解
+        </h2>
+        <p class="mb-3">头部信息为乐曲提供必要的“背景信息”。以下是几个最常用的头部字段：</p>
+
+        <div class="overflow-x-auto shadow-sm rounded-lg border border-slate-200 mb-6">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <thead class="bg-brand-dark text-white">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-semibold">字段</th>
+                        <th class="px-4 py-3 text-left font-semibold">含义</th>
+                        <th class="px-4 py-3 text-left font-semibold">示例 (<em>Cooley's</em>)</th>
+                        <th class="px-4 py-3 text-left font-semibold">说明</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-200">
+                    <tr>
+                        <td class="px-4 py-3 font-mono text-rose-700"><code>X:</code></td>
+                        <td class="px-4 py-3"><strong>序号</strong> (Reference Number)</td>
+                        <td class="px-4 py-3 font-mono"><code>X: 1</code></td>
+                        <td class="px-4 py-3">每个曲调的唯一编号。</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-mono text-rose-700"><code>T:</code></td>
+                        <td class="px-4 py-3"><strong>标题</strong> (Title)</td>
+                        <td class="px-4 py-3 font-mono"><code>T: Cooley's</code></td>
+                        <td class="px-4 py-3">乐曲的名称。</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-mono text-rose-700"><code>M:</code></td>
+                        <td class="px-4 py-3"><strong>拍号</strong> (Meter)</td>
+                        <td class="px-4 py-3 font-mono"><code>M: 4/4</code></td>
+                        <td class="px-4 py-3">表示节拍，如 4/4 拍、6/8 拍等。</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-mono text-rose-700"><code>L:</code></td>
+                        <td class="px-4 py-3"><strong>默认音符长度</strong> (Default Note Length)</td>
+                        <td class="px-4 py-3 font-mono"><code>L: 1/8</code></td>
+                        <td class="px-4 py-3">指定没有长度标记时，一个音符的默认时值。这里是八分音符。</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 font-mono text-rose-700"><code>K:</code></td>
+                        <td class="px-4 py-3"><strong>调号</strong> (Key)</td>
+                        <td class="px-4 py-3 font-mono"><code>K: Emin</code></td>
+                        <td class="px-4 py-3">指定乐曲的调性，如 C 大调、E 小调等。</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 音符与音高 -->
+        <h2 class="text-2xl md:text-3xl font-semibold text-brand-dark border-l-4 border-brand pl-4 mt-8 mb-3">
+            🎵 音符与音高
+        </h2>
+        <p class="mb-2">在 ABC 记谱法中，音符的表示非常直观：</p>
+        <ul class="list-disc list-inside space-y-1 mb-4 pl-2">
+            <li>
+                <strong>音名</strong>：使用字母 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">A</code> 到 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">G</code> 来表示音符。
+                <ul class="list-circle list-inside pl-6 mt-1 space-y-0.5">
+                    <li><strong>小写字母</strong> (<code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">a</code>–<code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">g</code>) 表示 <strong>中音区</strong> 的音符。</li>
+                    <li><strong>大写字母</strong> (<code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">A</code>–<code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">G</code>) 表示 <strong>低音区</strong> 的音符。</li>
+                </ul>
+            </li>
+            <li>
+                <strong>变化音</strong>：在音符前加 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">^</code> 表示 <strong>升号</strong>（♯），加 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">_</code> 表示 <strong>降号</strong>（♭）。
+                <br />例如，<code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">^c</code> 表示升 C，<code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">_B</code> 表示降 B。
+            </li>
+            <li><strong>休止符</strong>：使用字母 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">z</code> 表示休止符。</li>
+        </ul>
+
+        <!-- 音长与节奏 -->
+        <h2 class="text-2xl md:text-3xl font-semibold text-brand-dark border-l-4 border-brand pl-4 mt-8 mb-3">
+            ⏱️ 音长与节奏
+        </h2>
+        <p class="mb-2">音符的时值通过在字母后添加数字或符号来控制。</p>
+        <ul class="list-disc list-inside space-y-1 mb-4 pl-2">
+            <li>
+                <strong>基本规则</strong>：在 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">L:</code> 字段定义的默认音符长度基础上，数字表示倍数关系。
+                <ul class="list-circle list-inside pl-6 mt-1 space-y-0.5">
+                    <li>在 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">L: 1/8</code>（默认八分音符）的情况下：
+                        <ul class="list-disc list-inside pl-6">
+                            <li><code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">c</code> 或 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">c8</code>：表示一个八分音符（默认长度）。</li>
+                            <li><code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">c4</code>：表示一个四分音符（长度是默认的2倍）。</li>
+                            <li><code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">c2</code>：表示一个二分音符（长度是默认的4倍）。</li>
+                        </ul>
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <strong>附点音符</strong>：在音符后加 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">&gt;</code> 或 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">.</code> 表示附点，时值延长一半。
+                <br />例如，<code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">c&gt;</code> 或 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">c.</code> 表示附点八分音符。
+            </li>
+        </ul>
+
+        <!-- 八度标记 -->
+        <h2 class="text-2xl md:text-3xl font-semibold text-brand-dark border-l-4 border-brand pl-4 mt-8 mb-3">
+            🎚️ 八度标记
+        </h2>
+        <p class="mb-2">通过在音符后添加符号，可以将其移到不同的八度。</p>
+        <ul class="list-disc list-inside space-y-1 mb-4 pl-2">
+            <li><code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">'</code> （撇号）：将音符 <strong>提高一个八度</strong>。</li>
+            <li><code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">,</code> （逗号）：将音符 <strong>降低一个八度</strong>。</li>
+            <li>可以连续使用，如 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">c''</code> 表示比中音 C 高两个八度的音。</li>
+        </ul>
+
+        <!-- 小节线与重复 -->
+        <h2 class="text-2xl md:text-3xl font-semibold text-brand-dark border-l-4 border-brand pl-4 mt-8 mb-3">
+            📏 小节线与重复
+        </h2>
+        <ul class="list-disc list-inside space-y-1 mb-4 pl-2">
+            <li><strong>小节线</strong>：使用竖线 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">|</code> 来分隔小节。</li>
+            <li>
+                <strong>反复记号</strong>：
+                <ul class="list-circle list-inside pl-6 mt-1 space-y-0.5">
+                    <li><code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">:|</code> 表示从这里开始反复。</li>
+                    <li><code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">|:</code> 表示反复到这里结束。</li>
+                    <li><code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">::</code> 表示段落反复。</li>
+                    <li>在《Cooley's》中，<code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">|:</code> 和 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">:|</code> 标记了需要反复演奏的部分。</li>
+                </ul>
+            </li>
+        </ul>
+
+        <!-- 装饰音与表情 -->
+        <h2 class="text-2xl md:text-3xl font-semibold text-brand-dark border-l-4 border-brand pl-4 mt-8 mb-3">
+            ✨ 装饰音与表情记号
+        </h2>
+        <ul class="list-disc list-inside space-y-1 mb-4 pl-2">
+            <li>
+                <strong>装饰音</strong>：一些常见的装饰音有特定符号。
+                <ul class="list-circle list-inside pl-6 mt-1 space-y-0.5">
+                    <li><code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">~</code>：表示 <strong>颤音</strong>（如 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">~B2</code>）。</li>
+                    <li><code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">{ }</code>：用于表示 <strong>连音</strong> 或 <strong>装饰音群</strong>（如 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">{gab}</code>）。</li>
+                </ul>
+            </li>
+            <li>
+                <strong>表情记号</strong>：可以用 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">!</code> 括起来添加演奏记号，如 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">!&gt;!</code> 表示重音（Accent）。
+            </li>
+        </ul>
+
+        <!-- 实例解析 -->
+        <h2 class="text-2xl md:text-3xl font-semibold text-brand-dark border-l-4 border-brand pl-4 mt-8 mb-3">
+            🔍 实例解析：Cooley's
+        </h2>
+        <p class="mb-3">现在，我们来分析你提供的《Cooley's》乐谱，看看以上规则是如何应用的：</p>
+
+        <div class="bg-slate-800 rounded-xl p-4 md:p-5 mb-5 overflow-x-auto">
+            <pre class="text-slate-200 font-mono text-sm md:text-base leading-relaxed whitespace-pre-wrap break-words"><code>X: 1
+T: Cooley's
+M: 4/4
+L: 1/8
+K: Emin
+|: "Em" EBBA B2 EB | ~B2 AB dBAG | "D" FDAD BDAD | FDAD dAFD |
+...</code></pre>
+        </div>
+
+        <ol class="list-decimal list-inside space-y-2 mb-4 pl-2">
+            <li><strong>头部信息</strong>：定义了这是一首编号为 1、标题为“Cooley's”、4/4 拍、默认音符为八分音符、E 小调的乐曲。</li>
+            <li><strong>和弦标记</strong>：引号内的 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">"Em"</code> 和 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">"D"</code> 是和弦标记，用于指示吉他或钢琴伴奏，它们不影响旋律音本身。</li>
+            <li>
+                <strong>音符与音长</strong>：
+                <ul class="list-circle list-inside pl-6 mt-1 space-y-0.5">
+                    <li><code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">EBBA</code>：四个连续的八分音符（E, B, B, A）。</li>
+                    <li><code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">B2</code>：一个二分音符 B（因为 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">L:1/8</code>，所以 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">2</code> 表示其 4 倍时值）。</li>
+                </ul>
+            </li>
+            <li><strong>装饰音</strong>：<code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">~B2</code> 中的 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">~</code> 表示对 B 这个二分音符进行颤音演奏。</li>
+            <li><strong>反复</strong>：最外层的 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">|:</code> 和 <code class="bg-brand-light px-1.5 py-0.5 rounded text-sm font-mono text-rose-700">:|</code> 标记了整首曲子的反复结构。</li>
+        </ol>
+
+        <!-- 完整乐谱 -->
+        <div class="bg-brand-light/30 border-l-4 border-brand rounded-r-lg p-4 md:p-5 mb-6">
+            <p class="font-semibold text-brand-dark mb-2">💡 完整乐谱（你提供的片段）</p>
+            <div class="bg-slate-800 rounded-xl p-4 overflow-x-auto">
+                <pre class="text-slate-200 font-mono text-sm md:text-base leading-relaxed whitespace-pre-wrap break-words"><code>|: "Em" EBBA B2 EB | ~B2 AB dBAG | "D" FDAD BDAD | FDAD dAFD |
+"Em" EBBA B2 EB | B2 AB defg | "D" afe^c dBAF | "Em" DEFD E2 :|
+|: "Em" eB B2 efge | eB B2 gedB | "D" A2 FA DAFA | A2 FA defg |
+"Em" eB B2 eBgB | eB B2 defg | "D" afe^c dBAF | "Em" DEFD E2 :|</code></pre>
+            </div>
+        </div>
+
+        <!-- 总结 -->
+        <h2 class="text-2xl md:text-3xl font-semibold text-brand-dark border-l-4 border-brand pl-4 mt-8 mb-3">
+            📝 总结
+        </h2>
+        <p class="mb-2">
+            ABC 记谱法是一种强大而简洁的音乐记录方式。掌握其核心要素——<strong>头部信息</strong>、<strong>音符与音高</strong>、<strong>音长</strong>以及各种修饰符号——之后，你就能轻松地读写和理解这种格式的乐谱了。
+        </p>
+        <p>
+            如果你希望将 ABC 代码转换为可视化的五线谱或 MIDI 音频，可以使用在线工具（如 <a href="https://abcnotation.com/" target="_blank" class="text-brand hover:underline font-medium">abcnotation.com</a>）或专用软件（如 EasyABC、MuseScore 等）进行渲染。
+        </p>
+
+        <!-- 页脚 -->
+        <div class="mt-10 pt-6 border-t border-slate-200 text-sm text-slate-500 text-center">
+            <p>文档创建于 2026 年 · 基于 ABC 2.1 标准 · 自由分享</p>
+        </div>
+
+    </div>
+
+</body>
+</html>
